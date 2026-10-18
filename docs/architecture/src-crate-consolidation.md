@@ -12451,3 +12451,21 @@ Full workspace consolidation remains active.
   artifacts/consolidation-model-failover/.
 - Only the new crate's dependency and package record were staged from Cargo.lock.
   No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
+
+### Tool-call tracker extraction
+
+- Moved open-tool state, bus request/response observation, bounded insertion,
+  declared-timeout parsing and current/stalled-call queries into the dedicated
+  codetether-tool-tracker crate. Eight modules contain at most 44 code lines,
+  including all four existing tracker regression tests.
+- The native tracker module now re-exports the shared types. Inherent query
+  methods reside with their owner, so existing watchdog and UI call sites remain
+  unchanged. The 256-call cap, oldest-call eviction, per-agent queries and
+  timeout precedence retain their original behavior.
+- Verification: 17 source comparisons/checks passed for state shapes, methods,
+  mutation rules, timing queries, test bodies and native facades. Module and
+  dependency checks, direct rustfmt, source limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-tool-tracker/.
+- Only the new dependency and package record were staged from Cargo.lock.
+  No timing sleeps, Cargo, rustc, compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

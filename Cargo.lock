@@ -1253,6 +1253,7 @@ dependencies = [
  "codetether-terminal-runtime",
  "codetether-stream-recovery",
  "codetether-model-failover",
+ "codetether-tool-tracker",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6249,6 +6250,14 @@ name = "codetether-model-failover"
 version = "0.1.0"
 dependencies = [
  "codetether-provider-core",
+]
+
+[[package]]
+name = "codetether-tool-tracker"
+version = "0.1.0"
+dependencies = [
+ "codetether-bus-core",
+ "serde_json",
 ]
 
 [[package]]

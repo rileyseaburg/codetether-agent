@@ -1,7 +1,7 @@
 //! Tests for [`ToolCallTracker`](super::tool_calls::ToolCallTracker).
 
 use super::tool_calls::ToolCallTracker;
-use crate::bus::BusMessage;
+use codetether_bus_core::BusMessage;
 use std::time::Duration;
 
 fn request(request_id: &str, agent: &str, tool: &str) -> BusMessage {

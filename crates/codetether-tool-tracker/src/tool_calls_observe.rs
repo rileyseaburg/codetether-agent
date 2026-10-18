@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use crate::bus::BusMessage;
+use codetether_bus_core::BusMessage;
 
 use super::{OpenToolCall, ToolCallTracker};
 
@@ -14,6 +14,20 @@ pub(crate) const MAX_OPEN_CALLS: usize = 256;
 
 impl ToolCallTracker {
     /// Update tracking from a bus message. No-op for unrelated kinds.
+    ///
+    /// # Arguments
+    /// * `message` — Bus request, response or unrelated event.
+    ///
+    /// # Returns
+    /// Updates open calls in place, retaining at most 256 distinct requests.
+    ///
+    /// # Examples
+    /// ```
+    /// let mut tracker = codetether_tool_tracker::ToolCallTracker::default();
+    /// let request = codetether_bus_core::BusMessage::ToolRequest { request_id: "r".into(), agent_id: "a".into(), tool_name: "read".into(), arguments: serde_json::Value::Null, step: 1 };
+    /// tracker.observe(&request);
+    /// assert_eq!(tracker.open_calls().count(), 1);
+    /// ```
     pub fn observe(&mut self, message: &BusMessage) {
         match message {
             BusMessage::ToolRequest {
@@ -37,19 +51,5 @@ impl ToolCallTracker {
             }
             _ => {}
         }
-    }
-
-    fn insert(&mut self, request_id: &str, call: OpenToolCall) {
-        if self.open.len() >= MAX_OPEN_CALLS
-            && !self.open.contains_key(request_id)
-            && let Some(oldest) = self
-                .open
-                .iter()
-                .min_by_key(|(_, call)| call.started_at)
-                .map(|(id, _)| id.clone())
-        {
-            self.open.remove(&oldest);
-        }
-        self.open.insert(request_id.to_string(), call);
     }
 }

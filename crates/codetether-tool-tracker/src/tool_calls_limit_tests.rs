@@ -1,4 +1,4 @@
-use crate::bus::BusMessage;
+use codetether_bus_core::BusMessage;
 
 use super::tool_calls::ToolCallTracker;
 use super::tool_calls::observe::MAX_OPEN_CALLS;

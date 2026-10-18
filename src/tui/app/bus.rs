@@ -8,9 +8,4 @@ mod owned_result;
 mod prompt;
 pub mod reply;
 pub mod tool_calls;
-#[cfg(test)]
-#[path = "bus/tool_calls_limit_tests.rs"]
-mod tool_calls_limit_tests;
 pub mod tool_calls_query;
-#[cfg(test)]
-mod tool_calls_tests;
