@@ -16844,8 +16844,10 @@ dependencies = [
  "anyhow",
  "codetether-approval-core",
  "codetether-mcp-core",
+ "codetether-tool-core",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

@@ -1,42 +1,25 @@
+//! Native evaluator and fallback-name bindings for shared MCP enforcement.
 use super::types::CallToolResult;
 use crate::tool::{Tool, ToolResult};
 use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;
-
-use codetether_mcp_fallback::policy as names;
-
+struct Native;
+impl codetether_mcp_approval::inbound::Evaluator for Native {
+    async fn evaluate(name: &str, args: &Value) -> Option<ToolResult> {
+        crate::runtime_policy::evaluate_tool_invocation(name, args).await
+    }
+}
 pub(super) fn call_registered(
     name: String,
     tool: Arc<dyn Tool>,
     args: Value,
 ) -> Result<CallToolResult> {
-    let result = tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(async {
-            if let Some(blocked) =
-                crate::runtime_policy::evaluate_tool_invocation(&name, &args).await
-            {
-                return Ok(blocked);
-            }
-            tool.execute(args).await
-        })
-    });
-    Ok(from_tool_result(result.unwrap_or_else(|error| {
-        ToolResult::error(error.to_string())
-    })))
+    codetether_mcp_approval::inbound::call_registered::<Native>(name, tool, args)
 }
-
 pub(super) fn blocked(name: &str, args: &Value) -> Option<CallToolResult> {
-    tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current()
-            .block_on(async {
-                crate::runtime_policy::evaluate_tool_invocation(names::policy_name(name), args)
-                    .await
-            })
-            .map(from_tool_result)
-    })
-}
-
-fn from_tool_result(result: ToolResult) -> CallToolResult {
-    super::tool_result::convert(result)
+    codetether_mcp_approval::inbound::blocked::<Native>(
+        codetether_mcp_fallback::policy::policy_name(name),
+        args,
+    )
 }

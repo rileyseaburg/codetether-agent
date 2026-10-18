@@ -20446,3 +20446,22 @@ normalization was added to the comparison, retaining its initial failure log.
 Evidence: `artifacts/consolidation-invocation-guard/`. Cargo, rustc, Python, Rust
 tests, configuration loading and tool/remote execution were not run; compilation
 and runtime remain unverified.
+
+### Inbound MCP enforcement ownership
+
+Moved synchronous MCP registered-tool execution, fallback denial checking and
+result conversion into `codetether-mcp-approval::inbound`. Native code retains
+one session-aware evaluation callback and canonical fallback-name adaptation.
+Registered/fallback handler factories are unchanged.
+
+Preserved the block_in_place/current-runtime bridge, policy-before-execution
+ordering, immediate denial return, conversion of execution failures into MCP
+tool results, and canonical fallback aliases. The shared approval crate now
+declares the tool-core and Tokio runtime dependencies required by this code.
+
+Validation: full registered-call/fallback/conversion body comparisons, native
+policy and naming bindings, unchanged handler factories/conversion tests,
+isolated lock delta, module reachability, dependency cycles, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-mcp-inbound/`. Cargo, rustc, Python, Rust tests and MCP
+tool execution were not run; compilation and runtime remain unverified.

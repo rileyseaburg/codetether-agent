@@ -51,3 +51,6 @@ pub async fn handle(method: &str, params: Option<Value>) -> Result<Value, JsonRp
 
 /// Outbound MCP tool invocation policy and local metadata stripping.
 pub mod outbound;
+
+/// Inbound MCP registered/fallback tool authorization.
+pub mod inbound;
