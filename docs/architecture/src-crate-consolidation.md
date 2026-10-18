@@ -21332,3 +21332,22 @@ whitespace checks passed. No dependency or lockfile changes. Evidence:
 `artifacts/consolidation-mcp-setup/`. No Cargo, rustc, or Python commands ran;
 compilation and runtime tests remain unverified. Complete consolidation is
 still ongoing.
+
+### Shared sub-agent state construction
+
+Moved the native sub-agent constructor into
+`codetether-swarm-core::agent_loop::AgentState::new` and removed the native
+`create.rs`. The shared constructor owns model copying, conversation/deadline
+creation, temperature selection, all execution-state fields, and capture of the
+current parent control. The native state wrapper converts the completed shared
+state without additional initialization. Production and offline image-fixture
+callers pass the same arguments as before.
+
+Static comparisons preserve the exact initialization sequence and field values.
+The native control handle already re-exported the identical session-control type.
+Added the direct provider-policy dependency used by the moved constructor,
+with only that edge staged in the lockfile. Source/dependency graphs across
+697 roots and 563 crates, direct rustfmt, native file-size limits, and whitespace
+checks passed. Evidence: `artifacts/consolidation-swarm-create/`. No Cargo,
+rustc, or Python commands ran. Compilation/runtime tests remain unverified;
+full workspace consolidation remains active.

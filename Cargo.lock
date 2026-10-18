@@ -5423,6 +5423,7 @@ dependencies = [
  "chrono",
  "codetether-agent-core",
  "codetether-provider-core",
+ "codetether-provider-policy",
  "codetether-tool-core",
  "serde",
  "serde_json",

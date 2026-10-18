@@ -7,6 +7,7 @@ use anyhow::Result;
 use codetether_provider_core::{CompletionResponse, ContentPart, FinishReason, Message};
 use std::time::Instant;
 mod conversation;
+mod create;
 mod types;
 pub use conversation::Conversation;
 mod state;

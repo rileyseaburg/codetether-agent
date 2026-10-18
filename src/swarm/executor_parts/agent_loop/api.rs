@@ -58,7 +58,7 @@ pub async fn run_agent_loop(
     bus: Option<Arc<AgentBus>>,
     working_dir: Option<PathBuf>,
 ) -> Result<(String, usize, usize, AgentLoopExit)> {
-    let mut state = super::create::state(
+    let mut state = super::state::State::from(codetether_swarm_core::agent_loop::AgentState::new(
         provider,
         model,
         system,
@@ -71,7 +71,7 @@ pub async fn run_agent_loop(
         subtask_id,
         bus,
         working_dir,
-    );
+    ));
     let exit = super::driver::execute(&mut state).await?;
     Ok((
         state.inner.conversation.output,

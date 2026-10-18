@@ -10,7 +10,6 @@
 mod api;
 mod completion;
 mod control;
-mod create;
 mod driver;
 mod limits;
 mod output;
