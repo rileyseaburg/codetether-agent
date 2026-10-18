@@ -1,15 +1,10 @@
 //! Provider loading and model resolution for direct swarm execution.
 
 use super::{model_selection, tui_bridge::Observer};
-use crate::provider::{Provider, ProviderRegistry};
+use crate::provider::ProviderRegistry;
 use crate::tool::ToolResult;
 use anyhow::{Context, Result};
-use std::sync::Arc;
-
-pub(super) struct SelectedProvider {
-    pub provider: Arc<dyn Provider>,
-    pub model: model_selection::ModelSelection,
-}
+pub(super) use codetether_swarm_tool::runtime::SelectedProvider;
 
 pub(super) async fn load(
     requested: Option<&str>,

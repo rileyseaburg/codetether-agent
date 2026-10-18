@@ -15264,3 +15264,31 @@ Full workspace consolidation remains active.
 - No Cargo, rustc, Python, compilation or Rust test execution. Full consolidation
   remains incomplete; provider loading, worker-loop orchestration, and TUI
   observation still have native implementation.
+
+### Direct swarm runtime ownership
+
+- Moved the main direct-swarm execution flow from `src/tool/swarm_execute.rs`
+  into `crates/codetether-swarm-tool/src/runtime/`, split into invocation startup,
+  dispatch, scheduling, worker context, permit ownership, native invocation,
+  completion classification, and ordered collection. The native tool now delegates.
+- Added a narrow host boundary for provider loading, restricted tool registries,
+  session-aware system prompts, the existing provider/tool loop, and the native
+  TUI observer. Scheduling still uses the same shared session-control spawn
+  implementation exported by the former native control path.
+- Preserved parsing before observation, provider-load error behavior, the shared
+  result store, semaphore acquisition before allocation-error propagation,
+  worker startup events, tool/prompt construction order, per-worker budgets,
+  absent bus argument, enforced working directory, abort-on-drop handles,
+  input-order joins, worktree integration before failure counts, and aggregation.
+- Moved user-prompt formatting out of the native prompt module. Centralized the
+  existing optional-ID/fallback rule on `TaskInput::id_for_index`, used by both
+  the runtime and native TUI records.
+- Verification: Node checks compared parsing and collection bodies, result,
+  prompt and event construction, native boundary arguments, unchanged provider
+  error handlers, observer forwarding, task identity and context fields; also
+  checked operation ordering, module reachability, dependency acyclicity, file
+  limits and isolated lockfile changes. Direct rustfmt and `git diff --check`
+  passed. Evidence: `artifacts/consolidation-swarm-runtime/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Native registry
+  adapters, provider loading and TUI observation still remain to consolidate;
+  this does not complete the broader workspace goal.

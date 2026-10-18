@@ -24,6 +24,18 @@ pub struct TaskInput {
 }
 
 impl TaskInput {
+    /// Use the explicit identity, falling back to a one-based task label.
+    /// # Examples
+    /// ```
+    /// let task = codetether_swarm_tool::input::parse_tasks(&serde_json::json!({"tasks":["Review"]})).unwrap().remove(0);
+    /// assert_eq!(task.id_for_index(0), "task-1");
+    /// ```
+    pub fn id_for_index(&self, index: usize) -> String {
+        self.id
+            .clone()
+            .unwrap_or_else(|| format!("task-{}", index + 1))
+    }
+
     /// Prefer the stable identifier when classifying task intent.
     pub fn intent_name(&self) -> &str {
         self.id.as_deref().unwrap_or(&self.name)

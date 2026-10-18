@@ -6,9 +6,7 @@ use crate::tui::swarm_view::{SubTaskInfo, SwarmEvent};
 use tokio::sync::mpsc;
 
 pub(super) fn id(task: &TaskInput, index: usize) -> String {
-    task.id
-        .clone()
-        .unwrap_or_else(|| format!("task-{}", index + 1))
+    task.id_for_index(index)
 }
 
 pub(super) fn info(task: &TaskInput, index: usize, max_steps: usize) -> SubTaskInfo {

@@ -46,3 +46,6 @@ mod support_task;
 pub mod worktrees;
 
 mod workspace;
+
+/// Concurrent direct-swarm execution with native runtime bindings.
+pub mod runtime;
