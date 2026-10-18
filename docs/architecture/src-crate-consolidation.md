@@ -9237,3 +9237,19 @@ passed; the largest crate file has 43 code lines. Evidence is in
 `artifacts/consolidation-rlm-background/`. Compilation and runtime tests
 were not run. No Cargo, rustc or Python commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated foreground RLM compaction crate
+
+Moved foreground context summarization and same-provider model selection
+into `crates/codetether-rlm-foreground`. Eight modules separate router
+invocation/fallback, provider model discovery, ranking and the two existing
+selection tests. The native compaction helper now re-exports the shared
+entry point.
+
+Nine static comparisons cover selection, ranking, provider discovery,
+router inputs, fallback compression, original log targets and test bodies.
+Module/dependency graphs, file budgets and whitespace checks passed; the
+largest crate file has 38 code lines. Evidence is in
+`artifacts/consolidation-rlm-foreground/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or model calls ran. Full workspace
+consolidation remains active.

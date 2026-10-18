@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-rlm-foreground",
  "codetether-rlm-background",
  "codetether-request-tokens",
  "codetether-step-limit",
@@ -2966,6 +2967,16 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-rlm-foreground"
+version = "0.1.0"
+dependencies = [
+ "codetether-provider-core",
+ "codetether-rlm",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]
