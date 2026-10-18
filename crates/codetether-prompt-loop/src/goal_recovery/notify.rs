@@ -1,15 +1,13 @@
-//! UI notification for a goal-level provider reconnect.
-
-use super::super::Runner;
-use crate::session::{SessionEvent, StreamRetryEvent};
-
+//! Live notification before a goal-level retry delay.
+use super::Host;
+use codetether_session_events::{SessionEvent, StreamRetryEvent};
 pub(super) async fn send(
-    runner: &Runner<'_>,
+    host: &mut impl Host,
     error: &anyhow::Error,
     attempt: u8,
     max_restarts: u8,
 ) {
-    let Some(tx) = &runner.events else { return };
+    let Some(tx) = host.events() else { return };
     let _ = tx
         .send(SessionEvent::StreamRetry(StreamRetryEvent {
             attempt: u32::from(attempt),

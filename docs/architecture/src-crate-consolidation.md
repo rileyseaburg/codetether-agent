@@ -15743,3 +15743,22 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-request-attempt/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. The workspace-wide
   consolidation remains incomplete.
+
+### Shared goal-level provider failure recovery
+
+- Moved whole-turn provider failure recovery into
+  `codetether-prompt-loop::goal_recovery`, with separate sequencing, signature,
+  counter, notification, stopped-status and host-interface modules.
+- Native bindings retain active-goal lookup, durable status writes, live event
+  access and continuation. The shared layer retains retry classification, the
+  three-failure threshold, signature reset semantics, delay timing, best-effort
+  status logging and continuation-result handling.
+- Moved both existing failure-signature and stopped-status tests. These tests
+  were not executed. Runtime failures keep the original stopped-status policy.
+- Verification: complete recovery-body and helper comparisons, both test bodies,
+  all five native bindings, unchanged continuation/status-store implementations,
+  module/dependency graphs, direct rustfmt, file budgets, isolated lock addition
+  and diff whitespace. Native status return type was checked against its source.
+  Evidence: `artifacts/consolidation-goal-recovery/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.

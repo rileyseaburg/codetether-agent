@@ -1,5 +1,5 @@
-use super::super::Runner;
-use crate::session::GoalStatus;
+use super::Host;
+use codetether_goal_core::GoalStatus;
 
 /// Status recorded when repeated provider failures stop a goal.
 ///
@@ -23,10 +23,9 @@ pub(super) fn stopped_status(signature: Option<&str>) -> GoalStatus {
 }
 
 /// Persist the stopped status for the runner's goal.
-pub(super) async fn persist(runner: &Runner<'_>) {
-    let status = stopped_status(runner.progress.goal_failure_signature.as_deref());
-    if let Err(error) = crate::session::tasks::runtime::set_status(&runner.session.id, status).await
-    {
+pub(super) async fn persist(host: &mut impl Host) {
+    let status = stopped_status(host.progress().goal_failure_signature.as_deref());
+    if let Err(error) = host.set_status(status).await {
         tracing::warn!(error = %error, "Failed to persist stopped goal status");
     }
 }
@@ -34,7 +33,7 @@ pub(super) async fn persist(runner: &Runner<'_>) {
 #[cfg(test)]
 mod tests {
     use super::stopped_status;
-    use crate::session::GoalStatus;
+    use codetether_goal_core::GoalStatus;
 
     #[test]
     fn runtime_failures_never_mark_goal_blocked() {

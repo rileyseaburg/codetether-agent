@@ -35,3 +35,6 @@ pub mod tool_driver;
 
 /// Completed and synthetic tool-result publication sequencing.
 pub mod tool_publication;
+
+/// Whole-turn continuation after exhausted provider failures.
+pub mod goal_recovery;
