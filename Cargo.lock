@@ -1947,6 +1947,7 @@ dependencies = [
  "codetether-native-cli",
  "codetether-native-crash",
  "codetether-native-thinker",
+ "codetether-native-worker",
 ]
 
 [[package]]
@@ -3896,6 +3897,18 @@ version = "0.1.0"
 dependencies = [
  "codetether-voice-core",
  "cpal",
+]
+
+[[package]]
+name = "codetether-native-worker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-a2a-http",
+ "codetether-native-providers",
+ "codetether-tui-worker",
+ "reqwest 0.13.4",
 ]
 
 [[package]]
@@ -9017,6 +9030,7 @@ dependencies = [
  "codetether-thinker-service",
  "codetether-util",
  "tokio",
+ "codetether-model-discovery",
 ]
 
 [[package]]

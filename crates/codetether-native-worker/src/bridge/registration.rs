@@ -6,7 +6,7 @@ impl codetether_tui_worker::Registration for NativeRegistration {
     async fn register(
         request: codetether_tui_worker::RegistrationRequest<'_>,
     ) -> anyhow::Result<()> {
-        crate::a2a::worker::register_worker(
+        crate::register_worker(
             request.client,
             request.server,
             request.token,

@@ -8,3 +8,6 @@
 mod provider;
 pub use provider::*;
 pub mod thinker;
+
+/// Cached provider model discovery used for worker registration.
+pub mod worker_models;

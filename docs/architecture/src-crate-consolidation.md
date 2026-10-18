@@ -25414,3 +25414,22 @@ required dependency additions in existing lockfile entries are staged;
 unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-tui-state-bindings/. No Cargo, rustc, Python, connection
 startup or runtime tests ran. Full consolidation remains active.
+
+### Native worker registration and TUI bridge moved into service crates
+
+Moved cached worker model discovery into codetether-native-providers and worker
+registration/TUI bridge bindings into codetether-native-worker. Root worker and
+TUI module paths re-export the services. Registration and bootstrap still use
+one model Catalog; the new location does not create separate caches. The same
+HTTP helper receives identical worker IDs, codebases, public URLs and provider
+model loading futures.
+
+Four source comparisons pass after explicit crate-path substitutions. Broader
+worker execution remains native; the pre-existing spawn and heartbeat changes
+are untouched. Static scans cover 713 module roots and 599 crates without
+missing modules, cycles or undeclared direct workspace dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass. Only the
+new package/root dependency and required native-provider dependency additions
+are staged in Cargo.lock. Evidence: artifacts/consolidation-native-worker/.
+No Cargo, rustc, Python, worker registration requests or runtime tests ran.
+Full consolidation remains active.

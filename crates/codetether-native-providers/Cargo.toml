@@ -44,3 +44,4 @@ codetether-thinker-service = { path = "../codetether-thinker-service", version =
 codetether-util = { path = "../codetether-util", version = "0.1.0" }
 anyhow = "1"
 tokio = { version = "1", features = ["sync"] }
+codetether-model-discovery = { path = "../codetether-model-discovery", version = "0.1.0" }

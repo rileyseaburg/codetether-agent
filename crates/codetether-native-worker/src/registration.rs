@@ -3,7 +3,7 @@
 use anyhow::Result;
 use reqwest::Client;
 
-use super::super::provider_models;
+use codetether_native_providers::worker_models as provider_models;
 
 pub async fn register_worker(
     client: &Client,

@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-native-worker",
     "crates/codetether-native-thinker",
     "crates/codetether-native-crash",
     "crates/codetether-native-cli",
@@ -709,6 +710,7 @@ fips = [
 ]
 
 [dependencies]
+codetether-native-worker = { path = "crates/codetether-native-worker", version = "0.1.0" }
 codetether-native-thinker = { path = "crates/codetether-native-thinker", version = "0.1.0" }
 codetether-native-crash = { path = "crates/codetether-native-crash", version = "4.7.6-dev.38" }
 codetether-native-cli = { path = "crates/codetether-native-cli", version = "4.7.6-dev.38" }
