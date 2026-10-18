@@ -10412,3 +10412,22 @@ graphs, file budgets and whitespace checks passed; the two new modules contain
 at most 24 code lines. Evidence is in `artifacts/consolidation-mux-session/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python, terminal
 input or clipboard operations ran. Full workspace consolidation remains active.
+
+### Server-owned PTY subsystem extracted
+
+Moved all server-owned pseudo-terminal implementation from `src/mux/pty` into
+`crates/codetether-mux-pty`. Twenty-five modules own program startup, Unix PTY
+configuration, child environment identity, descriptor inheritance protection,
+process reaping, terminal resizing, input/output, replay access and shell
+selection. Split liveness/termination from program I/O and checked lookup from
+registry I/O. The native PTY module now only re-exports the shared API; existing
+server consumers remain unchanged. The coordination crate supplies the existing
+session environment constant, and terminal replay remains independently owned.
+
+Forty-five static checks compare original modules, split method bodies, native
+adapter and unchanged server consumers. All six existing tests (including the
+ignored benchmark) moved with the subsystem. Module/dependency graphs, file
+budgets and whitespace checks passed; new modules have at most 42 code lines.
+Evidence is in `artifacts/consolidation-mux-pty/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python, terminal/process startup or benchmark ran.
+Full workspace consolidation remains active.

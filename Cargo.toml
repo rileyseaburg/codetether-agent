@@ -180,6 +180,7 @@ members = [
     "crates/codetether-mux-input",
     "crates/codetether-terminal-replay",
     "crates/codetether-mux-attachment",
+    "crates/codetether-mux-pty",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -492,6 +493,7 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-mux-pty = { path = "crates/codetether-mux-pty", version = "0.1.0" }
 codetether-mux-attachment = { path = "crates/codetether-mux-attachment", version = "0.1.0" }
 codetether-terminal-replay = { path = "crates/codetether-terminal-replay", version = "0.1.0" }
 codetether-mux-input = { path = "crates/codetether-mux-input", version = "0.1.0" }

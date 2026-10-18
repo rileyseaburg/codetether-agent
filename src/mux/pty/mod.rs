@@ -1,21 +1,2 @@
-//! Server-owned pseudo-terminal processes for detachable mux programs.
-
-#[cfg(all(test, target_os = "linux"))]
-mod benchmark;
-mod buffer;
-pub(in crate::mux) mod default_shell;
-mod monitor;
-mod program;
-mod program_io;
-mod program_wait;
-mod reader;
-mod registry;
-mod registry_io;
-mod registry_tail;
-mod resize;
-mod spawn;
-pub(super) mod terminal_mode;
-mod types;
-
-pub(super) use registry::PtyRegistry;
-pub(super) use types::{PtyAttach, PtyChunk, TerminalSize};
+//! Shared server-owned PTY processes and platform shell selection.
+pub(super) use codetether_mux_pty::{PtyRegistry, TerminalSize, default_shell};

@@ -1,7 +1,18 @@
 //! Platform-aware login-shell command selection.
+//!
+//! [command] selects the environment-configured Unix shell or an available
+//! Windows shell, returning a command suitable for [crate::PtyRegistry::start].
 
 #[cfg(unix)]
-pub(in crate::mux) fn command() -> String {
+/// Return a platform-appropriate login-shell command.
+///
+/// # Returns
+/// A shell command honoring the current platform and configured shell.
+/// # Examples
+/// ```
+/// assert!(!codetether_mux_pty::default_shell::command().is_empty());
+/// ```
+pub fn command() -> String {
     unix_command(std::env::var("SHELL").ok().as_deref())
 }
 
@@ -32,7 +43,15 @@ fn quote(value: &str) -> String {
 }
 
 #[cfg(windows)]
-pub(in crate::mux) fn command() -> String {
+/// Return a platform-appropriate login-shell command.
+///
+/// # Returns
+/// A shell command honoring the current platform and configured shell.
+/// # Examples
+/// ```
+/// assert!(!codetether_mux_pty::default_shell::command().is_empty());
+/// ```
+pub fn command() -> String {
     for shell in ["pwsh.exe", "powershell.exe"] {
         if which::which(shell).is_ok() {
             return format!("{shell} -NoLogo");
@@ -42,7 +61,15 @@ pub(in crate::mux) fn command() -> String {
 }
 
 #[cfg(not(any(unix, windows)))]
-pub(in crate::mux) fn command() -> String {
+/// Return a platform-appropriate login-shell command.
+///
+/// # Returns
+/// A shell command honoring the current platform and configured shell.
+/// # Examples
+/// ```
+/// assert!(!codetether_mux_pty::default_shell::command().is_empty());
+/// ```
+pub fn command() -> String {
     "sh".into()
 }
 

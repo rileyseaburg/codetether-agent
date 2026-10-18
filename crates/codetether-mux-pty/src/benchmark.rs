@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use super::{PtyRegistry, TerminalSize};
-use crate::telemetry::memory::MemorySnapshot;
+use codetether_telemetry::memory::MemorySnapshot;
 
 const PROGRAMS: u64 = 24;
 

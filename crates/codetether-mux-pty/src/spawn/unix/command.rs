@@ -17,7 +17,7 @@ pub(super) fn configured(
         .arg("-lc")
         .arg(command)
         .current_dir(workspace)
-        .env(crate::mux::coordination::SESSION_ENV, mux_session)
+        .env(codetether_mux_coordination::SESSION_ENV, mux_session)
         .stdin(Stdio::from(slave.try_clone()?))
         .stdout(Stdio::from(slave.try_clone()?))
         .stderr(Stdio::from(slave));

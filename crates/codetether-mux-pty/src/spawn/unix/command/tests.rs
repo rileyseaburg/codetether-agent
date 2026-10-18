@@ -8,7 +8,7 @@ fn configured_child_inherits_mux_session_identity() {
     let command = super::configured("true", std::path::Path::new("/tmp"), slave, "team").unwrap();
     let inherited = command
         .get_envs()
-        .find(|(name, _)| *name == OsStr::new(crate::mux::coordination::SESSION_ENV))
+        .find(|(name, _)| *name == OsStr::new(codetether_mux_coordination::SESSION_ENV))
         .and_then(|(_, value)| value);
     assert_eq!(inherited, Some(OsStr::new("team")));
 }

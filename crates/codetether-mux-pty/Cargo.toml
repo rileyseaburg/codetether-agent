@@ -1,0 +1,18 @@
+[package]
+name = "codetether-mux-pty"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Server-owned mux PTY programs, replay access and child lifecycle"
+
+[dependencies]
+anyhow = "1"
+codetether-mux-coordination = { path = "../codetether-mux-coordination", version = "0.1.0" }
+codetether-terminal-replay = { path = "../codetether-terminal-replay", version = "0.1.0" }
+libc = "0.2.189"
+tokio = { version = "1", features = ["sync", "time"] }
+which = "8.0.5"
+
+[dev-dependencies]
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
