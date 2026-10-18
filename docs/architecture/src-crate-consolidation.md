@@ -16050,3 +16050,19 @@ Full workspace consolidation remains active.
   No dependencies changed. Evidence: `artifacts/consolidation-session-slot/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared owned runtime requests and commands
+
+- Moved PromptRequest fields, constructor, compact Debug formatting and
+  SessionCommand variants into `codetether-session-runtime::request`, generic
+  over session, registry, attachment and command-request types.
+- Native aliases preserve the existing API. A SessionIdentity implementation
+  provides the session ID needed for diagnostics without cloning session state.
+- Preserved prompt_for_pr copying, boxed submission, directory fields and debug
+  output fields. Existing request producers, consumers and tests stay unchanged.
+- Verification: exact generic type/constructor/debug/variant comparisons,
+  native aliases and identity binding, unchanged ownership tests and handlers,
+  module/dependency graphs, direct rustfmt, file budgets and diff whitespace.
+  No dependencies changed. Evidence: `artifacts/consolidation-runtime-request/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

@@ -51,3 +51,6 @@ mod turn_tests;
 
 /// Session checkout/restore ownership with retained frontend views.
 pub mod slot;
+
+/// Owned execution requests and runtime command transport data.
+pub mod request;
