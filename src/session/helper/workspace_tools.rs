@@ -6,8 +6,6 @@ use std::{path::Path, sync::Arc};
 #[cfg(test)]
 #[path = "workspace_tools/autonomous_tests.rs"]
 mod autonomous_tests;
-#[path = "workspace_tools/host.rs"]
-mod host;
 pub(crate) fn registry_for_cwd(
     provider: Arc<dyn Provider>,
     model: &str,

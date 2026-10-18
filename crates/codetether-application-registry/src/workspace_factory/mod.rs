@@ -6,6 +6,7 @@
 use std::marker::PhantomData;
 mod factory;
 mod host;
+mod session;
 
 /// Static workspace factory binding registry ownership to rooted tool creation.
 ///

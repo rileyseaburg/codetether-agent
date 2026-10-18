@@ -18,6 +18,7 @@ pub mod commands;
 mod construction;
 mod lifecycle;
 mod search;
+pub mod session_tools;
 mod swarm;
 mod workspace;
 pub mod workspace_factory;

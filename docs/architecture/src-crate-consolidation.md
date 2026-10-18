@@ -22501,3 +22501,28 @@ working lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-command-registration/`.
 No command-tool execution, Cargo, rustc or Python ran; compilation and runtime
 tests remain unverified. Full consolidation is active.
+
+### Session workspace factory and registry hooks owned by the registry crate
+
+Moved the session workspace Factory implementation into the crate that owns
+WorkspaceFactory. Static review identified that the earlier workspace factory
+extraction had left this implementation in native code, where both the trait
+and implementing type were external. The new implementation is local to the
+type's owning crate, restoring the required Rust trait-implementation boundary.
+
+Moved authenticated application-MCP registration and prior-context registry
+filtering into `codetether-application-registry::session_tools`. Two native
+adapter files and their declarations were removed. The remaining native
+prior-context module re-exports the shared generic filter, preserving callers.
+Static source comparisons preserve MCP configuration behavior, the original
+log target, rooted command registration, filtering calls and ordering. Six
+native autonomy/prior-context test files remain byte-identical.
+
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the application-registry crate's application-mcp, prior-context-access and
+tracing dependency edges are staged in the lockfile; the unrelated working
+lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-session-workspace/`.
+No MCP connection, command-tool execution, Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

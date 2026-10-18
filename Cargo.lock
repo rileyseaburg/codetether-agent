@@ -2065,12 +2065,14 @@ name = "codetether-application-registry"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "codetether-application-mcp",
  "codetether-bash-tool",
  "codetether-batch-tool",
  "codetether-cognition-core",
  "codetether-command-session",
  "codetether-exec-command",
  "codetether-plugin-verification",
+ "codetether-prior-context-access",
  "codetether-provider-core",
  "codetether-swarm-core",
  "codetether-tool-construction",
@@ -2079,6 +2081,7 @@ dependencies = [
  "codetether-workspace-tools",
  "codetether-write-stdin",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]

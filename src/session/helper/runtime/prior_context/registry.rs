@@ -3,7 +3,6 @@
 #[cfg(test)]
 use crate::provider::Message;
 use crate::session::Session;
-use crate::tool::ToolRegistry;
 
 /// Return whether a tool is available under transcript-derived policy.
 #[cfg(test)]
@@ -17,8 +16,4 @@ pub(crate) fn session_available(session: &Session, name: &str) -> bool {
 }
 
 /// Remove every tool capable of consulting prior context.
-pub(crate) fn remove_tools(registry: &mut ToolRegistry) {
-    codetether_prior_context_access::remove_tools(|name| {
-        registry.unregister(name);
-    });
-}
+pub(crate) use codetether_application_registry::session_tools::remove_prior_context as remove_tools;
