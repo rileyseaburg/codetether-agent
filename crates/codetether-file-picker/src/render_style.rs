@@ -1,3 +1,4 @@
+//! File picker render style.
 use ratatui::prelude::*;
 
 use super::types::FilePickerState;

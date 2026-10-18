@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-file-picker",
  "codetether-fuzzy-finder",
  "codetether-help-view",
  "codetether-tui-models",
@@ -5992,6 +5993,14 @@ dependencies = [
  "codetether-util",
  "ignore",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-file-picker"
+version = "0.1.0"
+dependencies = [
+ "ratatui",
+ "tempfile",
 ]
 
 [[package]]

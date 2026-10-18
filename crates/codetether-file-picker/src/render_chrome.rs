@@ -1,3 +1,4 @@
+//! File picker render chrome.
 use ratatui::{prelude::*, widgets::*};
 
 pub fn block<T: Into<Line<'static>>>(title: T) -> Block<'static> {

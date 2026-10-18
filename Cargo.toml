@@ -243,6 +243,7 @@ members = [
     "crates/codetether-tui-models",
     "crates/codetether-help-view",
     "crates/codetether-fuzzy-finder",
+    "crates/codetether-file-picker",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -555,6 +556,7 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-file-picker = { path = "crates/codetether-file-picker", version = "0.1.0" }
 codetether-fuzzy-finder = { path = "crates/codetether-fuzzy-finder", version = "0.1.0" }
 codetether-help-view = { path = "crates/codetether-help-view", version = "0.1.0" }
 codetether-tui-models = { path = "crates/codetether-tui-models", version = "0.1.0" }

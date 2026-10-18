@@ -10,15 +10,8 @@ mod nav_jump;
 mod nav_select;
 mod open;
 mod preview;
-mod preview_cache;
 mod render;
-mod render_browser;
-mod render_chrome;
-mod render_style;
-mod render_viewer;
-mod render_window;
 mod scan;
-mod scan_entry;
 mod types;
 
 #[cfg(test)]

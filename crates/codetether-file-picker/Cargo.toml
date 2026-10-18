@@ -1,0 +1,13 @@
+[package]
+name = "codetether-file-picker"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Directory browser state, bounded previews and terminal rendering"
+
+[dependencies]
+ratatui = { version = "0.30.2", default-features = false }
+
+[dev-dependencies]
+tempfile = "3"

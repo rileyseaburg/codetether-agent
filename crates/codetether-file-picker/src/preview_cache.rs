@@ -1,3 +1,4 @@
+//! File picker preview cache.
 use super::preview::load_preview;
 use super::types::FilePickerState;
 

@@ -1,3 +1,4 @@
+//! File picker render viewer.
 use ratatui::{prelude::*, widgets::*};
 
 use super::render_chrome::block;

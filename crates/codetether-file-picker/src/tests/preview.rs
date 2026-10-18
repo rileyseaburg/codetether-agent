@@ -1,4 +1,4 @@
-use crate::tui::app::file_picker::preview::load_preview;
+use crate::preview::load_preview;
 
 #[test]
 fn binary_preview_reports_metadata_only() {

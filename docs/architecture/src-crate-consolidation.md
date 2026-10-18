@@ -11637,3 +11637,24 @@ Full workspace consolidation remains active.
 - Evidence: artifacts/consolidation-fuzzy-finder/. No Cargo, rustc,
   compilation, runtime tests, workspace scans or terminal rendering were run.
   Full workspace consolidation remains incomplete.
+
+### File browser, previews and navigation extraction
+
+- Moved FilePickerState and related types, directory scanning, cached filtering,
+  bounded preview reads, browser/viewer construction, navigation and rendering
+  into crates/codetether-file-picker. Native modules now re-export the API or
+  forward the embedded picker state; view/status transitions stay in adapters.
+- Attachment-to-chat and image attachment behavior remain native and unchanged.
+  Seven existing scan, preview and list-window tests moved to the crate; native
+  navigation/attachment integration tests remain at the host boundary.
+- Preserved parent-directory entries, directory/file ordering, image labels,
+  64 KiB / 1,000-line preview caps, binary placeholders and scroll behavior.
+  The old line helper merely copied text, so the shared preview reader keeps
+  individual lines intact instead of introducing new per-line truncation.
+- Verification: 54 static comparisons cover schemas, defaults, navigation,
+  constructors/adapters, previews, renderer splits, relocated tests and unchanged
+  attachment actions. Thirty-three modules contain at most 38 code lines each.
+  Lexical module reachability, dependency cycles, direct rustfmt, native file
+  limits and git diff --check passed. Evidence: artifacts/consolidation-file-picker/.
+- No Cargo, rustc, compilation, runtime tests, file scanning/preview reading or
+  terminal rendering were run. Full workspace consolidation remains incomplete.
