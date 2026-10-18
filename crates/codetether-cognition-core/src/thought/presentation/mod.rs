@@ -13,6 +13,8 @@ mod phase_default;
 mod placeholder;
 mod prompt_build;
 mod prompt_phase;
+#[cfg(test)]
+mod tests;
 pub use context_signals::{Signals, collect};
 pub use context_summary::summarize;
 pub use normalize::normalize_thought_output;

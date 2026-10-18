@@ -1,8 +1,9 @@
 //! Tests for thought output normalization.
 
-use super::ThoughtPhase;
-use super::normalize::normalize_thought_output;
-use super::tests_support::sample_work_item;
+use super::normalize_thought_output;
+use crate::ThoughtPhase;
+mod fixture;
+use fixture::sample_work_item;
 
 #[test]
 fn normalize_rejects_placeholder_process_line() {

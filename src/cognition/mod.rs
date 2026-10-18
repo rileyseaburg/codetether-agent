@@ -133,9 +133,6 @@ mod idle_reap_tests;
 #[path = "lifecycle_tests.rs"]
 mod lifecycle_tests;
 #[cfg(test)]
-#[path = "normalize_tests.rs"]
-mod normalize_tests;
-#[cfg(test)]
 #[path = "persona_branch_tests.rs"]
 mod persona_branch_tests;
 #[cfg(test)]

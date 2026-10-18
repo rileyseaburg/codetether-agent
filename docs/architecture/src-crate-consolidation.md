@@ -24034,3 +24034,18 @@ checks passed. No manifest or lockfile changes; unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-obsolete-context/. No Cargo, rustc,
 Python, compilation, runtime operations or tests ran. Full consolidation remains
 active.
+
+### Thought normalization regressions moved beside their implementation
+
+Moved the two native thought-output normalization tests and their sole-use
+work-item fixture into codetether-cognition-core::thought::presentation::tests.
+Removed the native normalization test file and its module declaration, and
+removed the fixture from native runtime test support. The native runtime
+fixtures remain in place. No dependencies changed.
+
+Static function-body comparisons preserve both tests, all fixture values and
+the remaining native helper bodies. Module/dependency scans cover 691 roots
+and 572 crates without missing modules or cycles. Direct rustfmt, source file
+limits and whitespace checks passed. Unrelated working changes are preserved.
+Evidence: artifacts/consolidation-thought-normalization/. No tests, Cargo,
+rustc, Python or compilation ran. Full consolidation remains active.
