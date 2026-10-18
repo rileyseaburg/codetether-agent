@@ -64,6 +64,7 @@ use tower_http::trace::TraceLayer;
 
 use codetether_authorization_policy::routes::required_permission;
 use codetether_event_replay::{list_session_event_files, replay_session_events};
+use codetether_k8s_api::{ScaleRequest, SpawnSubagentRequest};
 use codetether_openai_adapter::{
     OpenAiApiError, OpenAiApiResult, canonicalize_provider_name, convert_finish_reason,
     convert_openai_messages, convert_openai_tools, convert_response_message, make_openai_model_id,
@@ -1256,129 +1257,46 @@ async fn list_audit_entries(
 async fn get_k8s_status(
     State(state): State<AppState>,
 ) -> Result<Json<crate::k8s::K8sStatus>, (StatusCode, String)> {
-    Ok(Json(state.k8s.status().await))
-}
-
-#[derive(Deserialize)]
-struct ScaleRequest {
-    replicas: i32,
+    codetether_k8s_api::get_k8s_status(&state.k8s).await
 }
 
 async fn k8s_scale(
     State(state): State<AppState>,
     Json(req): Json<ScaleRequest>,
 ) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
-    if req.replicas < 0 || req.replicas > 100 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Replicas must be between 0 and 100".to_string(),
-        ));
-    }
-
-    state
-        .audit_log
-        .log(
-            AuditCategory::K8s,
-            format!("scale:{}", req.replicas),
-            AuditOutcome::Success,
-            None,
-            None,
-        )
-        .await;
-
-    state
-        .k8s
-        .scale(req.replicas)
-        .await
-        .map(Json)
-        .map_err(internal_error)
+    codetether_k8s_api::k8s_scale(&state.k8s, &state.audit_log, req, internal_error).await
 }
 
 async fn k8s_restart(
     State(state): State<AppState>,
 ) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
-    state
-        .audit_log
-        .log(
-            AuditCategory::K8s,
-            "rolling_restart",
-            AuditOutcome::Success,
-            None,
-            None,
-        )
-        .await;
-
-    state
-        .k8s
-        .rolling_restart()
-        .await
-        .map(Json)
-        .map_err(internal_error)
+    codetether_k8s_api::k8s_restart(&state.k8s, &state.audit_log, internal_error).await
 }
 
 async fn k8s_list_pods(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<crate::k8s::PodInfo>>, (StatusCode, String)> {
-    state
-        .k8s
-        .list_pods()
-        .await
-        .map(Json)
-        .map_err(internal_error)
+    codetether_k8s_api::k8s_list_pods(&state.k8s, internal_error).await
 }
 
 async fn k8s_actions(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<crate::k8s::DeployAction>>, (StatusCode, String)> {
-    Ok(Json(state.k8s.recent_actions(100).await))
-}
-
-#[derive(Deserialize)]
-struct SpawnSubagentRequest {
-    subagent_id: String,
-    #[serde(default)]
-    image: Option<String>,
-    #[serde(default)]
-    env_vars: std::collections::HashMap<String, String>,
-    #[serde(default)]
-    labels: std::collections::HashMap<String, String>,
-    #[serde(default)]
-    command: Option<Vec<String>>,
-    #[serde(default)]
-    args: Option<Vec<String>>,
+    codetether_k8s_api::k8s_actions(&state.k8s).await
 }
 
 async fn k8s_spawn_subagent(
     State(state): State<AppState>,
     Json(req): Json<SpawnSubagentRequest>,
 ) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
-    state
-        .k8s
-        .spawn_subagent_pod_with_spec(
-            &req.subagent_id,
-            crate::k8s::SubagentPodSpec {
-                image: req.image,
-                env_vars: req.env_vars,
-                labels: req.labels,
-                command: req.command,
-                args: req.args,
-            },
-        )
-        .await
-        .map(Json)
-        .map_err(internal_error)
+    codetether_k8s_api::k8s_spawn_subagent(&state.k8s, req, internal_error).await
 }
 
 async fn k8s_delete_subagent(
     State(state): State<AppState>,
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
-    state
-        .k8s
-        .delete_subagent_pod(&id)
-        .await
-        .map(Json)
-        .map_err(internal_error)
+    codetether_k8s_api::k8s_delete_subagent(&state.k8s, id, internal_error).await
 }
 async fn list_tools(State(state): State<AppState>) -> Json<Vec<RegisteredToolView>> {
     codetether_tool_discovery::list_tools(&state.tool_registry).await

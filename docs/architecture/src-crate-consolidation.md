@@ -13059,3 +13059,19 @@ Full workspace consolidation remains active.
 - Only axum/tracing dependencies for this package were staged from Cargo.lock.
   No registrations, heartbeats, Cargo, rustc or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Kubernetes API operation extraction
+
+- Moved Kubernetes API request records, scaling validation and status/action,
+  restart, pod-list and subagent operations into codetether-k8s-api. Nine modules
+  contain at most 31 code lines.
+- Native handlers provide manager, audit sink and their existing error mapper.
+  Replica bounds, audit-before-operation order, recent-action limit, pod spec
+  fields and HTTP results are preserved.
+- Verification: 85 static comparisons passed for moved operations/schemas and
+  unchanged native server functions/tests. Module/dependency checks, direct
+  rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-k8s-api/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  Kubernetes calls, Cargo, rustc or Rust tests ran. Full consolidation remains
+  incomplete.

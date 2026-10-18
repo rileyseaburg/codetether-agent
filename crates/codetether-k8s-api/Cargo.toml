@@ -1,0 +1,14 @@
+[package]
+name = "codetether-k8s-api"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Kubernetes API validation and operation orchestration"
+
+[dependencies]
+anyhow = "1.0.104"
+axum = "0.8"
+codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
+codetether-k8s = { path = "../codetether-k8s", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }

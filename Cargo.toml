@@ -280,6 +280,7 @@ members = [
     "crates/codetether-tool-discovery",
     "crates/codetether-bus-sse",
     "crates/codetether-event-replay",
+    "crates/codetether-k8s-api",
     "crates/codetether-tui-style",
     "crates/codetether-answer-review-view",
     "crates/codetether-message-cache",
@@ -634,6 +635,7 @@ codetether-openai-adapter = { path = "crates/codetether-openai-adapter", version
 codetether-tool-discovery = { path = "crates/codetether-tool-discovery", version = "0.1.0" }
 codetether-bus-sse = { path = "crates/codetether-bus-sse", version = "0.1.0" }
 codetether-event-replay = { path = "crates/codetether-event-replay", version = "0.1.0" }
+codetether-k8s-api = { path = "crates/codetether-k8s-api", version = "0.1.0" }
 codetether-session-resume = { path = "crates/codetether-session-resume", version = "0.1.0" }
 codetether-paste-buffer = { path = "crates/codetether-paste-buffer", version = "0.1.0" }
 codetether-task-tracker = { path = "crates/codetether-task-tracker", version = "0.1.0" }
