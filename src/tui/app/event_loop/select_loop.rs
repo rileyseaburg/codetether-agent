@@ -1,14 +1,27 @@
-//! Native state capture and waiting around shared event dispatch.
+//! Frontend selection of shared reactor dispatch callbacks.
 #[path = "dirty.rs"]
 mod dirty;
-#[path = "select_loop/host/mod.rs"]
-mod host;
 #[path = "queued_prompt.rs"]
 mod queued_prompt;
-#[path = "select_loop/wait.rs"]
-mod wait;
-pub(super) async fn select_once(args: &mut super::SelectArgs<'_>) -> anyhow::Result<bool> {
-    let before = dirty::capture(args.app);
-    let event = wait::next(args).await;
-    codetether_tui_reactor::dispatch::dispatch(&mut host::Native(args), event, before).await
-}
+codetether_tui_reactor::declare_frontend_selection!(
+    crate::tui::app::event_loop::SelectArgs,
+    codetether_tui_tick::Snapshot,
+    std::io::Result<crossterm::event::Event>,
+    crate::session::SessionEvent,
+    crate::tui::app::session_runtime::SessionNotice;
+    crate::tui::app::event_loop::select_loop::dirty::capture;
+    crate::tui::app::event_loop::terminal::handle_terminal_event,
+    crate::tui::app::session_events::handle_session_event,
+    crate::tui::app::session_event_drain::drain_batch;
+    crate::tui::app::background::drain_background_updates,
+    crate::tui::app::event_loop::select_loop::queued_prompt::drain,
+    crate::tui::app::event_loop::bus_inbox::trigger_next;
+    crate::tui::app::event_loop::watchdog::maybe_watchdog_restart,
+    crate::tui::app::event_loop::tick::refresh_audit,
+    crate::tui::app::event_loop::tick::run,
+    crate::tui::app::event_loop::tick::check_and_retry;
+    crate::tui::app::background::apply_single_notice,
+    crate::tui::app::background::stream_reconnect_execute::execute,
+    crate::tui::app::event_loop::smart_retry::execute_smart_switch_retry,
+    crate::tui::app::event_loop::watchdog_retry::execute,
+);

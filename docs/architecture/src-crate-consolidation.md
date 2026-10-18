@@ -23533,6 +23533,26 @@ checks passed. Evidence: artifacts/consolidation-summary-resolver-fix/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
 
+### Frontend reactor selection and dispatch bindings
+
+Moved the five dispatch-host operation groups, channel wait and selection entry
+into codetether-tui-reactor::dispatch::binding modules. Removed six root
+implementation files. Moved the borrowed selection resource container into
+the reactor as Selection with a root type alias selecting the existing reader,
+application, session, registry, bridge, runtime, event, notice and recorder types.
+
+Fixed a stale root reexport of timers::LoopTimers: the reactor exports Timers,
+so the root now explicitly aliases Timers as LoopTimers. This was found through
+source inspection, not a compiler run.
+
+All eighteen expanded function bodies match after callback-path substitution;
+resource field names, borrows and type specialization were compared separately.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. Tests and
+unrelated working files are unchanged. No manifest or lock changes were needed.
+Evidence: artifacts/consolidation-reactor-selection/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
+
 ### Storage callers use the owning API names directly
 
 Removed the native projection and summary forwarding files after updating five

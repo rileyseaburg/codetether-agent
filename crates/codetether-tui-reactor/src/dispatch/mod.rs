@@ -3,6 +3,7 @@
 //! Implement [Host] with the application's handlers and call [dispatch] using
 //! the snapshot taken before waiting and the event returned by [crate::select].
 mod after;
+mod binding;
 mod events;
 mod notices;
 mod run;

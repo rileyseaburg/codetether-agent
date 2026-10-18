@@ -6,11 +6,13 @@
 mod io;
 mod ready;
 mod select;
+mod selection;
 mod sources;
 mod timers;
 pub use io::LoopIo;
 pub use ready::Ready;
 pub use select::select;
+pub use selection::Selection;
 pub use sources::Sources;
 pub use timers::Timers;
 

@@ -20,7 +20,7 @@ use codetether_tui_reactor as timers;
 mod watchdog;
 mod watchdog_retry;
 
-pub(crate) use {io::LoopIo, select_args::SelectArgs, timers::LoopTimers};
+pub(crate) use {io::LoopIo, select_args::SelectArgs, timers::Timers as LoopTimers};
 
 use std::{path::Path, sync::Arc};
 
