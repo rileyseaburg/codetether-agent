@@ -1629,6 +1629,7 @@ dependencies = [
  "codetether-history-page",
  "codetether-context-pin",
  "codetether-context-policy",
+ "codetether-reasoning-repair",
  "codetether-context-reset",
  "codetether-context-summarize",
  "codetether-crash",
@@ -4783,6 +4784,17 @@ name = "codetether-rate-gate"
 version = "0.1.0"
 dependencies = [
  "once_cell",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-reasoning-repair"
+version = "0.1.0"
+dependencies = [
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-tetherscript-values",
+ "tetherscript",
  "tracing",
 ]
 

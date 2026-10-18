@@ -1,0 +1,18 @@
+[package]
+name = "codetether-reasoning-repair"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Feature-gated TetherScript reasoning repair for provider messages"
+
+[features]
+default = []
+tetherscript = ["dep:tetherscript", "dep:codetether-tetherscript-values"]
+
+[dependencies]
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-tetherscript-values = { path = "../codetether-tetherscript-values", version = "0.1.0", optional = true }
+tetherscript = { version = "0.1.0-alpha.30", optional = true }
+tracing = "0.1"

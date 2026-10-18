@@ -20401,3 +20401,25 @@ unchanged classifier/reviewer code, test accounting, module reachability,
 dependency cycles, file-size ratchet, whitespace and direct formatting.
 Evidence: `artifacts/consolidation-swarm-tool-policy/`. No Cargo, rustc, Python,
 Rust tests or tool execution ran; compilation and runtime remain unverified.
+
+### Feature-gated reasoning repair ownership
+
+Moved TetherScript reasoning-repair execution and its disabled fallback into
+`codetether-reasoning-repair`. The native module now re-exports the shared entry
+point. Pure message conversion remains owned by `codetether-context-policy`;
+JSON/runtime conversion comes from `codetether-tetherscript-values`.
+
+The root tetherscript feature explicitly forwards to the new crate, whose
+runtime dependencies remain optional. Preserved plugin authority, source/hook
+names, assistant/tool-call selection, default statistics, error handling and
+original log targets. The embedded source resolves to the same unchanged
+example script bytes; no duplicate script was introduced.
+
+Validation: complete enabled/disabled/entry body comparisons, bundled source
+resolution, feature wiring, unchanged converters/caller, isolated lock delta,
+module reachability across cfg branches, dependency cycles, file-size ratchet,
+whitespace and direct formatting. An initial comparison difference from a
+formatter-added error-arm block was accounted for explicitly and its log
+retained. Evidence: `artifacts/consolidation-reasoning-repair/`. Cargo, rustc,
+Python, Rust tests and plugin execution were not run; compilation and runtime
+remain unverified.
