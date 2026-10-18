@@ -17064,3 +17064,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-worker-presentation/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared terminal event dispatch
+
+- Moved terminal-event selection and goal-editor paste priority from
+  `src/tui/app/event_loop/terminal.rs` into
+  `codetether-tui-navigation::terminal`.
+- Native bindings retain concrete keyboard, paste and mouse handlers.
+  Core propagates keyboard errors/quit and preserves ignored stream errors,
+  stream closure, resize and other terminal events.
+- Verification: complete dispatch-body comparison and native argument mappings;
+  unchanged select loop and event handlers; module/dependency graphs, direct
+  rustfmt, file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-terminal-dispatch/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

@@ -20,3 +20,6 @@ pub use paging::{handle_page_down, handle_page_up};
 
 /// Agent focus ordering, cycling and detail transitions.
 pub mod focus;
+
+/// Terminal stream event routing and editor paste priority.
+pub mod terminal;

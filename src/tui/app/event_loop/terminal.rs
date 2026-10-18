@@ -17,10 +17,11 @@ use std::sync::Arc;
 use crossterm::event::Event;
 
 use crate::provider::ProviderRegistry;
-use crate::tui::app::event_handlers::{handle_event, handle_mouse_event, handle_paste_event};
 use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
+
+mod host;
 
 /// Dispatch a single terminal event.
 ///
@@ -44,20 +45,16 @@ pub(super) async fn handle_terminal_event(
     runtime: &TuiSessionHandle,
     maybe: Option<Result<Event, std::io::Error>>,
 ) -> anyhow::Result<bool> {
-    match maybe {
-        Some(Ok(Event::Key(key))) => {
-            handle_event(app, cwd, slot, registry, worker_bridge, runtime, key).await
-        }
-        Some(Ok(Event::Paste(text))) => {
-            if !crate::tui::app::input::goal_answer::editor::paste(app, &text) {
-                handle_paste_event(app, &text).await;
-            }
-            Ok(false)
-        }
-        Some(Ok(Event::Mouse(mouse))) => {
-            handle_mouse_event(app, cwd, mouse).await;
-            Ok(false)
-        }
-        _ => Ok(false),
-    }
+    codetether_tui_navigation::terminal::dispatch(
+        &mut host::Native {
+            app,
+            cwd,
+            slot,
+            registry,
+            worker_bridge,
+            runtime,
+        },
+        maybe,
+    )
+    .await
 }
