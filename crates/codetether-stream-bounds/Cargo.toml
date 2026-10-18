@@ -1,0 +1,11 @@
+[package]
+name = "codetether-stream-bounds"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Stream accumulator byte limits and bounded live-event payloads"
+
+[dependencies]
+anyhow = "1"
+codetether-util = { path = "../codetether-util", version = "0.1.0" }

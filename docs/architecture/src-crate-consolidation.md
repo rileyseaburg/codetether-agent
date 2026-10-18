@@ -9618,3 +9618,19 @@ the largest crate file has 25 code lines. Four existing tests moved without
 execution. Evidence is in `artifacts/consolidation-prompt-policy/`. Compilation
 and runtime tests were not run. No Cargo, rustc, Python or worker commands ran.
 Full workspace consolidation remains active.
+
+### Dedicated stream-bounds crate
+
+Moved stream accumulator byte limits, overflow-safe room checks, assistant
+snapshot truncation and bounded live tool payloads into
+`crates/codetether-stream-bounds`. Six modules separate constants, accumulator
+checks, snapshots, event payloads and regression cases. Native stream/event
+callers retain the same exports.
+
+Nineteen static comparisons cover exact limits, marker/error text, truncation
+bodies, original tests and unchanged stream/event callers. Module/dependency
+graphs, file budgets and whitespace checks passed; the largest crate file has
+25 code lines. Three existing event tests moved without execution. Evidence is
+in `artifacts/consolidation-stream-bounds/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python or worker commands ran. Full workspace
+consolidation remains active.
