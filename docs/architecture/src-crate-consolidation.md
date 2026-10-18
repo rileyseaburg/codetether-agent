@@ -19153,3 +19153,24 @@ minimal dependency/lock delta, lexical module reachability, dependency-cycle
 checks, file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-cognition-runtime/`. No Cargo, rustc, Python, Rust tests,
 cognition startup or model execution ran; compilation and runtime remain unverified.
+
+### Cognition loop and restoration integration
+
+Moved cadence driving and tick dispatch into `codetether-cognition-runtime`,
+and post-Compress persistence plus initial-state restoration into
+`codetether-cognition-storage`. The native runtime host supplies the existing
+thought-processing adapter; production restoration is re-exported while native
+unit tests retain their empty initial-state loader. Removed the native cadence
+and tick-flush implementation files.
+
+Preserved shared tick ordering, loop handles and interval reads, persistence
+store order and best-effort error handling, restoration fields and diagnostic
+target, and the test-only no-disk-load policy. No dependencies changed.
+
+Validation: complete cadence, tick, persistence and restoration body comparisons,
+native binding, unchanged thought processing and test source, empty test loader,
+unchanged manifests, lexical module reachability, dependency-cycle checks,
+file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-cognition-loop/`. No Cargo, rustc, Python, Rust tests,
+cognition loop or persistence operations ran; compilation and runtime remain
+unverified.

@@ -12,3 +12,8 @@ pub use codetether_cognition_core::persistence::PersistedCognitionState;
 use diagnostics::{log_load, log_saved};
 pub use load::load_state;
 pub use save::save_state;
+
+mod restore;
+mod tick;
+pub use restore::load_initial_state;
+pub use tick::persist_tick;

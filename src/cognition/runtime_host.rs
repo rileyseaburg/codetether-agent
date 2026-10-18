@@ -20,6 +20,6 @@ impl codetether_cognition_runtime::Host for Native {
         super::thinker_init::init_thinker(config)
     }
     async fn drive(context: super::loop_ctx::LoopCtx) {
-        super::loop_drive::drive(context).await;
+        codetether_cognition_runtime::drive(context, super::tick_run::Native).await;
     }
 }

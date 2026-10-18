@@ -27,3 +27,6 @@ mod runtime_status;
 mod runtime_stop;
 pub use host::Host;
 pub use runtime_state::CognitionRuntime;
+
+mod drive;
+pub use drive::{drive, run_tick};
