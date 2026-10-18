@@ -7,7 +7,7 @@ use serde_json::json;
 async fn question_keys_and_paste_submit_custom_text() {
     let mut app = App::default();
     app.state.session_id = Some("question-keys".into());
-    app.state.input = "existing chat".into();
+    app.state.composer.input = "existing chat".into();
     let request = Request::parse(json!({"question":"Choose?", "options":["A"]})).unwrap();
     let job = tokio::spawn(runtime::scope(
         "question-keys".into(),
@@ -30,7 +30,7 @@ async fn question_keys_and_paste_submit_custom_text() {
         KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
     ));
     assert_eq!(job.await.unwrap().unwrap(), vec![vec!["custom!"]]);
-    assert_eq!(app.state.input, "existing chat");
+    assert_eq!(app.state.composer.input, "existing chat");
     assert!(!handle(
         &mut app,
         KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)

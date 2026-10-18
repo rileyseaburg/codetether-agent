@@ -12,7 +12,7 @@ async fn answer_review_continuation_keys_do_not_accept_tools_or_answers() {
         for c in text.chars() {
             let key = KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE);
             assert_eq!(handle(&mut app, &slot, key).await.unwrap(), None);
-            app.state.input.push(c);
+            app.state.composer.input.push(c);
         }
         let enter = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
         assert_eq!(handle(&mut app, &slot, enter).await.unwrap(), None);

@@ -16,12 +16,12 @@ async fn answer_review_intercepts_only_explicit_ask_questions() {
         let (event_tx, _event_rx) = tokio::sync::mpsc::channel(4);
         let (notice_tx, _notice_rx) = tokio::sync::mpsc::channel(4);
         let runtime = spawn(event_tx, notice_tx);
-        app.state.input = "/continue".into();
+        app.state.composer.input = "/continue".into();
         assert!(super::intercept(&mut app, &slot, &runtime).await);
         assert!(!answer_review::held(slot.view().id()));
-        app.state.input = question.into();
+        app.state.composer.input = question.into();
         assert!(super::intercept(&mut app, &slot, &runtime).await);
-        assert!(app.state.input.is_empty());
+        assert!(app.state.composer.input.is_empty());
         assert!(!app.state.answer_review_yes);
         let state = answer_review::read(slot.view().id()).unwrap();
         assert_eq!(
@@ -41,14 +41,14 @@ async fn held_goal_routes_ask_to_agentic_continuation() {
     let (event_tx, _event_rx) = tokio::sync::mpsc::channel(4);
     let (notice_tx, _notice_rx) = tokio::sync::mpsc::channel(4);
     let runtime = spawn(event_tx, notice_tx);
-    app.state.input = "/continue".into();
+    app.state.composer.input = "/continue".into();
     assert!(super::intercept(&mut app, &slot, &runtime).await);
-    app.state.input = "/ask Why?".into();
+    app.state.composer.input = "/ask Why?".into();
     assert!(super::intercept(&mut app, &slot, &runtime).await);
 
-    app.state.input = "/ask spawn subagents".into();
+    app.state.composer.input = "/ask spawn subagents".into();
     assert!(!super::intercept(&mut app, &slot, &runtime).await);
-    assert_eq!(app.state.input, "spawn subagents");
+    assert_eq!(app.state.composer.input, "spawn subagents");
     assert!(!answer_review::held(slot.view().id()));
     runtime.shutdown().await;
 }

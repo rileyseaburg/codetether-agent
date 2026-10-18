@@ -9,7 +9,7 @@ macro_rules! declare_frontend_approval_feedback {
         /// Sends ordinary chat input as the reason for rejecting and revising a tool call.
         pub(super) fn submit(app: &mut App) -> bool {
             $recover(app);
-            let prompt = app.state.input.trim().to_string();
+            let prompt = app.state.composer.input.trim().to_string();
             if prompt.is_empty() || prompt.starts_with('/') {
                 return false;
             }

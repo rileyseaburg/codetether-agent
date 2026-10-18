@@ -15,7 +15,7 @@ macro_rules! __app_composer_history {
 
         impl $state {
             pub fn push_history(&mut self, entry: ::std::string::String) {
-                self.history.push_history(entry);
+                self.composer.history.push_history(entry);
             }
         }
     };

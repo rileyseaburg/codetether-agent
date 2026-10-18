@@ -125,8 +125,8 @@ async fn slash_file_path_attaches_file_to_composer() {
     )
     .await;
 
-    assert!(app.state.input.contains("Shared file: notes.md"));
-    assert!(app.state.input.contains("# Notes"));
+    assert!(app.state.composer.input.contains("Shared file: notes.md"));
+    assert!(app.state.composer.input.contains("# Notes"));
     assert!(matches!(
         app.state.messages.last().map(|msg| &msg.message_type),
         Some(MessageType::System)

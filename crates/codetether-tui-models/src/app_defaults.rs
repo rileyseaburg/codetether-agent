@@ -17,11 +17,8 @@ impl ::core::default::Default for $state {
     fn default() -> Self {
         Self {
             view_mode: $crate::ViewMode::Chat,
-            input_mode: $crate::InputMode::Normal,
             messages: ::std::vec![],
-            input: ::std::string::String::new(),
-            input_cursor: 0,
-            input_scroll: 0,
+            composer: ::core::default::Default::default(),
             chat_viewport: ::core::default::Default::default(),
             history_page: ::core::default::Default::default(), approval_preview_scroll: 0, tool_viewport: ::core::default::Default::default(),
             protocol_selected: 0,
@@ -38,8 +35,6 @@ impl ::core::default::Default for $state {
             ralph: $ralph(),
             audit_loop: $audit_loop(),
             symbol_search: $symbols(),
-            completion: ::core::default::Default::default(),
-            history: ::core::default::Default::default(),
             worker: ::core::default::Default::default(),
             peer_endpoint_ready: false,
             active_tasks: ::core::default::Default::default(), tool_calls: ::core::default::Default::default(), bus_cursor: 0,

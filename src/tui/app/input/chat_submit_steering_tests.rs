@@ -11,7 +11,7 @@ async fn enter_while_goal_is_active_steers_without_stopping_it() {
     let mut app = App::default();
     app.state.view_mode = ViewMode::Chat;
     app.state.processing = true;
-    app.state.input = "use the cloned repos".into();
+    app.state.composer.input = "use the cloned repos".into();
     let session = crate::session::tasks::answer_review_test_support::session().await;
     let id = session.id.clone();
     let mut slot = SessionSlot::new(session);
@@ -30,7 +30,7 @@ async fn enter_while_goal_is_active_steers_without_stopping_it() {
     )
     .await;
     assert!(execution.cancelled().now_or_never().is_none());
-    assert!(app.state.input.is_empty());
+    assert!(app.state.composer.input.is_empty());
     assert!(prompt_queue::take().is_none());
     let state = goals::current(&id).await.unwrap().1;
     assert!(state.answer_review.is_none());

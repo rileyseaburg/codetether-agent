@@ -4,10 +4,10 @@ use crate::tui::symbol_search::SymbolSearchState;
 use std::ops::Range;
 impl codetether_symbol_mention::Composer for App {
     fn input(&self) -> &str {
-        &self.state.input
+        &self.state.composer.input
     }
     fn cursor(&self) -> usize {
-        self.state.input_cursor
+        self.state.composer.cursor
     }
     fn picker(&self) -> &SymbolSearchState {
         &self.state.symbol_search

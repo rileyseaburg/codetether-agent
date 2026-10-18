@@ -6,14 +6,7 @@ macro_rules! __app_composer_edit {
     ($state:ty) => {
         impl $state {
             pub(super) fn composer(&mut self) -> $crate::interactive::Composer<'_> {
-                $crate::interactive::Composer {
-                    input: &mut self.input,
-                    cursor: &mut self.input_cursor,
-                    scroll: &mut self.input_scroll,
-                    mode: &mut self.input_mode,
-                    completion: &mut self.completion,
-                    history: &mut self.history,
-                }
+                self.composer.borrow()
             }
             pub fn insert_char(&mut self, c: char) {
                 self.composer().insert_char(c);

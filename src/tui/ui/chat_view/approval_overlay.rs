@@ -10,7 +10,7 @@ pub(crate) fn render(f: &mut ratatui::Frame, app: &mut App, area: ratatui::layou
     codetether_approval_view::render(
         f,
         area,
-        &app.state.input,
+        &app.state.composer.input,
         &mut app.state.approval_preview_scroll,
     );
 }

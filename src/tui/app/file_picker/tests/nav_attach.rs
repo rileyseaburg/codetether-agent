@@ -17,5 +17,5 @@ fn attach_adds_text_file_to_composer() {
 
     file_picker_attach(&mut app);
 
-    assert!(app.state.input.contains("Shared file: note.txt"));
+    assert!(app.state.composer.input.contains("Shared file: note.txt"));
 }

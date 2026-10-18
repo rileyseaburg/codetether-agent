@@ -39,7 +39,7 @@ fn approval_end_then_up_moves_immediately_and_wheel_stays_in_modal() {
     app.state.show_help = true;
     assert!(!super::wheel(&mut app, KeyCode::Down, 3));
     app.state.show_help = false;
-    app.state.input = "/feedback correction".into();
+    app.state.composer.input = "/feedback correction".into();
     assert!(!super::scroll(
         &mut app,
         KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE)

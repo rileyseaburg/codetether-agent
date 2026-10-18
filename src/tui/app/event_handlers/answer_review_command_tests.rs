@@ -15,7 +15,7 @@ async fn answer_review_allows_goal_commands_without_accepting_review() {
         super::super::handle(&mut app, &slot, slash).await.unwrap(),
         None
     );
-    app.state.input = "/goal override revised objective".into();
+    app.state.composer.input = "/goal override revised objective".into();
     let enter = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(
         super::super::handle(&mut app, &slot, enter).await.unwrap(),

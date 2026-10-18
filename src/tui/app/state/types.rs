@@ -7,7 +7,7 @@ use std::time::Instant;
 use tokio::sync::Notify;
 
 use crate::session::ImageAttachment;
-use crate::tui::models::{InputMode, ViewMode};
+use crate::tui::models::ViewMode;
 use crate::tui::symbol_search::SymbolSearchState;
 use crate::tui::{audit_view::AuditViewState, bus_log::BusLogState};
 use crate::tui::{chat::message::ChatMessage, help::HelpScrollState};
@@ -47,11 +47,10 @@ pub struct App {
 /// ```
 #[rustfmt::skip]
 pub struct AppState {
-    pub view_mode: ViewMode, pub input_mode: InputMode, pub messages: Vec<ChatMessage>, pub input: String, pub input_cursor: usize, pub input_scroll: usize,
+    pub view_mode: ViewMode, pub messages: Vec<ChatMessage>, pub composer: codetether_composer_view::ComposerState,
     pub chat_viewport: codetether_chat_layout::ChatScrollState, pub(crate) history_page: super::history_page::HistoryPageState, pub approval_preview_scroll: u16, pub tool_viewport: codetether_tool_panel::ToolPreviewScrollState,
     pub protocol_selected: usize, pub protocol_scroll: usize, pub status: String, pub processing: bool, pub approval_waiting: bool, pub session_id: Option<String>, pub session_picker: codetether_session_picker::SessionPickerState, pub cwd_display: String,
     pub bus_log: BusLogState, pub swarm: SwarmViewState, pub audit: AuditViewState, pub git: git_state::GitViewState, pub ralph: RalphViewState, pub audit_loop: crate::tui::audit_loop_view::audit_loop_state::AuditLoopState, pub symbol_search: SymbolSearchState,
-    pub completion: codetether_slash_command::CompletionState, pub history: codetether_composer_view::CommandHistory,
     pub worker: codetether_tui_worker::WorkerState, pub peer_endpoint_ready: bool, pub active_tasks: crate::tui::app::bus::active_tasks::ActiveTasks, pub tool_calls: crate::tui::app::bus::tool_calls::ToolCallTracker, pub bus_cursor: u64, pub live_inbound: Option<crate::a2a::live_inbox::Inbound>,
     pub help_scroll: HelpScrollState, pub show_help: bool, pub model_picker: codetether_model_picker::ModelPickerState,
     pub streaming: codetether_chat_model::StreamingState, pub request_timing: codetether_telemetry::RequestTimingState, pub last_completion: codetether_telemetry::CompletionSummary,

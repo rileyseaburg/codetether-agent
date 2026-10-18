@@ -28096,3 +28096,28 @@ production-scope, formatting, whitespace and file-limit checks passed (725
 roots, 617 crates). Evidence: artifacts/consolidation-completion-summary/.
 No dependencies or unrelated working files changed. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active and incomplete.
+
+### Crate-owned composer state and borrow construction
+
+Moved input text, Unicode cursor, input scroll, input mode, completion state and
+command history from AppState into codetether-composer-view::ComposerState.
+The crate also owns the six-field borrow constructor. AppState's existing edit
+methods delegate to this component, and voice transcription now uses the same
+constructor directly. Updated TUI, paste, approval, goal, queued-prompt, snapshot
+and webview bindings to address the component.
+
+Static token comparison covers all 65 modified existing files, including the
+six-field constructor and default values. Four cursor tests initialize the same
+input/cursor values after AppState::default to avoid growing an oversized test
+module. Their assertions and editing steps are unchanged. The unrelated
+preexisting long line in app/tests.rs was restored after standalone formatting;
+the first file-limit failure is retained in evidence. File limits now pass.
+
+Scanned 1,213 root Rust files for obsolete direct composer field accesses.
+Declaration, module/dependency, production-scope and whitespace checks pass
+(725 roots, 617 crates). Changed Rust files were formatted; app/tests.rs retains
+its preexisting formatting on the unrelated line. Core editing, history and
+completion policies are unchanged. Evidence:
+artifacts/consolidation-composer-state/. No dependencies or unrelated working
+files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.

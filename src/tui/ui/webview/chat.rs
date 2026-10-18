@@ -9,8 +9,8 @@ pub fn render_webview_chat_center(f: &mut Frame, app: &App, area: Rect, lines: &
 pub fn render_webview_input(f: &mut Frame, app: &App, area: Rect) {
     codetether_webview::chat::render_input(
         f,
-        &app.state.input,
-        app.state.input_mode == InputMode::Command,
+        &app.state.composer.input,
+        app.state.composer.mode == InputMode::Command,
         area,
     );
     crate::tui::ui::chat_view::cursor::place_cursor(f, app, area);

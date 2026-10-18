@@ -13,10 +13,10 @@ macro_rules! __frontend_utility_review {
                     self.state.clear_input();
                 }
                 fn input(&mut self) -> &mut String {
-                    &mut self.state.input
+                    &mut self.state.composer.input
                 }
                 fn cursor(&mut self) -> &mut usize {
-                    &mut self.state.input_cursor
+                    &mut self.state.composer.cursor
                 }
                 fn set_status(&mut self, status: String) {
                     self.state.status = status;

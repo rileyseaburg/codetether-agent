@@ -11,8 +11,8 @@ macro_rules! declare_frontend_image_recovery {
             let mut state = $crate::image_recovery::State {
                 composer: ComposerState {
                     images: &mut app.state.pending_images,
-                    input: &mut app.state.input,
-                    cursor: &mut app.state.input_cursor,
+                    input: &mut app.state.composer.input,
+                    cursor: &mut app.state.composer.cursor,
                     status: &mut app.state.status,
                 },
                 pastes: &mut app.state.pending_text_pastes,

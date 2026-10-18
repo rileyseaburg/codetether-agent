@@ -12,14 +12,14 @@ mod tests {
     async fn image_data_url_paste_attaches_without_inserting_text() {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
-        app.state.input = "draft".to_string();
-        app.state.input_cursor = app.state.input.len();
+        app.state.composer.input = "draft".to_string();
+        app.state.composer.cursor = app.state.composer.input.len();
         let payload = base64::engine::general_purpose::STANDARD.encode("png bytes");
         let text = format!("data:image/png;base64,{payload}");
 
         handle_paste(&mut app, &text).await;
 
-        assert_eq!(app.state.input, "draft");
+        assert_eq!(app.state.composer.input, "draft");
         assert_eq!(app.state.pending_images.len(), 1);
         assert_eq!(
             app.state.pending_images[0].mime_type.as_deref(),

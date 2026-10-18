@@ -13,7 +13,7 @@ async fn held_goal_plain_followup_keeps_review_and_does_not_resume_execution() {
     answer_review::begin(&id, "First question").await.unwrap();
     let slot = SessionSlot::new(session);
     let mut app = App::default();
-    app.state.input = "Explain that part again".into();
+    app.state.composer.input = "Explain that part again".into();
     let (events, _) = tokio::sync::mpsc::channel(4);
     let (notices, _) = tokio::sync::mpsc::channel(4);
     let runtime = spawn(events, notices);
@@ -24,6 +24,6 @@ async fn held_goal_plain_followup_keeps_review_and_does_not_resume_execution() {
         Some("Explain that part again")
     );
     assert!(!state.goal.unwrap().status.is_active());
-    assert!(app.state.input.is_empty());
+    assert!(app.state.composer.input.is_empty());
     runtime.shutdown().await;
 }

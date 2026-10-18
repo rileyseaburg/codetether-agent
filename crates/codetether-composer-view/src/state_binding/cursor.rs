@@ -6,11 +6,11 @@ macro_rules! __app_composer_cursor {
     ($state:ty) => {
         impl $state {
             pub(crate) fn input_char_count(&self) -> usize {
-                $crate::cursor_index::input_char_count(&self.input)
+                $crate::cursor_index::input_char_count(&self.composer.input)
             }
 
             pub(crate) fn char_to_byte_index(&self, char_index: usize) -> usize {
-                $crate::cursor_index::char_to_byte_index(&self.input, char_index)
+                $crate::cursor_index::char_to_byte_index(&self.composer.input, char_index)
             }
 
             pub fn clamp_input_cursor(&mut self) {

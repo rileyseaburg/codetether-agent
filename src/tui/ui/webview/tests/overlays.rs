@@ -7,7 +7,7 @@ use crate::tui::app::state::App;
 #[test]
 fn webview_shows_slash_suggestions() {
     let mut app = App::default();
-    app.state.input = "/he".to_string();
+    app.state.composer.input = "/he".to_string();
     app.state.refresh_slash_suggestions();
     assert!(app.state.slash_suggestions_visible());
     let text = draw(&mut app, 100, 30);

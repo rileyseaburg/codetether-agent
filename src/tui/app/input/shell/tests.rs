@@ -12,7 +12,7 @@ async fn bang_prefix_runs_shell_and_records_output() {
     let consumed = run_and_drain(&mut app, cwd, "!echo hello-shell").await;
 
     assert!(consumed);
-    assert!(app.state.input.is_empty());
+    assert!(app.state.composer.input.is_empty());
     let last = app.state.messages.last().expect("tool result message");
     match &last.message_type {
         MessageType::ToolResult {

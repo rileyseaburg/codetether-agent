@@ -29,20 +29,20 @@ fn returns_none_without_data_url() {
 fn drain_attaches_image_and_keeps_caption() {
     let mut app = App::default();
     let url = png_data_url();
-    app.state.input = format!("describe {url}");
-    app.state.input_cursor = app.state.input.chars().count();
+    app.state.composer.input = format!("describe {url}");
+    app.state.composer.cursor = app.state.composer.input.chars().count();
     let n = drain_embedded_images(&mut app);
     assert_eq!(n, 1);
     assert_eq!(app.state.pending_images.len(), 1);
-    assert_eq!(app.state.input, "describe");
+    assert_eq!(app.state.composer.input, "describe");
 }
 
 #[test]
 fn drain_handles_pure_image_paste() {
     let mut app = App::default();
-    app.state.input = png_data_url();
+    app.state.composer.input = png_data_url();
     let n = drain_embedded_images(&mut app);
     assert_eq!(n, 1);
     assert_eq!(app.state.pending_images.len(), 1);
-    assert!(app.state.input.is_empty());
+    assert!(app.state.composer.input.is_empty());
 }

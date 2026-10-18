@@ -22,8 +22,8 @@ use ratatui::{Frame, layout::Rect};
 pub fn render_suggestions(f: &mut Frame, app: &App, area: Rect) {
     codetether_composer_view::render_suggestions(
         f,
-        &app.state.completion.slash_suggestions,
-        app.state.completion.selected_slash_suggestion,
+        &app.state.composer.completion.slash_suggestions,
+        app.state.composer.completion.selected_slash_suggestion,
         area,
         || app.state.current_slash_hint(),
     );

@@ -10,8 +10,8 @@ macro_rules! __queued_prompt_input {
             impl $crate::queued::Input for Native<'_> {
                 fn input(&mut self) -> State<'_> {
                     State {
-                        input: &mut self.app.state.input,
-                        cursor: &mut self.app.state.input_cursor,
+                        input: &mut self.app.state.composer.input,
+                        cursor: &mut self.app.state.composer.cursor,
                         status: &mut self.app.state.status,
                     }
                 }

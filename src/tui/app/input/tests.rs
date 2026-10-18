@@ -30,7 +30,7 @@ mod tests {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
         handle_paste(&mut app, "first line\nsecond line").await;
-        assert_eq!(app.state.input, "first line\nsecond line");
+        assert_eq!(app.state.composer.input, "first line\nsecond line");
         assert_eq!(app.state.status, "Pasted 2 lines into input");
     }
 
@@ -38,8 +38,8 @@ mod tests {
     async fn enter_echoes_user_message_before_provider_failure() {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
-        app.state.input = "hello tui".to_string();
-        app.state.input_cursor = app.state.input.chars().count();
+        app.state.composer.input = "hello tui".to_string();
+        app.state.composer.cursor = app.state.composer.input.chars().count();
 
         let cwd = std::path::Path::new(".");
         let mut slot = test_slot().await;
@@ -56,7 +56,7 @@ mod tests {
             app.state.messages.get(1).map(|m| &m.message_type),
             Some(MessageType::Error)
         ));
-        assert!(app.state.input.is_empty());
+        assert!(app.state.composer.input.is_empty());
     }
 
     #[tokio::test]

@@ -13,10 +13,10 @@ macro_rules! __frontend_paste_input {
                     $attach(self, text)
                 }
                 fn input(&self) -> &str {
-                    &self.state.input
+                    &self.state.composer.input
                 }
                 fn set_command_mode(&mut self, command: bool) {
-                    self.state.input_mode = if command {
+                    self.state.composer.mode = if command {
                         InputMode::Command
                     } else {
                         InputMode::Editing

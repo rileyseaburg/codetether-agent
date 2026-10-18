@@ -42,7 +42,7 @@ mod tests {
             app.state.pending_images.len(),
             1,
             "image lost: input_len={} sidecar_pastes={} status={:?}",
-            app.state.input.len(),
+            app.state.composer.input.len(),
             app.state.pending_text_pastes.len(),
             app.state.status,
         );

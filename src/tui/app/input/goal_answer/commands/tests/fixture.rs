@@ -24,7 +24,7 @@ pub(super) async fn submit(
     runtime: &TuiSessionHandle,
     text: &str,
 ) {
-    app.state.input = text.into();
+    app.state.composer.input = text.into();
     crate::tui::app::input::chat_submit::handle_enter_chat(
         app,
         std::path::Path::new("."),

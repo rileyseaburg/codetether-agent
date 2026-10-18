@@ -23,7 +23,7 @@ mod tests {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
         handle_paste(&mut app, "first line\nsecond line").await;
-        assert_eq!(app.state.input, "first line\nsecond line");
+        assert_eq!(app.state.composer.input, "first line\nsecond line");
         assert_eq!(app.state.status, "Pasted 2 lines into input");
     }
 
@@ -40,7 +40,7 @@ mod tests {
         handle_paste(&mut app, pasted).await;
 
         // Pre-condition: the paste landed as one buffer, not split.
-        assert_eq!(app.state.input, pasted);
+        assert_eq!(app.state.composer.input, pasted);
 
         let cwd = std::path::Path::new(".");
         let mut slot = test_slot().await;
@@ -93,11 +93,11 @@ mod tests {
 
         // Input shows the placeholder, not the body.
         assert!(
-            app.state.input.starts_with("[Pasted text #1:"),
+            app.state.composer.input.starts_with("[Pasted text #1:"),
             "input should be a placeholder, got: {:?}",
-            app.state.input
+            app.state.composer.input
         );
-        assert!(!app.state.input.contains("epsilon"));
+        assert!(!app.state.composer.input.contains("epsilon"));
 
         // Sidecar holds the real content, keyed by id 1.
         assert_eq!(app.state.pending_text_pastes.len(), 1);
@@ -130,7 +130,7 @@ mod tests {
         app.state.insert_text("\nplease summarise this");
 
         // What the user sees in chat history.
-        let display_prompt = app.state.input.trim().to_string();
+        let display_prompt = app.state.composer.input.trim().to_string();
         assert!(display_prompt.starts_with("[Pasted text #1:"));
         assert!(display_prompt.ends_with("please summarise this"));
         assert!(!display_prompt.contains("four"));
@@ -158,8 +158,8 @@ mod tests {
         assert_eq!(app.state.pending_text_pastes.len(), 2);
         assert_eq!(app.state.pending_text_pastes[0].id, 1);
         assert_eq!(app.state.pending_text_pastes[1].id, 2);
-        assert!(app.state.input.contains("[Pasted text #1:"));
-        assert!(app.state.input.contains("[Pasted text #2:"));
+        assert!(app.state.composer.input.contains("[Pasted text #1:"));
+        assert!(app.state.composer.input.contains("[Pasted text #2:"));
     }
 
     /// A short multi-line paste must continue to land inline. This
@@ -170,7 +170,7 @@ mod tests {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
         handle_paste(&mut app, "alpha\nbeta").await;
-        assert_eq!(app.state.input, "alpha\nbeta");
+        assert_eq!(app.state.composer.input, "alpha\nbeta");
         assert!(app.state.pending_text_pastes.is_empty());
     }
 
@@ -178,8 +178,8 @@ mod tests {
     async fn typed_newline_then_enter_submits_as_single_message() {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
-        app.state.input = "hello\nworld".to_string();
-        app.state.input_cursor = app.state.input.chars().count();
+        app.state.composer.input = "hello\nworld".to_string();
+        app.state.composer.cursor = app.state.composer.input.chars().count();
 
         let cwd = std::path::Path::new(".");
         let mut slot = test_slot().await;

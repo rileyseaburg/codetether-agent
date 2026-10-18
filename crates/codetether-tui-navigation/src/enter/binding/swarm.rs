@@ -17,7 +17,7 @@ macro_rules! __frontend_enter_swarm {
                 worker_bridge: &Option<TuiWorkerBridge>,
                 runtime: &TuiSessionHandle,
             ) {
-                if app.state.input.trim().is_empty() {
+                if app.state.composer.input.trim().is_empty() {
                     app.state.swarm.enter_detail();
                 } else {
                     $chat(app, cwd, slot, registry, worker_bridge, runtime).await;

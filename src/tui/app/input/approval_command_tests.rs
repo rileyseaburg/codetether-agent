@@ -35,6 +35,6 @@ fn approve_records_decision_without_retry_prompt() {
 
     let decision = store.decision(&request.id).expect("decision").unwrap();
     assert_eq!(decision.status, ApprovalStatus::Approved);
-    assert!(app.state.input.is_empty());
+    assert!(app.state.composer.input.is_empty());
     assert!(app.state.status.contains("recorded"));
 }

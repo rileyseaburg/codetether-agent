@@ -55,8 +55,8 @@ mod tests {
     async fn enter_key_event_dispatches_to_chat_submit() {
         let mut app = App::default();
         app.state.view_mode = ViewMode::Chat;
-        app.state.input = "hello from key event".to_string();
-        app.state.input_cursor = app.state.input.chars().count();
+        app.state.composer.input = "hello from key event".to_string();
+        app.state.composer.cursor = app.state.composer.input.chars().count();
 
         let cwd = std::path::Path::new(".");
         let mut slot = test_slot().await;
@@ -84,7 +84,7 @@ mod tests {
         );
         assert_eq!(app.state.messages[0].content, "hello from key event");
         assert!(
-            app.state.input.is_empty(),
+            app.state.composer.input.is_empty(),
             "Input should be cleared after Enter"
         );
     }
@@ -111,7 +111,7 @@ mod tests {
 
         assert!(!quit);
         assert_eq!(
-            app.state.input, "?",
+            app.state.composer.input, "?",
             "? should be inserted into chat input, not toggle help"
         );
         assert!(
@@ -141,7 +141,7 @@ mod tests {
             .expect("handle_event");
 
         assert!(!quit);
-        assert_eq!(app.state.input, "/ask ");
+        assert_eq!(app.state.composer.input, "/ask ");
     }
 
     #[tokio::test]
@@ -248,7 +248,7 @@ mod tests {
         .expect("enter");
 
         assert_eq!(
-            app.state.input, "ab\n",
+            app.state.composer.input, "ab\n",
             "burst Enter should insert newline, not submit"
         );
         assert!(

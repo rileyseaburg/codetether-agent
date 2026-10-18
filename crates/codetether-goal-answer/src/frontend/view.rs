@@ -8,11 +8,11 @@ macro_rules! __frontend_answer_view {
             use super::Native;
             impl $crate::InputView for Native<'_> {
                 fn input(&self) -> &str {
-                    &self.app.state.input
+                    &self.app.state.composer.input
                 }
                 fn rewrite(&mut self, text: String) {
-                    self.app.state.input_cursor = text.chars().count();
-                    self.app.state.input = text;
+                    self.app.state.composer.cursor = text.chars().count();
+                    self.app.state.composer.input = text;
                 }
                 fn status(&mut self, text: String) {
                     self.app.state.status = text;

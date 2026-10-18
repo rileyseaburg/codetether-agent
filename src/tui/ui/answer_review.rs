@@ -9,7 +9,7 @@ pub(crate) fn render(frame: &mut Frame, app: &App) {
         return;
     };
     if !answer_review::ready(session)
-        || app.state.input.trim_start().starts_with('/')
+        || app.state.composer.input.trim_start().starts_with('/')
         || app.state.goal_editor.is_some()
     {
         return;

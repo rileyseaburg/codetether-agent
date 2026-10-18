@@ -27,7 +27,7 @@ async fn answer_review_explicit_continuation_releases_each_hold_stage() {
         assert!(state.answer_review.is_none());
         assert_eq!(state.goal.unwrap().status, GoalStatus::Active);
         assert!(app.state.approval_waiting);
-        assert!(app.state.input.is_empty());
+        assert!(app.state.composer.input.is_empty());
         assert!(!app.state.answer_review_yes);
         runtime.shutdown().await;
     }

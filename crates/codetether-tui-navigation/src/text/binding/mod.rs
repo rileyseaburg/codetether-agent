@@ -35,13 +35,13 @@ macro_rules! declare_frontend_text_input {
                 &self.0.state.bus_log.filter
             }
             fn input(&self) -> &str {
-                &self.0.state.input
+                &self.0.state.composer.input
             }
             fn set_status(&mut self, status: String) {
                 self.0.state.status = status;
             }
             fn set_mode(&mut self, mode: InputMode) {
-                self.0.state.input_mode = mode;
+                self.0.state.composer.mode = mode;
             }
             fn effect(&mut self, action: Action) {
                 if buffer::apply(self.0, &action)

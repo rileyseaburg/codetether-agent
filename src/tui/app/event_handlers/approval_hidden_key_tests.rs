@@ -33,7 +33,7 @@ fn feedback_input_keeps_navigation_out_of_hidden_preview() {
     approval_queue::reset();
     let _guard = QueueGuard;
     let mut app = app_with_preview();
-    app.state.input = "revise this".into();
+    app.state.composer.input = "revise this".into();
     let key = KeyEvent::new(KeyCode::Down, KeyModifiers::NONE);
 
     assert!(!super::scroll(&mut app, key));

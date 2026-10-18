@@ -10,7 +10,7 @@ fn dismiss_preserves_the_typed_query() {
     app.state.symbol_search.query = "cap".to_string();
     dismiss(&mut app);
     assert!(!app.state.symbol_search.active);
-    assert_eq!(app.state.input, "@cap");
+    assert_eq!(app.state.composer.input, "@cap");
 }
 
 #[test]
@@ -20,6 +20,9 @@ fn selection_replaces_only_at_character() {
     app.state.symbol_search.query = "cap".to_string();
     app.state.symbol_search.set_results(vec![entry()]);
     assert!(confirm(&mut app));
-    assert_eq!(app.state.input, "fix @capture (`src/pay.rs:12`) please");
+    assert_eq!(
+        app.state.composer.input,
+        "fix @capture (`src/pay.rs:12`) please"
+    );
     assert!(!app.state.symbol_search.active);
 }

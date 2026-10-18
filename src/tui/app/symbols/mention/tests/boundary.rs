@@ -7,7 +7,7 @@ use crate::tui::app::symbols::mention::open;
 fn mid_word_at_inserts_a_literal_character() {
     let mut app = app_with("user", 4);
     assert!(!open(&mut app));
-    assert_eq!(app.state.input, "user@");
+    assert_eq!(app.state.composer.input, "user@");
     assert!(!app.state.symbol_search.active);
 }
 
@@ -15,6 +15,6 @@ fn mid_word_at_inserts_a_literal_character() {
 fn word_initial_at_opens_the_picker() {
     let mut app = app_with("", 0);
     assert!(open(&mut app));
-    assert_eq!(app.state.input, "@");
+    assert_eq!(app.state.composer.input, "@");
     assert!(app.state.symbol_search.active);
 }

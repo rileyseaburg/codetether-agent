@@ -40,7 +40,7 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.bus_log.exit_detail();
         }
         Action::NormalInput => {
-            app.state.input_mode = crate::tui::models::InputMode::Normal;
+            app.state.composer.mode = crate::tui::models::InputMode::Normal;
         }
         Action::SubagentDetail(value) => {
             app.state.subagent_detail_mode = *value;

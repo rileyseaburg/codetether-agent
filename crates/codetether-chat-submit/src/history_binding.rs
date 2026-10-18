@@ -10,7 +10,7 @@ macro_rules! declare_frontend_history {
         use $app as App;
         impl $crate::history::History for App {
             fn input(&self) -> &str {
-                &self.state.input
+                &self.state.composer.input
             }
             fn push_history(&mut self, prompt: String) {
                 self.state.push_history(prompt);

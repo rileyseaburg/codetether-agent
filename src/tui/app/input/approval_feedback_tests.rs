@@ -30,7 +30,7 @@ fn direct_text_denies_with_revision_reason() {
     ));
     let mut app = App::default();
 
-    app.state.input = "rename this before applying".into();
+    app.state.composer.input = "rename this before applying".into();
     app.state.approval_waiting = true;
     app.state.approval_preview_scroll = 8;
     assert!(super::submit(&mut app));

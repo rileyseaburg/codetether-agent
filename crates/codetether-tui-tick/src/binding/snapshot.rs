@@ -13,7 +13,7 @@ macro_rules! declare_frontend_snapshot {
         pub(super) fn capture(app: &App) -> Snapshot {
             Snapshot {
                 messages: app.state.messages.len(),
-                input: app.state.input.len(),
+                input: app.state.composer.input.len(),
                 status: app.state.status.len(),
                 streaming: app.state.streaming.streaming_text.len(),
                 bus: app.state.bus_log.entries.len(),

@@ -8,16 +8,16 @@ use std::path::Path;
 pub(super) struct Composer<'a>(pub(super) &'a mut App);
 impl codetether_file_share::interactive::View for Composer<'_> {
     fn input(&mut self) -> &mut String {
-        &mut self.0.state.input
+        &mut self.0.state.composer.input
     }
     fn set_cursor(&mut self, cursor: usize) {
-        self.0.state.input_cursor = cursor;
+        self.0.state.composer.cursor = cursor;
     }
     fn start_editing(&mut self) {
-        self.0.state.input_mode = InputMode::Editing;
+        self.0.state.composer.mode = InputMode::Editing;
     }
     fn clear_history_selection(&mut self) {
-        self.0.state.history.history_index = None;
+        self.0.state.composer.history.history_index = None;
     }
     fn refresh_suggestions(&mut self) {
         self.0.state.refresh_slash_suggestions();

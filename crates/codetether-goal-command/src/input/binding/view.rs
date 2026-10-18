@@ -10,7 +10,7 @@ macro_rules! __frontend_goal_input_view {
             use $message as ChatMessage;
             impl $crate::input::View for Native<'_> {
                 fn input(&self) -> &str {
-                    &self.app.state.input
+                    &self.app.state.composer.input
                 }
                 fn status(&mut self, text: String) {
                     self.app.state.status = text;

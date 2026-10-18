@@ -9,8 +9,8 @@ pub(super) fn app_with(input: &str, cursor: usize) -> App {
     let mut app = App {
         state: AppState::default(),
     };
-    app.state.input = input.to_string();
-    app.state.input_cursor = cursor;
+    app.state.composer.input = input.to_string();
+    app.state.composer.cursor = cursor;
     app
 }
 

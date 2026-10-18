@@ -12,7 +12,7 @@ impl codetether_answer_review_view::interactive::Host for Native<'_> {
         Ok(answer_review::read(self.slot.view().id())?.answer_review)
     }
     fn input(&self) -> &str {
-        &self.app.state.input
+        &self.app.state.composer.input
     }
     fn selected_yes(&mut self) -> &mut bool {
         &mut self.app.state.answer_review_yes

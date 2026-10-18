@@ -22,7 +22,7 @@ use ratatui::layout::Rect;
 pub fn compute_chat_chunks(area: Rect, app: &App) -> ChatChunks {
     codetether_chat_layout::compute_chat_chunks(
         area,
-        &app.state.input,
+        &app.state.composer.input,
         app.state.slash_suggestions_visible(),
         super::agent_bar::presence::visible(app),
     )

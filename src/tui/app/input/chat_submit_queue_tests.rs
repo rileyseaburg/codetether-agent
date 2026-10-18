@@ -12,8 +12,8 @@ async fn enter_without_local_active_turn_queues_follow_up() {
     let mut app = App::default();
     app.state.view_mode = ViewMode::Chat;
     app.state.processing = true;
-    app.state.input = "hello tui".to_string();
-    app.state.input_cursor = app.state.input.chars().count();
+    app.state.composer.input = "hello tui".to_string();
+    app.state.composer.cursor = app.state.composer.input.chars().count();
     let cwd = std::path::Path::new(".");
     let mut slot = SessionSlot::new(Session::new().await.expect("session"));
     let (event_tx, _) = tokio::sync::mpsc::channel(8);
@@ -22,7 +22,7 @@ async fn enter_without_local_active_turn_queues_follow_up() {
 
     super::handle_enter_chat(&mut app, cwd, &mut slot, &None, &None, &runtime).await;
 
-    assert!(app.state.input.is_empty());
+    assert!(app.state.composer.input.is_empty());
     assert_eq!(prompt_queue::take().as_deref(), Some("hello tui"));
 }
 

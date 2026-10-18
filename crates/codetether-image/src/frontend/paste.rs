@@ -19,7 +19,7 @@ macro_rules! declare_frontend_image_paste {
             $crate::paste::try_attach_data_url(&mut state(app), text)
         }
 
-        /// Pull every embedded image data URL out of `app.state.input`, attach each,
+        /// Pull every embedded image data URL out of `app.state.composer.input`, attach each,
         /// and replace the input with the remaining text. Returns the count attached.
         pub(crate) fn drain_embedded_images(app: &mut App) -> usize {
             $crate::paste::drain_embedded_images(&mut state(app))
@@ -28,8 +28,8 @@ macro_rules! declare_frontend_image_paste {
         fn state(app: &mut App) -> $crate::paste::State<'_> {
             $crate::paste::State {
                 images: &mut app.state.pending_images,
-                input: &mut app.state.input,
-                cursor: &mut app.state.input_cursor,
+                input: &mut app.state.composer.input,
+                cursor: &mut app.state.composer.cursor,
                 status: &mut app.state.status,
             }
         }
