@@ -1254,6 +1254,7 @@ dependencies = [
  "codetether-chat-status",
  "codetether-chat-submit",
  "codetether-chat-clipboard",
+ "codetether-chat-events",
  "codetether-chat-files",
  "codetether-chat-layout",
  "codetether-message-cache",
@@ -2277,6 +2278,15 @@ dependencies = [
  "codetether-image",
  "codetether-terminal-clipboard",
  "tracing",
+]
+
+[[package]]
+name = "codetether-chat-events"
+version = "0.1.0"
+dependencies = [
+ "codetether-chat-model",
+ "codetether-session-events",
+ "codetether-util",
 ]
 
 [[package]]

@@ -1,0 +1,12 @@
+[package]
+name = "codetether-chat-events"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Chat stream, retry and usage-event presentation workflows"
+
+[dependencies]
+codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }

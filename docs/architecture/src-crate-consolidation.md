@@ -19597,3 +19597,24 @@ manifests, lexical module reachability, dependency-cycle checks, file-size
 ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-chat-retention/`. No Cargo, rustc, Python or Rust tests
 ran; compilation and runtime remain unverified.
+
+### Chat stream, retry and usage events
+
+Moved text/thinking stream presentation, retry cleanup, cumulative-text bounding,
+completion metrics and usage-badge attachment into `codetether-chat-events`.
+Separate modules own those responsibilities. StreamView and UsageView bind 17
+native state/timing operations; the three native event entry points now delegate.
+Removed native text, bounding and usage-attachment implementations.
+
+Preserved text timing order, cumulative-byte accounting, configured preview
+limit and truncation marker, automatic scrolling, reasoning-preview formatting,
+retry status, completion metrics, and newest eligible usage-badge selection.
+Unrelated events pass through unchanged. Existing integration tests, pipeline
+ordering and native constants are unchanged.
+
+Validation: nine complete translated function bodies, 17 native bindings,
+three delegates, unchanged integration tests/constants/pipeline, isolated
+lockfile addition, lexical module reachability, dependency-cycle checks,
+file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-chat-events/`. No Cargo, rustc, Python, Rust tests or
+stream execution ran; compilation and runtime remain unverified.
