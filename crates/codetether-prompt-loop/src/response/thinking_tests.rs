@@ -1,7 +1,7 @@
 //! Tests for the thinking-only assistant-turn guard.
 
 use super::is_thinking_only;
-use crate::provider::ContentPart;
+use codetether_provider_core::ContentPart;
 
 fn thinking(text: &str) -> ContentPart {
     ContentPart::Thinking {

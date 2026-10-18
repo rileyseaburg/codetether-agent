@@ -13,3 +13,9 @@ codetether-runtime-policy = { path = "../codetether-runtime-policy", version = "
 codetether-repeat-guard = { path = "../codetether-repeat-guard", version = "0.1.0" }
 serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
+
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provider-policy = { path = "../codetether-provider-policy", version = "0.1.0" }
+codetether-build-policy = { path = "../codetether-build-policy", version = "0.1.0" }
+anyhow = "1"
+tracing = "0.1"

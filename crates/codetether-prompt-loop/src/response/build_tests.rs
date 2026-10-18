@@ -1,5 +1,5 @@
 use super::tool_executed;
-use crate::provider::{ContentPart, Message, Role};
+use codetether_provider_core::{ContentPart, Message, Role};
 
 fn message(role: Role) -> Message {
     Message {

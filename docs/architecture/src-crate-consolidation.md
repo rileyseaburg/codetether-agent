@@ -15606,3 +15606,21 @@ Full workspace consolidation remains active.
   and diff whitespace. Evidence: `artifacts/consolidation-prompt-loop/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete; the native runner still binds session/provider execution.
+
+### Shared response retry policies
+
+- Moved build tool-first decisions, exhausted-build errors, missing-native-tool
+  retry counters, thinking-only detection, corrective message construction and
+  empty-code-search counters into `codetether-prompt-loop::response`.
+- Native adapters retain session mutation and UI effects. Shared state methods
+  return the same retry decisions and correction text, preserving counter reset
+  order and the native-message/nudge sequence.
+- Moved eight existing build/thinking/guidance tests unchanged apart from imports.
+  Corrective messages still carry Role::Developer; thinking-only and code-search
+  warning text and thresholds are unchanged.
+- Verification: expanded shared decisions compared to original function bodies,
+  unchanged test bodies and corrective text, unchanged caller ordering, isolated
+  lock additions, module/dependency graphs, direct rustfmt, file budgets and diff
+  whitespace. Evidence: `artifacts/consolidation-response-guards/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete; native response effects still await migration.
