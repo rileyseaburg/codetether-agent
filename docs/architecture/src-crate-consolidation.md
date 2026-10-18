@@ -16401,3 +16401,21 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-worker-connection/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker bootstrap and pending-task dispatch
+
+- Moved startup registration/synchronization/task-fetch sequencing into
+  `codetether-a2a-worker-core::initialization::bootstrap` and pending-task
+  fetch/poll iteration into `dispatch::pending`.
+- Split each responsibility into its own modules and host contract. Native
+  bindings retain HTTP retrieval, task spawning, registration arguments and
+  workspace synchronization, while native entrypoints delegate sequencing.
+- Preserved startup failure logging and continuation order, synchronization
+  handle lifetime, owned startup iteration versus borrowed periodic iteration,
+  and nonempty-only periodic count logging.
+- Verification: full bootstrap/pending function-body comparisons, exact native
+  bindings, unchanged registration and transport/workspace callers, module and
+  dependency graphs, direct rustfmt, file limits and diff whitespace. No
+  dependencies changed. Evidence: `artifacts/consolidation-worker-bootstrap/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

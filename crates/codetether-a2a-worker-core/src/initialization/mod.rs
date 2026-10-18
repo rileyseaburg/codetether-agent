@@ -17,3 +17,6 @@ pub use runtime::WorkerTaskRuntime;
 pub use context::WorkerContext;
 pub use build::build_task_runtime;
 pub use runtime_config::RuntimeConfig;
+
+/// Startup registration, workspace synchronization and task intake.
+pub mod bootstrap;

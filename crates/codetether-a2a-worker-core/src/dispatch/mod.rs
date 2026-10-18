@@ -15,3 +15,6 @@ pub use timeout::execute_with_timeout;
 mod targeting_tests;
 #[cfg(test)]
 mod timeout_tests;
+
+/// Ordered startup and periodic pending-task dispatch.
+pub mod pending;
