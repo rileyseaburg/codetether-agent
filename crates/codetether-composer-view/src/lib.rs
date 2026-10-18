@@ -28,3 +28,10 @@ pub mod cursor_visibility;
 pub mod cursor_word_left;
 /// Word movement to the right.
 pub mod cursor_word_right;
+
+mod edit_clear;
+mod edit_delete;
+mod edit_insert;
+mod edit_replace;
+mod input_edit;
+pub use input_edit::InputEdit;

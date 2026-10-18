@@ -12198,3 +12198,17 @@ Full workspace consolidation remains active.
   checks passed. Evidence: artifacts/consolidation-composer-cursor/.
 - No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
   incomplete.
+
+### Composer text mutation extraction
+
+- Moved character/text insertion, backward/forward deletion, character-range
+  replacement and text clearing into the borrowed InputEdit helper in
+  codetether-composer-view. Five focused modules contain at most 28 code lines.
+- Native AppState methods retain command-history reset, suggestion refresh,
+  input-mode changes and view-scroll reset. Shared edit results preserve the
+  original early-return behavior for empty insertion and no-op deletion.
+- Verification: 13 source comparisons passed for text/cursor operations, no-op
+  guards, native side effects and unchanged input-state tests. Module/dependency
+  checks, direct formatting, source limits and diff checks passed.
+- Evidence: artifacts/consolidation-composer-edit/. No Cargo, rustc, compilation
+  or tests ran. Full workspace consolidation remains incomplete.
