@@ -20,3 +20,5 @@ pub(in crate::session::helper) async fn execute_tool(
     )
     .await
 }
+
+pub(in crate::session::helper) use host::NativeHost;

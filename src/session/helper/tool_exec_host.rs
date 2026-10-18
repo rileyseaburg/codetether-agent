@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use codetether_tool_reporting::ToolTuple;
 use serde_json::Value;
 use std::sync::Arc;
-pub(super) struct NativeHost<'a> {
+pub(in crate::session::helper) struct NativeHost<'a> {
     pub registry: &'a ToolRegistry,
 }
 #[async_trait]

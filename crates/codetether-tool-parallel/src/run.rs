@@ -3,18 +3,18 @@
 use futures::future::join_all;
 use tokio::sync::mpsc;
 
-use crate::session::SessionEvent;
-use crate::session::helper::event_payload;
-use crate::tool::ToolRegistry;
+use codetether_session_events::SessionEvent;
+use codetether_stream_bounds as event_payload;
+use codetether_tool_execution::Host as ExecutionHost;
 
 use super::job::Job;
 use super::{result::Output, single::run_one};
 
-pub(super) async fn execute(
+pub(super) async fn execute<S: Send + 'static>(
     jobs: Vec<Job>,
-    registry: &ToolRegistry,
+    registry: &impl ExecutionHost,
     session_id: &str,
-    event_tx: &mpsc::Sender<SessionEvent>,
+    event_tx: &mpsc::Sender<SessionEvent<S>>,
 ) -> Vec<Output> {
     for job in &jobs {
         let args = serde_json::to_string(&job.tool_input).unwrap_or_default();

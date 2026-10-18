@@ -1,7 +1,7 @@
 //! Parallel tool job input.
 
 #[derive(Clone)]
-pub(crate) struct Job {
+pub(super) struct Job {
     pub tool_id: String,
     pub tool_name: String,
     pub tool_input: serde_json::Value,

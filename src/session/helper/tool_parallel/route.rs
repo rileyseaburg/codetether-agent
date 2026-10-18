@@ -10,7 +10,7 @@ pub(super) fn route(
     session: &Session,
     model: &str,
     provider: Arc<dyn Provider>,
-    out: &super::result::Output,
+    out: &codetether_tool_parallel::Output,
 ) -> String {
     let routed = rlm_background::route_or_defer(
         &out.content,

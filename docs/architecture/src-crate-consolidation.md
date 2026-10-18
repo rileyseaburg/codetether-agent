@@ -9998,3 +9998,22 @@ graphs, file budgets and whitespace checks passed; new modules contain at most
 26 code lines. Evidence is in `artifacts/consolidation-tool-execution/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or tool
 execution ran. Full workspace consolidation remains active.
+
+### Dedicated parallel-tool crate
+
+Moved eligibility, normalized job preparation, contiguous scheduling barriers,
+concurrent execution, completion events and ordered result recording into
+`crates/codetether-tool-parallel`. Twelve modules separate planning, preparation,
+execution, completion and recording. The native Host supplies session persistence,
+input enrichment and existing RLM routing; the shared execution host retains
+runtime policy and workspace coordination. Image attachments remain attached to
+their original tool-result messages, bypassing text compaction.
+
+Eighteen static comparisons cover original scheduling and execution bodies,
+save-before-execute behavior, heartbeat lifetime, event payloads, image retention,
+ordered recording, no-match counters, host delegation and unchanged dispatchers.
+Two original scheduler tests moved without execution; the native image integration
+test is unchanged. Module/dependency graphs, file budgets and whitespace checks
+passed; new crate files contain at most 42 code lines. Evidence is in
+`artifacts/consolidation-tool-parallel/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python or tool execution ran. Full consolidation remains active.

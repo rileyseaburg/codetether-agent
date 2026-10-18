@@ -1,15 +1,9 @@
-//! Apply parallel read-only tool outputs to a session.
-
-use std::path::Path;
-use std::sync::Arc;
-
-use tokio::sync::mpsc;
-
-use crate::provider::{ContentPart, Message, Provider, Role};
-use crate::session::helper::runtime::is_codesearch_no_match_output;
+//! Native services for the shared parallel batch lifecycle.
+use crate::provider::Provider;
 use crate::session::{Session, SessionEvent};
 use crate::tool::ToolRegistry;
-
+use std::{path::Path, sync::Arc};
+use tokio::sync::mpsc;
 pub(crate) async fn try_execute(
     session: &mut Session,
     calls: &[(String, String, serde_json::Value)],
@@ -20,32 +14,13 @@ pub(crate) async fn try_execute(
     event_tx: &mpsc::Sender<SessionEvent>,
     no_match_count: &mut u32,
 ) -> bool {
-    let Some(jobs) = super::eligibility::prepare(calls, cwd, session) else {
-        return false;
+    let mut session = super::host::NativeHost {
+        session,
+        cwd,
+        model,
+        provider,
     };
-    if session.save().await.is_err() {
-        return false;
-    }
-    tracing::info!(
-        count = jobs.len(),
-        "Executing read-only tool batch in parallel"
-    );
-    for out in super::run::execute(jobs, registry, &session.id, event_tx).await {
-        let content = super::route::route(session, model, Arc::clone(&provider), &out);
-        let mut parts = vec![ContentPart::ToolResult {
-            tool_call_id: out.tool_id,
-            content,
-        }];
-        parts.extend(out.images);
-        session.add_message(Message {
-            role: Role::Tool,
-            content: parts,
-        });
-        if is_codesearch_no_match_output(&out.tool_name, out.success, &out.content) {
-            *no_match_count += 1;
-        } else {
-            *no_match_count = 0;
-        }
-    }
-    true
+    let execution = super::super::tool_exec::NativeHost { registry };
+    codetether_tool_parallel::try_execute(&mut session, calls, &execution, event_tx, no_match_count)
+        .await
 }

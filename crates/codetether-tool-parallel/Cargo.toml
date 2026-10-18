@@ -1,0 +1,23 @@
+[package]
+name = "codetether-tool-parallel"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Ordered parallel read-only tool scheduling and execution"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-edit-policy = { path = "../codetether-edit-policy", version = "0.1.0" }
+codetether-prompt-policy = { path = "../codetether-prompt-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+codetether-stream-bounds = { path = "../codetether-stream-bounds", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-tool-execution = { path = "../codetether-tool-execution", version = "0.1.0" }
+codetether-tool-reporting = { path = "../codetether-tool-reporting", version = "0.1.0" }
+futures = "0.3"
+serde_json = "1"
+tokio = { version = "1", features = ["sync"] }
+tracing = "0.1"
