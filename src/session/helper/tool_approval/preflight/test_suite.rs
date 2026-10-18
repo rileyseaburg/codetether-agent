@@ -1,6 +1,7 @@
 //! Automatic preflight regression suite and shared process fixtures.
 
-use super::{blocked, budget, check, cooldown, scan};
+use super::blocked;
+use codetether_lsp_preflight::{budget, check, cooldown, scan};
 
 #[path = "jsx_fixture.rs"]
 mod jsx_fixture;

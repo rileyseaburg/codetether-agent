@@ -7,7 +7,21 @@ mod store;
 
 const BACKOFF: Duration = Duration::from_secs(30);
 
-pub(super) fn reason(workspace: &Path, language: &str) -> Option<String> {
+/// Look up an unexpired pending-check or server-failure backoff message.
+///
+/// # Arguments
+/// `workspace` and `language` identify the diagnostic server's scope.
+///
+/// # Returns
+/// The current message, without extending its expiration, or `None`.
+///
+/// # Examples
+/// ```
+/// let _reason = codetether_lsp_preflight::cooldown::reason(
+///     std::path::Path::new("."), "typescript"
+/// );
+/// ```
+pub fn reason(workspace: &Path, language: &str) -> Option<String> {
     store::entries()
         .get(&(workspace.to_path_buf(), language.to_string()))
         .map(|(_, message)| message.clone())

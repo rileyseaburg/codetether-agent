@@ -1,6 +1,6 @@
 //! Structured tool failures for rejected pre-approval diagnostics.
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 pub(super) fn diagnostics(tool: &str, issues: Vec<String>) -> ToolResult {

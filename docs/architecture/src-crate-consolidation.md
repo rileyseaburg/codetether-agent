@@ -9962,3 +9962,21 @@ passed; the largest new crate file has 40 code lines. Evidence is in
 `artifacts/consolidation-tool-approval/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python or tool execution ran. Full workspace consolidation
 remains active.
+
+### Dedicated LSP preflight crate
+
+Moved proposed-file reconstruction, pre-approval diagnostics, interactive and
+background deadlines, workspace/language backoff, and diagnostic result formatting
+into `crates/codetether-lsp-preflight`. Thirteen modules separate per-file checks,
+batch scanning, background work, backoff storage, input reconstruction and reports.
+The native entry point selects the existing ApplicationHost, preserving client
+identity and the shared LSP-tool manager cache. Native process integration tests
+now reference the shared check, scan and backoff implementation.
+
+Thirty-five static comparisons cover original function bodies, per-file extraction,
+deadlines, backoff, messages, native client selection and unchanged integration
+fixtures. Module/dependency graphs, file budgets and whitespace checks passed;
+the largest new crate file has 42 code lines. Two original cooldown tests moved
+without execution. Evidence is in `artifacts/consolidation-lsp-preflight/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or language
+server execution ran. Full workspace consolidation remains active.

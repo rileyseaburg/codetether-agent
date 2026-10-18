@@ -34,7 +34,7 @@ fn write(workspace: &Path, args: &Value) -> Result<(PathBuf, String)> {
 
 fn patch(workspace: &Path, args: &Value) -> Result<Vec<(PathBuf, String)>> {
     let patch = required_string(args, "patch")?;
-    crate::tool::patch::proposed::contents(workspace, patch)
+    codetether_patch::proposed::contents(workspace, patch)
         .context("failed to reconstruct proposed patch contents")
 }
 

@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-lsp-preflight",
  "codetether-tool-approval",
  "codetether-tool-recovery",
  "codetether-tool-reporting",
@@ -4930,6 +4931,23 @@ dependencies = [
  "codetether-tool-core",
  "codetether-tool-reporting",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-lsp-preflight"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-config",
+ "codetether-lsp-core",
+ "codetether-lsp-tool",
+ "codetether-patch",
+ "codetether-tool-core",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

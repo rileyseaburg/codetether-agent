@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::lsp::{DiagnosticInfo, LspActionResult};
+use codetether_lsp_core::{DiagnosticInfo, LspActionResult};
 
 pub(super) fn errors(workspace: &Path, path: &Path, result: LspActionResult) -> Vec<String> {
     let LspActionResult::Diagnostics { diagnostics } = result else {

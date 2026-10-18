@@ -1,11 +1,12 @@
 //! Finish diagnostics after the interactive caller returns; recover only real failures.
 
-use crate::lsp::{LspActionResult, LspManager};
 use anyhow::{Context, Result};
+use codetether_lsp_core::LspActionResult;
+use codetether_lsp_core::manager::{LspManager, ManagedClient};
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
-pub(super) async fn run(
-    manager: Arc<LspManager>,
+pub(super) async fn run<C: ManagedClient>(
+    manager: Arc<LspManager<C>>,
     workspace: PathBuf,
     path: PathBuf,
     content: String,
@@ -28,7 +29,7 @@ pub(super) async fn run(
                     .count(),
                 _ => 0,
             };
-            tracing::info!(path = %path.display(), error_count, "Pre-approval LSP background check finished; server retained");
+            tracing::info!(target: "codetether_agent::session::helper::tool_approval::preflight::background",path = %path.display(), error_count, "Pre-approval LSP background check finished; server retained");
         }
         Err(error) => {
             super::cooldown::record(
@@ -37,7 +38,7 @@ pub(super) async fn run(
                 &format!("{}: {error:#}", path.display()),
             );
             manager.invalidate_client(&language).await;
-            tracing::warn!(path = %path.display(), %error, "Pre-approval LSP background check failed; server evicted");
+            tracing::warn!(target: "codetether_agent::session::helper::tool_approval::preflight::background",path = %path.display(), %error, "Pre-approval LSP background check failed; server evicted");
         }
     }
     result
