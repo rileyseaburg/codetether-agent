@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-codex-records",
  "codetether-workspace-index",
  "codetether-session-listing",
  "codetether-snapshot-io",
@@ -2776,6 +2777,16 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-codex-records"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

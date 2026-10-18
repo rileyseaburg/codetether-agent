@@ -8988,3 +8988,19 @@ largest crate file has 24 code lines. Evidence is in
 `artifacts/consolidation-workspace-index/`. Compilation and runtime tests were
 not run. No Cargo, rustc or Python commands ran. The full workspace
 consolidation remains active.
+
+### Dedicated Codex record-decoding crate
+
+Moved modern-envelope parsing, legacy record normalization, legacy metadata
+recognition, working-directory recovery and four shared Serde schemas into
+`crates/codetether-codex-records`. Twelve modules separate these duties and
+the five existing regression tests. Native legacy/schema modules now only
+re-export the shared API used by discovery and full transcript imports.
+
+Fourteen static comparisons cover all moved parsing functions, schemas and
+five unchanged test bodies. Existing ignored examples now reference the
+public crate API and are runnable doc examples. Module/dependency graphs,
+file budgets and whitespace checks passed; the largest crate file contains
+38 code lines. Evidence is in `artifacts/consolidation-codex-records/`.
+Compilation and runtime tests were not run. No Cargo, rustc or Python commands
+ran. The full workspace consolidation remains active.
