@@ -1,0 +1,13 @@
+[package]
+name = "codetether-replay-oracle"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Offline conversation replay demand analysis and oracle reporting"
+
+[dependencies]
+anyhow = "1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+tracing = "0.1"

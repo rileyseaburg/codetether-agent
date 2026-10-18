@@ -15444,3 +15444,21 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-model-router/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains unfinished beyond this session-router extraction.
+
+### Dedicated offline replay-oracle crate
+
+- Added `crates/codetether-replay-oracle` and moved offline replay analysis from
+  `src/session/oracle.rs`, split into demand replay, report types, file/tool-call
+  indexes, reference resolution and lexical token extraction.
+- Moved all four existing tests and their three fixture helpers into focused
+  crate test modules. Native session modules now re-export the same public APIs.
+- Moved `oracle_replay` trace-evaluation types and entry point into the crate's
+  `trace` module. Its pre-existing placeholder/zero-gap behavior is unchanged
+  and explicitly documented; this is not a completed trace evaluator.
+- Verification: all six replay implementation/method bodies, both result types,
+  four test bodies and three fixture helpers matched after path changes. Also
+  checked the unchanged trace stub, compatibility exports, module graph,
+  dependency DAG, isolated lock additions, direct rustfmt, 50-line file budgets
+  and diff whitespace. Evidence: `artifacts/consolidation-replay-oracle/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

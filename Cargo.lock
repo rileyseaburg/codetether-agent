@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-replay-oracle",
  "codetether-workspace-tools",
  "codetether-swarm-monitor",
  "codetether-swarm-tool",
@@ -7465,6 +7466,16 @@ dependencies = [
  "codetether-provider-core",
  "codetether-swarm-core",
  "codetether-swarm-share",
+]
+
+[[package]]
+name = "codetether-replay-oracle"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
+ "codetether-context-policy",
+ "tracing",
 ]
 
 [[package]]
