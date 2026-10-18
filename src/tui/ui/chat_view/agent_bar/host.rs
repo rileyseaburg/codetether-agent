@@ -14,7 +14,7 @@ impl codetether_agent_dashboard::bar::SessionId for Session {
 impl codetether_agent_dashboard::bar::Host for App {
     type Session = Session;
     fn agents(&self) -> &HashMap<String, SpawnedAgent> {
-        &self.state.spawned_agents
+        &self.state.agent_tree.spawned
     }
     fn tool_agents(&self) -> Vec<AgentSnapshot> {
         self.state
@@ -27,7 +27,7 @@ impl codetether_agent_dashboard::bar::Host for App {
         &self.state.swarm.subtasks
     }
     fn active(&self) -> Option<&str> {
-        self.state.active_spawned_agent.as_deref()
+        self.state.agent_tree.active.as_deref()
     }
     fn model(&self) -> Option<String> {
         crate::tui::app::spawn_agent::model::current_model_id(self)

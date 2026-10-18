@@ -9,7 +9,7 @@ pub(super) fn build(
     content_width: usize,
     formatter: &MessageFormatter,
 ) -> Option<DrawnLines> {
-    let name = app.state.active_spawned_agent.as_deref()?;
+    let name = app.state.agent_tree.active.as_deref()?;
     if !known(app, name) {
         return None;
     }
@@ -23,7 +23,7 @@ pub(super) fn build(
 }
 
 fn known(app: &App, name: &str) -> bool {
-    app.state.spawned_agents.contains_key(name)
+    app.state.agent_tree.spawned.contains_key(name)
         || app.state.session_id.as_deref().is_some_and(|parent| {
             crate::tool::agent::bridge::find_agent_tool_agent_for_parent(name, parent).is_some()
         })

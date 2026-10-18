@@ -14,8 +14,5 @@ fn tab_selects_the_observed_mdns_agent() {
 
     handle_tab(&mut app);
 
-    assert_eq!(
-        app.state.active_spawned_agent.as_deref(),
-        Some(name.as_str())
-    );
+    assert_eq!(app.state.agent_tree.active.as_deref(), Some(name.as_str()));
 }

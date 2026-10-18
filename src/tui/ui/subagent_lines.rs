@@ -18,10 +18,10 @@ pub fn lines(state: &AppState) -> Vec<Line<'static>> {
 fn compose(state: &AppState, tool_agents: &[AgentSnapshot]) -> Vec<Line<'static>> {
     codetether_agent_dashboard::dashboard::compose(
         &codetether_agent_dashboard::dashboard::Dashboard {
-            agents: &state.spawned_agents,
+            agents: &state.agent_tree.spawned,
             swarm: &state.swarm,
             active_tasks: state.active_tasks.count(),
-            selected: state.active_spawned_agent.as_deref(),
+            selected: state.agent_tree.active.as_deref(),
         },
         tool_agents,
     )

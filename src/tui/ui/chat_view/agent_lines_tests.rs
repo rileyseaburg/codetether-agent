@@ -14,7 +14,7 @@ fn selected_mdns_agent_replaces_the_main_chat_transcript() {
     );
     let mut app = App::default();
     app.state.session_id = Some(parent);
-    app.state.active_spawned_agent = Some(name);
+    app.state.agent_tree.active = Some(name);
     app.state
         .messages
         .push(crate::tui::chat::message::ChatMessage::new(

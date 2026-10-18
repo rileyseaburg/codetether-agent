@@ -17,9 +17,10 @@ fn child(name: &str) -> SpawnedAgent {
 fn detail_cycle_wraps_without_selecting_main_chat() {
     let mut app = App::default();
     app.state
-        .spawned_agents
+        .agent_tree
+        .spawned
         .insert("alpha".into(), child("alpha"));
-    app.state.active_spawned_agent = Some("alpha".into());
+    app.state.agent_tree.active = Some("alpha".into());
     cycle(&mut app);
-    assert_eq!(app.state.active_spawned_agent.as_deref(), Some("alpha"));
+    assert_eq!(app.state.agent_tree.active.as_deref(), Some("alpha"));
 }

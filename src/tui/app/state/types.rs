@@ -1,6 +1,5 @@
 //! Core TUI state containers.
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -13,7 +12,7 @@ use crate::tui::{audit_view::AuditViewState, bus_log::BusLogState};
 use crate::tui::{chat::message::ChatMessage, help::HelpScrollState};
 use crate::tui::{ralph_view::RalphViewState, swarm_view::SwarmViewState};
 
-use super::{agent_profile::SpawnedAgent, context_health, git_state};
+use super::{context_health, git_state};
 
 type PendingPaste = crate::tui::app::input::pasted_text::PendingTextPaste;
 type WatchdogNotice = Option<crate::tui::app::watchdog::WatchdogNotification>;
@@ -56,7 +55,7 @@ pub struct AppState {
     pub streaming: codetether_chat_model::StreamingState, pub request_timing: codetether_telemetry::RequestTimingState, pub last_completion: codetether_telemetry::CompletionSummary,
     pub context_used: Option<usize>, pub context_budget: Option<usize>, pub context_health: context_health::ContextHealthState, pub tool_timing: codetether_telemetry::ToolTimingState,
     pub pending_images: Vec<ImageAttachment>, pub pending_text_pastes: Vec<PendingPaste>, pub preferences: codetether_settings_policy::persistence::Preferences, pub selected_settings_index: usize, pub current_turn_cancel: TurnCancel, pub last_key_at: Option<Instant>,
-    pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>, pub spawned_agents: HashMap<String, SpawnedAgent>, pub active_spawned_agent: Option<String>, pub subagent_detail_mode: bool, pub subagent_detail_scroll: u16, pub streaming_agent_texts: HashMap<String, String>, pub message_cache: codetether_message_cache::RenderedLineCache,
+    pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>, pub agent_tree: codetether_agent_tree::AgentTreeState<crate::session::Session>, pub message_cache: codetether_message_cache::RenderedLineCache,
     pub watchdog_notification: WatchdogNotice, pub main_last_event_at: Option<Instant>, pub main_watchdog_restart_count: u32, pub main_inflight_prompt: Option<String>, pub okr_repository: Option<Arc<crate::okr::OkrRepository>>, pub pending_okr_approval: PendingOkr, pub retry_state: codetether_model_failover::RetryState,
     pub stream_recovery: codetether_stream_recovery::StreamRecoveryState,
     pub chat_sync: codetether_chat_sync::ChatSyncState,

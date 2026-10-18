@@ -317,6 +317,6 @@ async fn slash_spawn_requires_a_selected_model() {
     )
     .await;
 
-    assert!(app.state.spawned_agents.is_empty());
+    assert!(app.state.agent_tree.spawned.is_empty());
     assert!(app.state.status.contains("Select a model"));
 }

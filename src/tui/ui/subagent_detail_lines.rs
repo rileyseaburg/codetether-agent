@@ -3,8 +3,8 @@ use crate::tui::app::state::AppState;
 use ratatui::text::Line;
 pub(super) fn lines(state: &AppState) -> Vec<Line<'static>> {
     codetether_agent_dashboard::selection::lines(
-        state.active_spawned_agent.as_deref(),
-        &state.spawned_agents,
+        state.agent_tree.active.as_deref(),
+        &state.agent_tree.spawned,
         state.session_id.as_deref(),
         &codetether_agent_dashboard::tool_detail::Registry::<
             crate::tool::agent::bridge::ApplicationHost,

@@ -11,7 +11,7 @@ pub fn push_tool_agents(
     codetether_agent_dashboard::bar::push_tool_agents(
         spans,
         snapshots,
-        &app.state.spawned_agents,
+        &app.state.agent_tree.spawned,
         active,
     );
 }

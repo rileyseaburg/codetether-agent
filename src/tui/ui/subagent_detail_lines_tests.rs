@@ -25,7 +25,7 @@ fn managed_detail_keeps_full_tool_input_and_output() {
         },
     ]
     .into();
-    state.spawned_agents.insert(
+    state.agent_tree.spawned.insert(
         "observer".into(),
         SpawnedAgent {
             name: "observer".into(),
@@ -37,7 +37,7 @@ fn managed_detail_keeps_full_tool_input_and_output() {
             is_processing: true,
         },
     );
-    state.active_spawned_agent = Some("observer".into());
+    state.agent_tree.active = Some("observer".into());
     let text = lines(&state)
         .iter()
         .map(ToString::to_string)

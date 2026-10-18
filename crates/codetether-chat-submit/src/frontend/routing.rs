@@ -14,7 +14,7 @@ macro_rules! __frontend_chat_routing {
                     $managed(self.app, prompt).await
                 }
                 fn mentions(&self, prompt: &str) -> String {
-                    $mentions(prompt, self.app.state.active_spawned_agent.as_deref())
+                    $mentions(prompt, self.app.state.agent_tree.active.as_deref())
                 }
                 async fn continuation(&mut self, prompt: &str) -> bool {
                     $continuation(

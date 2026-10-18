@@ -28121,3 +28121,21 @@ completion policies are unchanged. Evidence:
 artifacts/consolidation-composer-state/. No dependencies or unrelated working
 files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Crate-owned spawned-agent state
+
+Moved the spawned-agent map, active selection, detail-view mode/scroll and
+streaming-text map into codetether-agent-tree::AgentTreeState<S>. AppState now
+specializes that component with the existing Session type. The component's
+manual Default implementation requires no Default bound on S and preserves
+empty maps, no selection, false detail mode and zero scroll.
+
+Updated navigation, managed-agent commands, dashboard/chat presentation and
+spawn-watch bindings. Static token comparison covers all 35 modified existing
+files. Scanned 1,213 root Rust files for obsolete direct field accesses. Agent
+entries and hierarchy-order policy are unchanged. Declaration, module/dependency,
+production scope, whitespace and file-limit checks passed (725 roots, 617 crates).
+Changed Rust files were formatted; app/tests.rs retains the preexisting unrelated
+long-line formatting. Evidence: artifacts/consolidation-agent-tree-state/.
+No dependencies or unrelated working files changed. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active and incomplete.

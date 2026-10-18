@@ -22,10 +22,7 @@ fn tab_focus_loads_swarm_transcript_into_chat() {
         .flat_map(|line| line.spans.iter())
         .map(|span| span.content.as_ref())
         .collect::<String>();
-    assert_eq!(
-        app.state.active_spawned_agent.as_deref(),
-        Some("worker-one")
-    );
+    assert_eq!(app.state.agent_tree.active.as_deref(), Some("worker-one"));
     assert!(text.contains("worker transcript"));
     assert!(text.contains("Session: task-one"));
 }

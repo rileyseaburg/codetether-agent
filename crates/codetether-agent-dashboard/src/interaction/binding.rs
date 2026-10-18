@@ -15,13 +15,13 @@ macro_rules! declare_frontend_dashboard_input {
             use $swarm as SwarmViewState;
             impl $crate::interaction::Host for App {
                 fn selected(&self) -> Option<&str> {
-                    self.state.active_spawned_agent.as_deref()
+                    self.state.agent_tree.active.as_deref()
                 }
                 fn clear_selected(&mut self) {
-                    self.state.active_spawned_agent = None;
+                    self.state.agent_tree.active = None;
                 }
                 fn local_contains(&self, name: &str) -> bool {
-                    self.state.spawned_agents.contains_key(name)
+                    self.state.agent_tree.spawned.contains_key(name)
                 }
                 fn owned_tool_contains(&self, name: &str) -> bool {
                     self.state
@@ -39,8 +39,8 @@ macro_rules! declare_frontend_dashboard_input {
                     self.state.set_view_mode(ViewMode::Swarm);
                 }
                 fn open_local_detail(&mut self) {
-                    self.state.subagent_detail_mode = true;
-                    self.state.subagent_detail_scroll = 0;
+                    self.state.agent_tree.detail_mode = true;
+                    self.state.agent_tree.detail_scroll = 0;
                 }
                 fn cycle_focus(&mut self) {
                     $cycle(self);

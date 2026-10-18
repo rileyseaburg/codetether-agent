@@ -7,7 +7,7 @@ pub fn render_webview_header(f: &mut Frame, app: &App, area: Rect) {
         f,
         Header {
             session: app.state.session_id.as_deref(),
-            agent: app.state.active_spawned_agent.as_deref(),
+            agent: app.state.agent_tree.active.as_deref(),
             branch: app.state.workspace.git_branch.as_deref(),
             message_count: app.state.messages.len(),
         },

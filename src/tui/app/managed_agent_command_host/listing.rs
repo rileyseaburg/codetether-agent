@@ -5,7 +5,8 @@ impl Listing for Native<'_> {
     fn legacy_rows(&self) -> Vec<LegacyAgent> {
         self.app
             .state
-            .spawned_agents
+            .agent_tree
+            .spawned
             .iter()
             .map(|(key, agent)| LegacyAgent {
                 key: key.clone(),

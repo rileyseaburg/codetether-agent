@@ -9,7 +9,7 @@ impl codetether_tui_navigation::focus::Host for Navigation<'_> {
         super::super::agent_focus::agent_names(self.0)
     }
     fn active_agent(&self) -> Option<String> {
-        self.0.state.active_spawned_agent.clone()
+        self.0.state.agent_tree.active.clone()
     }
     fn swarm_names(&self) -> Vec<Option<String>> {
         self.0
@@ -28,7 +28,7 @@ impl codetether_tui_navigation::focus::Host for Navigation<'_> {
             .and_then(|task| task.agent_name.clone())
     }
     fn set_active_agent(&mut self, next: Option<String>) {
-        self.0.state.active_spawned_agent = next;
+        self.0.state.agent_tree.active = next;
     }
     fn select_swarm_agent(&mut self, index: usize) {
         self.0.state.swarm.selected_index = index;

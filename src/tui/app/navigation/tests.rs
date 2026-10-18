@@ -36,19 +36,25 @@ fn tab_cycles_agent_focus_through_main_and_back() {
         model_id: Some("test/model".to_string()),
         is_processing: false,
     };
-    app.state.spawned_agents.insert("alpha".into(), mk("alpha"));
-    app.state.spawned_agents.insert("beta".into(), mk("beta"));
+    app.state
+        .agent_tree
+        .spawned
+        .insert("alpha".into(), mk("alpha"));
+    app.state
+        .agent_tree
+        .spawned
+        .insert("beta".into(), mk("beta"));
 
     // None -> first agent
     handle_tab(&mut app);
-    let first = app.state.active_spawned_agent.clone().unwrap();
+    let first = app.state.agent_tree.active.clone().unwrap();
     assert!(first == "alpha" || first == "beta");
 
     // -> second agent
     handle_tab(&mut app);
-    assert!(app.state.active_spawned_agent.is_some());
+    assert!(app.state.agent_tree.active.is_some());
 
     // -> back to main chat (None)
     handle_tab(&mut app);
-    assert_eq!(app.state.active_spawned_agent, None);
+    assert_eq!(app.state.agent_tree.active, None);
 }

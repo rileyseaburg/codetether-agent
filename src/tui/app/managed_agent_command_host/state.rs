@@ -6,19 +6,19 @@ impl State for Native<'_> {
         self.app.state.status = text;
     }
     fn active(&self) -> Option<&str> {
-        self.app.state.active_spawned_agent.as_deref()
+        self.app.state.agent_tree.active.as_deref()
     }
     fn set_active(&mut self, name: Option<String>) {
-        self.app.state.active_spawned_agent = name;
+        self.app.state.agent_tree.active = name;
     }
     fn legacy_exists(&self, name: &str) -> bool {
-        self.app.state.spawned_agents.contains_key(name)
+        self.app.state.agent_tree.spawned.contains_key(name)
     }
     fn remove_legacy(&mut self, name: &str) -> bool {
-        self.app.state.spawned_agents.remove(name).is_some()
+        self.app.state.agent_tree.spawned.remove(name).is_some()
     }
     fn clear_legacy_output(&mut self, name: &str) {
-        self.app.state.streaming_agent_texts.remove(name);
+        self.app.state.agent_tree.streaming_texts.remove(name);
     }
     fn swarm_names(&self) -> Vec<Option<String>> {
         self.app

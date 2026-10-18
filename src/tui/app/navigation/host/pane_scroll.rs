@@ -28,7 +28,7 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.swarm.detail_scroll_down(*value);
         }
         Action::SubagentScroll(value) => {
-            app.state.subagent_detail_scroll = *value;
+            app.state.agent_tree.detail_scroll = *value;
         }
         _ => return false,
     }

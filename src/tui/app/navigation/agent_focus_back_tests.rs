@@ -19,18 +19,24 @@ fn mk(name: &str) -> SpawnedAgent {
 #[test]
 fn shift_tab_cycles_agent_focus_backward() {
     let mut app = App::default();
-    app.state.spawned_agents.insert("alpha".into(), mk("alpha"));
-    app.state.spawned_agents.insert("beta".into(), mk("beta"));
+    app.state
+        .agent_tree
+        .spawned
+        .insert("alpha".into(), mk("alpha"));
+    app.state
+        .agent_tree
+        .spawned
+        .insert("beta".into(), mk("beta"));
 
     // None -> last agent (sorted: beta)
     cycle_agent_focus_back(&mut app);
-    assert_eq!(app.state.active_spawned_agent.as_deref(), Some("beta"));
+    assert_eq!(app.state.agent_tree.active.as_deref(), Some("beta"));
 
     // -> previous agent (alpha)
     cycle_agent_focus_back(&mut app);
-    assert_eq!(app.state.active_spawned_agent.as_deref(), Some("alpha"));
+    assert_eq!(app.state.agent_tree.active.as_deref(), Some("alpha"));
 
     // -> back to main chat (None)
     cycle_agent_focus_back(&mut app);
-    assert_eq!(app.state.active_spawned_agent, None);
+    assert_eq!(app.state.agent_tree.active, None);
 }

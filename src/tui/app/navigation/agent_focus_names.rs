@@ -14,7 +14,7 @@ pub(super) fn agent_names(app: &App) -> Vec<String> {
 }
 fn assemble(app: &App, tools: Vec<AgentSnapshot>) -> Vec<String> {
     codetether_tui_navigation::focus::assemble(
-        crate::tui::app::state::agent_tree::dfs_order(&app.state.spawned_agents)
+        crate::tui::app::state::agent_tree::dfs_order(&app.state.agent_tree.spawned)
             .into_iter()
             .map(|node| node.name)
             .collect(),

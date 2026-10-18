@@ -43,7 +43,7 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.composer.mode = crate::tui::models::InputMode::Normal;
         }
         Action::SubagentDetail(value) => {
-            app.state.subagent_detail_mode = *value;
+            app.state.agent_tree.detail_mode = *value;
         }
         _ => return false,
     }

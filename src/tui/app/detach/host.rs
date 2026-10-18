@@ -12,13 +12,13 @@ impl codetether_agent_command::detach::Host for App {
         self.state.processing
     }
     fn contains_name(&self, name: &str) -> bool {
-        self.state.spawned_agents.contains_key(name)
+        self.state.agent_tree.spawned.contains_key(name)
     }
     fn current_model_id(&self) -> Option<String> {
         super::super::spawn_agent::model::current_model_id(self)
     }
     fn register(&mut self, name: String, agent: SpawnedAgent) {
-        self.state.spawned_agents.insert(name, agent);
+        self.state.agent_tree.spawned.insert(name, agent);
     }
     fn resume_window(&self) -> usize {
         super::super::resume_window::session_resume_window()

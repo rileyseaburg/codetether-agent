@@ -21,8 +21,8 @@ impl Host for Navigation<'_> {
             bus_filter: app.state.bus_log.filter_input_mode,
             bus_detail: app.state.bus_log.detail_mode,
             slash_navigable: app.state.slash_suggestions_navigable(),
-            subagent_detail: app.state.subagent_detail_mode,
-            subagent_scroll: app.state.subagent_detail_scroll,
+            subagent_detail: app.state.agent_tree.detail_mode,
+            subagent_scroll: app.state.agent_tree.detail_scroll,
             protocol_scroll: app.state.protocol_scroll,
         }
     }
