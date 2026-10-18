@@ -4,6 +4,7 @@
 //! preserving mention priority, filter status and chat input-mode transitions.
 mod action;
 mod backspace;
+mod binding;
 mod character;
 mod host;
 pub use action::Action;

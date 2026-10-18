@@ -5,10 +5,8 @@
 
 pub(crate) mod approval_command;
 mod approval_feedback;
-mod backspace;
 use codetether_git_view as base_branch;
 mod bus;
-mod char_input;
 mod chat_helpers;
 mod chat_spawn;
 mod chat_steer;

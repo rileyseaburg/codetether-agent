@@ -27584,3 +27584,18 @@ for 725 roots and 617 crates. No dependency or lock changes were needed;
 unrelated files are unchanged. Evidence: artifacts/consolidation-redraw-relay/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
+
+### Character and backspace frontend bindings
+
+Moved text-state access, buffer/filter/symbol effects and character/backspace
+entry points into codetether-tui-navigation::text::binding modules. Removed five
+root implementation files and pointed the existing public input exports at the
+crate-provided declarations. The public names and async entry signatures remain.
+
+All thirteen expanded function bodies match after callback and local host-name
+qualification. Public export items match after formatter ordering. Declaration,
+module/dependency, native production-scope, standalone formatting, file-limit
+and whitespace checks pass for 725 roots and 617 crates. Tests and unrelated
+files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-text-input/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
