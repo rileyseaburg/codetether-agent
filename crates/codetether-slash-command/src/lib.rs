@@ -48,3 +48,5 @@ pub mod utility;
 mod application_binding;
 
 mod leading_binding;
+
+mod simple_binding;

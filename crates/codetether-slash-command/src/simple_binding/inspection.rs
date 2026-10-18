@@ -1,21 +1,28 @@
-//! inspection command execution bindings.
-use super::*;
-pub(super) async fn run(host: &mut Dispatch<'_>, kind: SimpleCommand) {
+//! inspection actions for simple frontend commands.
+/// Supporting implementation for [crate::declare_simple_commands].
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __simple_inspection {
+    ($dispatch:ty, $mode:path, $audit:path, $git:path, $notice:path) => {
+        mod inspection {
+            use $crate::pipeline::SimpleCommand;
+            use $mode as ViewMode;
+pub(super) async fn run(host: &mut $dispatch, kind: SimpleCommand) {
     let app = &mut *host.app;
     match kind {
         SimpleCommand::Audit => {
-            crate::tui::audit_view::refresh_audit_snapshot(&mut app.state.audit).await;
+            $audit(&mut app.state.audit).await;
             app.state.set_view_mode(ViewMode::Audit);
             app.state.status = "Audit — subagent activity".to_string();
         }
         SimpleCommand::Git => {
             let cwd = std::path::PathBuf::from(&app.state.cwd_display);
-            app.state.git = crate::tui::git_capture::capture_git_state(&cwd);
+            app.state.git = $git(&cwd);
             app.state.set_view_mode(ViewMode::Git);
             app.state.status = "Git status".to_string();
         }
         SimpleCommand::Plugin => {
-            push_system_message(app, "Usage: /plugin <install|list|remove> <name>");
+            $notice(app, "Usage: /plugin <install|list|remove> <name>");
         }
         SimpleCommand::Keys => {
             app.state.status =
@@ -24,4 +31,8 @@ pub(super) async fn run(host: &mut Dispatch<'_>, kind: SimpleCommand) {
         }
         _ => unreachable!("command routed to the wrong native adapter"),
     }
+}
+
+        }
+    };
 }

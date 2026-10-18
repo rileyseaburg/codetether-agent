@@ -27234,3 +27234,19 @@ formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
 No dependency/lock changes were needed; unrelated working files are unchanged.
 Evidence: artifacts/consolidation-leading-commands/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Simple slash-command stage modules and recall view
+
+Moved the simple-command router and its panel, session, view, inspection and
+memory stages into matching modules in codetether-slash-command. Moved the
+recall message/status view into codetether-cognition-core. Removed seven root
+implementation files; root declarations select the existing frontend types and
+callbacks. Removed obsolete imports after checking remaining nested-stage uses.
+
+All nine expanded function bodies match their originals after callback-path
+substitution and expression-only match-arm normalization. Tests are unchanged.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 725 roots and 617 crates. No dependency
+or lock changes were needed; unrelated working files remain unchanged. Evidence:
+artifacts/consolidation-simple-commands/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

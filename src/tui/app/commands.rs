@@ -15,12 +15,9 @@ use open_editor::open_editor;
 #[path = "commands/dispatch_host/mod.rs"]
 mod dispatch_host;
 
-use crate::tui::app::session_sync::{refresh_sessions, return_to_chat};
 use crate::tui::app::spawn_agent::handle_spawn_command;
 use crate::tui::app::state::App;
-use crate::tui::app::{codex_sessions, model_picker::open_model_picker};
 use crate::tui::chat::message::{ChatMessage, MessageType};
-use crate::tui::models::ViewMode;
 
 pub use crate::tui::app::auto_apply::{
     auto_apply_status_message, set_auto_apply_edits, toggle_auto_apply_edits,

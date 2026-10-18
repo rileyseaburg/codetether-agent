@@ -54,3 +54,5 @@ pub mod tool_routing;
 
 /// Shared cognition state and loop-handle ownership.
 pub mod runtime;
+
+mod recall_binding;
