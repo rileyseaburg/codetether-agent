@@ -21524,3 +21524,22 @@ and whitespace checks passed. No dependency or lockfile changes. Evidence:
 `artifacts/consolidation-routing-boundary/`. No Cargo, rustc, or Python commands
 ran; compilation and relocated tests remain unverified. Full consolidation is
 still active.
+
+### Shared worker registration assembly
+
+Moved worker model-discovery waiting, workspace resolution, host metadata,
+registration payload assembly, and signed submission into
+`codetether-a2a-http::worker::register_worker`. Native registration now supplies
+its existing provider-model future and connection arguments. The model future
+is awaited first, preserving empty-model fallback on discovery failure, followed
+by workspace resolution and payload construction.
+
+Static body comparison preserves payload fields, capabilities/interfaces,
+metadata functions, workspace lookup, submission arguments and operation order.
+Verified the native workspace and metadata aliases point to those same shared
+implementations. Source/dependency graphs across 698 roots and 564 crates,
+direct rustfmt, native file-size limits, and whitespace checks passed. No
+dependency or lockfile changes. Evidence:
+`artifacts/consolidation-worker-registration/`. No Cargo, rustc, or Python
+commands ran; compilation and live registration remain unverified. Full
+workspace consolidation remains active.

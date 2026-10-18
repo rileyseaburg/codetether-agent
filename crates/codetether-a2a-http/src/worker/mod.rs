@@ -34,6 +34,8 @@ mod claim_request;
 pub use claim_request::build_claim_request;
 mod registration;
 pub use registration::register_worker_payload;
+mod register;
+pub use register::register_worker;
 mod release_request;
 pub use release_request::build_release_request;
 
