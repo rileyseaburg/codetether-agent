@@ -7548,6 +7548,7 @@ dependencies = [
  "codetether-rlm",
  "codetether-rlm-background",
  "codetether-summary-quality",
+ "tracing",
  "uuid",
 ]
 

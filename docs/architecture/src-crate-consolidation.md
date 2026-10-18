@@ -17162,3 +17162,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-task-cli/`.
 - No Cargo, rustc, Python, network requests, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Move compaction quality fallback into summary producer
+
+- Moved the unreferenced `src/session/helper/compression_gate.rs` helpers into
+  `codetether-summary-producer::compaction`, split into result handling and
+  summary quality gating.
+- Replaced the application-global usage recorder with a caller-supplied
+  callback at the same point in the success path. Retained logs, token casts,
+  quality gate, and deterministic chunk fallback on rejected output or errors.
+- Verification: complete function-body comparisons, unchanged quality gate and
+  native caller graph, module/dependency graphs, direct rustfmt, file limits
+  and whitespace. Added the tracing dependency for the existing log calls;
+  staged only that dependency from the committed lockfile baseline.
+- Evidence: `artifacts/consolidation-compaction-gate/`. No Cargo, rustc, Python,
+  Rust compilation or Rust tests ran. Full consolidation remains incomplete.

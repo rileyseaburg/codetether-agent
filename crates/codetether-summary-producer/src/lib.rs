@@ -10,3 +10,6 @@ pub use call::produce_summary;
 pub use observability::SummaryObservability;
 
 mod request;
+
+/// Quality-gated compaction results and deterministic fallback.
+pub mod compaction;
