@@ -29,3 +29,6 @@ pub mod effective;
 
 /// Concrete execution choice with keep-last recovery precedence.
 pub mod dispatch;
+
+/// Evaluation-based recommendations for the default derivation strategy.
+pub mod recommendation;

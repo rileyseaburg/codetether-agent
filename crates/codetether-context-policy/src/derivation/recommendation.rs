@@ -1,10 +1,10 @@
-//! Phase B step 24 — default-flip recommendation.
+//! Evaluation-based default derivation policy recommendations.
 //!
 //! Picks the policy that Pareto-dominates [`DerivePolicy::Legacy`] on a
 //! recorded fixture sweep. Returns `None` when no alternative dominates.
 
-use super::derive_policy::DerivePolicy;
-use super::eval::{PolicyRunResult, pareto_frontier};
+use super::DerivePolicy;
+use codetether_policy_eval::{PolicyRunResult, pareto_frontier};
 
 const LEGACY: &str = "legacy";
 
@@ -12,6 +12,17 @@ const LEGACY: &str = "legacy";
 ///
 /// Returns the first non-legacy policy on the Pareto frontier that strictly
 /// dominates the legacy entry. `None` keeps the existing default.
+///
+/// # Arguments
+/// * `results` - Recorded policy samples to compare against the legacy entry.
+/// # Returns
+/// A reset or incremental strategy with its zero-sentinel budget, if a supported
+/// non-legacy frontier entry strictly dominates the legacy sample.
+/// # Examples
+/// ```
+/// use codetether_context_policy::derivation::recommendation::recommend_default;
+/// assert!(recommend_default(&[]).is_none());
+/// ```
 pub fn recommend_default(results: &[PolicyRunResult]) -> Option<DerivePolicy> {
     let legacy = results.iter().find(|r| r.policy == LEGACY)?;
     let frontier = pareto_frontier(results);
@@ -28,32 +39,5 @@ pub fn recommend_default(results: &[PolicyRunResult]) -> Option<DerivePolicy> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn r(policy: &'static str, tokens: usize, faults: usize) -> PolicyRunResult {
-        PolicyRunResult {
-            policy,
-            kept_messages: 0,
-            context_tokens: tokens,
-            fault_count: faults,
-            oracle_gap: 0,
-            reuse_rate: 0.5,
-        }
-    }
-
-    #[test]
-    fn flips_when_reset_dominates() {
-        let res = vec![r("legacy", 24_000, 12), r("reset", 6_000, 4)];
-        assert!(matches!(
-            recommend_default(&res),
-            Some(DerivePolicy::Reset { .. })
-        ));
-    }
-
-    #[test]
-    fn keeps_legacy_when_no_dominator() {
-        let res = vec![r("legacy", 24_000, 12), r("reset", 30_000, 4)];
-        assert!(recommend_default(&res).is_none());
-    }
-}
+#[path = "recommendation_tests.rs"]
+mod tests;

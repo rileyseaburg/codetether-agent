@@ -2509,6 +2509,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "codetether-policy-eval",
  "codetether-provider-core",
  "codetether-util",
  "serde",

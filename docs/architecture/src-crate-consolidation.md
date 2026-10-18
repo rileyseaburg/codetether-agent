@@ -17111,3 +17111,20 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-oracle-cleanup/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Move default-policy recommendation into context policy
+
+- Moved the previously unreferenced `src/session/eval_default_flip.rs` helper
+  into `codetether-context-policy::derivation::recommendation`, with its two
+  original tests in a dedicated test module.
+- Recommendation belongs beside the derivation strategy type. Added the
+  dependency on the existing pure `codetether-policy-eval` comparator crate.
+  Native call sites and the actual default strategy remain unchanged.
+- Verified the full recommendation function, legacy constant and both original
+  test bodies; preserved first-frontier-winner behavior and zero budget sentinels.
+  Checked module/dependency graphs, direct rustfmt, file limits and whitespace.
+- Staged only the new context-policy dependency in Cargo.lock from the committed
+  baseline, retaining unrelated working-copy changes. Evidence:
+  `artifacts/consolidation-policy-recommendation/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
