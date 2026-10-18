@@ -1,5 +1,5 @@
-use super::{tool_failure_detail, tool_success_detail};
-use crate::tool::ToolResult;
+use crate::{tool_failure_detail, tool_success_detail};
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
 #[test]

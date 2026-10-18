@@ -1,0 +1,16 @@
+[package]
+name = "codetether-tool-reporting"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Tool lifecycle events, metadata events and audit details"
+
+[dependencies]
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+hex = "0.4"
+serde_json = "1"
+sha2 = "0.11"
+tokio = { version = "1", features = ["sync"] }

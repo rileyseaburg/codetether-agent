@@ -9879,3 +9879,19 @@ and whitespace checks passed; the largest new module has 30 code lines.
 Evidence is in `artifacts/consolidation-eslint-validation/`. Compilation and
 runtime tests were not run; no validators were executed. No Cargo, rustc or
 Python ran. Full workspace consolidation remains active.
+
+### Dedicated tool-reporting crate
+
+Moved tool start/completion events, structured metadata events and bounded audit
+details into `crates/codetether-tool-reporting`. Six modules separate event
+emission, metadata, audit formatting, hashes/previews and regression cases.
+Generic session events preserve the native payload contract; native helper
+modules now re-export the shared functions.
+
+Twelve static comparisons cover event payloads, empty-metadata handling, sorted
+metadata keys, full-output hashes, bounded previews, original tests and unchanged
+callers. Module/dependency graphs, file budgets and whitespace checks passed;
+the largest crate file has 29 code lines. Two original audit tests moved without
+execution. Evidence is in `artifacts/consolidation-tool-reporting/`. Compilation
+and runtime tests were not run. No Cargo, rustc, Python or tool execution ran.
+Full workspace consolidation remains active.

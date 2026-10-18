@@ -157,6 +157,7 @@ members = [
     "crates/codetether-provider-policy",
     "crates/codetether-build-policy",
     "crates/codetether-validation",
+    "crates/codetether-tool-reporting",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
     "crates/codetether-codex-discovery",
@@ -465,6 +466,7 @@ codetether-codex-transcript = { path = "crates/codetether-codex-transcript", ver
 codetether-codex-discovery = { path = "crates/codetether-codex-discovery", version = "0.1.0" }
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
+codetether-tool-reporting = { path = "crates/codetether-tool-reporting", version = "0.1.0" }
 codetether-validation = { path = "crates/codetether-validation", version = "0.1.0" }
 codetether-build-policy = { path = "crates/codetether-build-policy", version = "0.1.0" }
 codetether-provider-policy = { path = "crates/codetether-provider-policy", version = "0.1.0" }
