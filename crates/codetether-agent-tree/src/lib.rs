@@ -27,3 +27,11 @@ pub use spawned::SpawnedAgent;
 
 /// Application-local typed helper declarations.
 pub mod ui_bindings;
+
+mod application_binding;
+
+/// Dependency used by application tree declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+}

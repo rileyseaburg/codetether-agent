@@ -26662,3 +26662,17 @@ file-limit and whitespace checks pass. Module scans cover 730 roots and 617 crat
 Unrelated working files remain untouched; no manifest/lock changes were required.
 Evidence: artifacts/consolidation-registry-binding/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Agent-tree application projection
+
+Moved live-entry field projection, registry snapshot capture and the three typed
+query entry points into codetether-agent-tree::declare_application_tree. Deleted
+the root agent_tree/host.rs adapter; the root module supplies its existing entry
+type and snapshot function and retains its integration tests. Seven expanded
+function bodies match the originals, including the unfiltered snapshot request.
+Entry types and query visibility are unchanged; the test sources are byte-for-byte
+unchanged. Module/dependency and declaration checks pass for 730 roots and 617
+crates; native production scope, formatting, file limits and whitespace checks
+pass. No manifest/lock changes or unrelated working-file changes were needed.
+Evidence: artifacts/consolidation-tree-binding/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.
