@@ -2,9 +2,6 @@
 use crate::session::Session;
 use anyhow::Result;
 pub(super) use codetether_prepared_context::Prepared;
-pub(super) async fn read(session: &Session) -> Option<Prepared> {
-    read_id(&session.id).await
-}
 pub(super) async fn read_id(session_id: &str) -> Option<Prepared> {
     let path = path(session_id).ok()?;
     codetether_prepared_context::read(&path).await

@@ -1,0 +1,18 @@
+[package]
+name = "codetether-proactive-context"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Proactive context registration, runtime choice and prepared-index selection"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-prepared-context = { path = "../codetether-prepared-context", version = "0.1.0" }
+codetether-proactive-runtime = { path = "../codetether-proactive-runtime", version = "0.1.0" }
+codetether-proactive-worker = { path = "../codetether-proactive-worker", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
+serde_json = "1"

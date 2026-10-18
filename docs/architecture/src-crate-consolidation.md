@@ -9445,3 +9445,19 @@ file budgets and whitespace checks passed; the largest crate file has 42
 code lines. Evidence is in `artifacts/consolidation-proactive-worker/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or
 worker/model calls ran. Full workspace consolidation remains active.
+
+### Dedicated proactive-context orchestration crate
+
+Moved runtime selection, registration, scheduling, removal ordering and prepared
+index selection into `crates/codetether-proactive-context`. Seven modules separate
+session inputs, host storage, lifecycle, runtime selection and projection/sidecar
+lookup. Native adapters expose session fields, the worker launcher and storage;
+obsolete native registry, freshness, type and scheduling facades were removed.
+
+Twenty-six static comparisons cover model precedence, lifecycle ordering,
+projection priority, sidecar freshness, unchanged sidecar storage and native
+bindings. Module/dependency graphs, file budgets and whitespace checks passed;
+the largest crate file has 24 code lines. Evidence is in
+`artifacts/consolidation-proactive-context/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python or worker/model calls ran. Full workspace
+consolidation remains active.

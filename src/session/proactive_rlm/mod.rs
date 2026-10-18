@@ -1,38 +1,19 @@
-//! Continuous anticipatory RLM preparation for session context.
-
-mod freshness;
-mod merge;
-mod registry;
-mod registry_status;
-mod runtime;
-mod schedule;
+//! Native source and storage bindings for shared proactive context.
 mod store;
-mod types;
+mod view;
 mod worker;
-
-use crate::provider::Provider;
-use crate::session::Session;
+use crate::{provider::Provider, session::Session};
 use std::sync::Arc;
-
-pub(crate) use merge::prepared_index;
-
+pub(crate) use worker::prepared_index;
 pub(crate) fn register(session: &Session, provider: Arc<dyn Provider>, model: &str) {
-    registry::register(
-        session.id.clone(),
-        runtime::resolve(session, provider, model),
-    );
+    codetether_proactive_context::register(session, provider, model);
 }
-
 pub(crate) fn prepare(session: &Session, provider: Arc<dyn Provider>, model: &str) {
-    register(session, provider, model);
-    schedule(session);
+    codetether_proactive_context::prepare(session, provider, model, worker::spawn);
 }
-
 pub(crate) fn schedule(session: &Session) {
-    schedule::run(session);
+    codetether_proactive_context::schedule(session, worker::spawn);
 }
-
 pub(crate) async fn remove(session_id: &str) {
-    registry_status::remove(session_id);
-    store::remove(session_id).await;
+    worker::remove(session_id).await;
 }
