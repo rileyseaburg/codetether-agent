@@ -1,7 +1,5 @@
-//! Tests for bounded proactive hierarchical range planning.
-
-use super::ranges::planned;
-use crate::session::index::Granularity;
+use crate::planned;
+use codetether_context_policy::summary_index::Granularity;
 
 #[test]
 fn retains_active_tail_and_prepares_hierarchy() {
@@ -22,14 +20,4 @@ fn retains_active_tail_and_prepares_hierarchy() {
             .iter()
             .any(|plan| plan.granularity == Granularity::Session)
     );
-}
-
-#[test]
-fn long_sessions_keep_plans_bounded() {
-    assert!(planned(10_000).len() <= 97);
-}
-
-#[test]
-fn short_sessions_do_not_schedule_noise() {
-    assert!(planned(11).is_empty());
 }

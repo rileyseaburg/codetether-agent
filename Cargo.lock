@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-proactive-planning",
  "codetether-prepared-context",
  "codetether-context-dispatch",
  "codetether-incremental-derivation",
@@ -3530,6 +3531,13 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-proactive-planning"
+version = "0.1.0"
+dependencies = [
+ "codetether-context-policy",
 ]
 
 [[package]]

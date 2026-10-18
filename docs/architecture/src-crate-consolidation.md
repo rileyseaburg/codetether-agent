@@ -9384,3 +9384,17 @@ largest crate file has 27 code lines. Evidence is in
 `artifacts/consolidation-prepared-context/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or model calls ran. Full workspace
 consolidation remains active.
+
+### Dedicated proactive-planning crate
+
+Moved bounded multi-scale summary planning and latest-generation coalescing
+into `crates/codetether-proactive-planning`. Thirteen modules separate range
+plans, aligned windows, slot state/defaults/lifecycle and five existing tests.
+Native planning and slot modules only re-export the shared implementation.
+
+Sixteen static comparisons cover constants, range selection, slot operations
+and test bodies. Module/dependency graphs, file budgets and whitespace
+checks passed; the largest crate file has 28 code lines. Evidence is in
+`artifacts/consolidation-proactive-planning/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or model calls ran. Full workspace
+consolidation remains active.

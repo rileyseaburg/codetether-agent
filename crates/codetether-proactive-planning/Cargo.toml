@@ -1,0 +1,10 @@
+[package]
+name = "codetether-proactive-planning"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded proactive summary planning and generation coalescing"
+
+[dependencies]
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }

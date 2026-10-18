@@ -7,15 +7,11 @@ mod freshness;
 mod inherit;
 mod merge;
 mod ranges;
-#[cfg(test)]
-mod ranges_tests;
 mod registry;
 mod registry_status;
 mod runtime;
 mod schedule;
 mod slot;
-#[cfg(test)]
-mod slot_tests;
 mod store;
 mod summarize;
 mod types;
