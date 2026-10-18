@@ -22031,3 +22031,19 @@ file-size limits and whitespace checks passed. Only the owning crate's new
 search dependency edge is staged in the lockfile. Evidence:
 `artifacts/consolidation-search-ownership/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation stays active.
+
+### Composer-owned cursor transitions
+
+Moved eight cursor movement/visibility updates from native TUI `AppState`
+methods onto the shared borrowed `Composer`, alongside its existing edit,
+completion and history operations. Native methods retain their signatures and
+delegate through the existing disjoint-field composer view. Read-only character
+counting and character-to-byte indexing helpers are unchanged.
+
+Static comparisons preserve all calculations and field assignments, replacing
+native fields with their borrowed composer counterparts. Module/dependency
+checks cover 695 roots and 567 crates without missing modules or cycles.
+Direct rustfmt, native file-size limits and whitespace checks passed. No
+manifest or lockfile changes. Evidence:
+`artifacts/consolidation-composer-cursor/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

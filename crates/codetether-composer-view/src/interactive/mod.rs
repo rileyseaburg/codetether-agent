@@ -2,6 +2,7 @@
 //!
 //! Borrow native fields through [Composer] to edit input while keeping history,
 //! completion, input mode and cursor updates in their existing order.
+mod cursor;
 mod edit;
 mod history;
 mod replace;
