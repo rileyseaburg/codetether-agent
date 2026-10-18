@@ -1,12 +1,12 @@
 //! Sidecar freshness tests for proactive RLM preparation.
 
-use super::{fingerprint, store};
-use crate::provider::{ContentPart, Message, Role};
-use crate::session::index::SummaryIndex;
+use crate::{Prepared, decode, fingerprint};
+use codetether_context_policy::summary_index::SummaryIndex;
+use codetether_provider_core::{ContentPart, Message, Role};
 
 #[test]
 fn schema_decoder_rejects_unknown_versions() {
-    let bytes = serde_json::to_vec(&store::Prepared {
+    let bytes = serde_json::to_vec(&Prepared {
         schema_version: 99,
         message_count: 0,
         fingerprint: 0,
@@ -14,17 +14,14 @@ fn schema_decoder_rejects_unknown_versions() {
         index: SummaryIndex::new(),
     })
     .unwrap();
-    assert!(store::decode(&bytes).is_none());
+    assert!(decode(&bytes).is_none());
 }
 
 #[test]
 fn transcript_fingerprint_changes_with_context() {
     let first = vec![message("one")];
     let second = vec![message("two")];
-    assert_ne!(
-        fingerprint::messages(&first),
-        fingerprint::messages(&second)
-    );
+    assert_ne!(fingerprint(&first), fingerprint(&second));
 }
 
 fn message(text: &str) -> Message {

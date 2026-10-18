@@ -9368,3 +9368,19 @@ graphs, file budgets and whitespace checks passed; the largest crate file has
 35 code lines. Evidence is in `artifacts/consolidation-context-dispatch/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or model
 calls ran. Full workspace consolidation remains active.
+
+### Dedicated prepared-context persistence crate
+
+Moved prepared-index serialization, schema decoding, sidecar I/O, transcript
+fingerprints, append-compatible freshness checks and global-to-window range
+projection into `crates/codetether-prepared-context`. Ten modules include
+four existing schema/freshness tests. Native adapters retain session path
+validation and indexed-projection queries.
+
+Thirteen static comparisons cover the schema, fingerprints, decoding, atomic
+write order, window mapping, path validation and moved test bodies. Module
+and dependency graphs, file budgets and whitespace checks passed; the
+largest crate file has 27 code lines. Evidence is in
+`artifacts/consolidation-prepared-context/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or model calls ran. Full workspace
+consolidation remains active.

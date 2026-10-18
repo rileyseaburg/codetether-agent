@@ -129,6 +129,7 @@ members = [
     "crates/codetether-reset-derivation",
     "crates/codetether-incremental-derivation",
     "crates/codetether-context-dispatch",
+    "crates/codetether-prepared-context",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
     "crates/codetether-codex-discovery",
@@ -437,6 +438,7 @@ codetether-codex-transcript = { path = "crates/codetether-codex-transcript", ver
 codetether-codex-discovery = { path = "crates/codetether-codex-discovery", version = "0.1.0" }
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
+codetether-prepared-context = { path = "crates/codetether-prepared-context", version = "0.1.0" }
 codetether-context-dispatch = { path = "crates/codetether-context-dispatch", version = "0.1.0" }
 codetether-incremental-derivation = { path = "crates/codetether-incremental-derivation", version = "0.1.0" }
 codetether-reset-derivation = { path = "crates/codetether-reset-derivation", version = "0.1.0" }

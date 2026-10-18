@@ -1,20 +1,20 @@
 //! Tests for append-compatible proactive context freshness.
 
-use super::{fingerprint, freshness};
-use crate::provider::{ContentPart, Message, Role};
+use crate::{fingerprint, matches};
+use codetether_provider_core::{ContentPart, Message, Role};
 
 #[test]
 fn appended_messages_preserve_prepared_prefix() {
     let mut messages = vec![message("stable")];
-    let expected = fingerprint::messages(&messages);
+    let expected = fingerprint(&messages);
     messages.push(message("new"));
-    assert!(freshness::matches(&messages, 1, expected));
+    assert!(matches(&messages, 1, expected));
 }
 
 #[test]
 fn rewritten_prefix_invalidates_prepared_context() {
-    let expected = fingerprint::messages(&[message("old")]);
-    assert!(!freshness::matches(&[message("changed")], 1, expected));
+    let expected = fingerprint(&[message("old")]);
+    assert!(!matches(&[message("changed")], 1, expected));
 }
 
 fn message(text: &str) -> Message {

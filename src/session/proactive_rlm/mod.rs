@@ -4,8 +4,6 @@ mod capacity;
 mod commit;
 mod fingerprint;
 mod freshness;
-#[cfg(test)]
-mod freshness_tests;
 mod inherit;
 mod merge;
 mod ranges;
@@ -19,8 +17,6 @@ mod slot;
 #[cfg(test)]
 mod slot_tests;
 mod store;
-#[cfg(test)]
-mod store_tests;
 mod summarize;
 mod types;
 mod worker;
