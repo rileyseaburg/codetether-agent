@@ -27,3 +27,5 @@ pub mod application_card;
 
 /// JSON event payloads for A2A task observers.
 pub mod observer_payloads;
+/// Transport-independent peer startup configuration.
+pub mod peer_options;

@@ -14,7 +14,7 @@ impl SpawnOptions {
     /// # Examples
     ///
     /// ```rust
-    /// use codetether_a2a_http::peer_startup::SpawnOptions;
+    /// use codetether_a2a_core::peer_options::SpawnOptions;
     /// let options = SpawnOptions::from_spawn_args(SpawnOptions::auto());
     /// assert!(options.mdns);
     /// ```

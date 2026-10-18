@@ -7890,6 +7890,7 @@ name = "codetether-cli-options"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "codetether-a2a-core",
  "codetether-a2a-worker-core",
  "codetether-config",
 ]

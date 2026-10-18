@@ -22553,3 +22553,26 @@ is staged in the lockfile; the unrelated working lockfile remains byte-identical
 Evidence: `artifacts/consolidation-task-provider-factory/`.
 No provider requests, Cargo, rustc or Python ran; compilation and runtime tests
 remain unverified. Full consolidation is active.
+
+### Peer startup options and CLI conversion owned by their crates
+
+Moved SpawnOptions, automatic defaults and the generic from_spawn_args helper
+from the HTTP implementation into codetether-a2a-core::peer_options. HTTP keeps
+its existing public re-export, so foreground/background startup uses the same
+type through the same public path. Moved From<&SpawnArgs> into the CLI options
+crate, which owns SpawnArgs; the prior native implementation named two external
+types and violated Rust's trait ownership rule. The native options adapter and
+module declaration were removed.
+
+Static comparisons preserve every option field, default and argument mapping.
+Native foreground startup, CLI schema and worker startup sources are unchanged.
+The pre-existing edits in src/a2a/spawn.rs remain intact: only removal of the
+obsolete module declaration was staged from that file's HEAD version.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the CLI options crate's A2A core dependency edge is staged in the lockfile;
+the unrelated working lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-peer-options/` (initial import-order comparison failure
+retained alongside the final formatted-source comparison).
+No peer startup, Cargo, rustc or Python ran; compilation and runtime tests
+remain unverified. Full consolidation is active.

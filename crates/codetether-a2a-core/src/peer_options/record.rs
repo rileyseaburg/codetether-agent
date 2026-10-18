@@ -10,7 +10,7 @@
 /// # Examples
 ///
 /// ```rust
-/// use codetether_a2a_http::peer_startup::SpawnOptions;
+/// use codetether_a2a_core::peer_options::SpawnOptions;
 /// let options = SpawnOptions::auto();
 /// assert_eq!(options.port, 0);
 /// ```

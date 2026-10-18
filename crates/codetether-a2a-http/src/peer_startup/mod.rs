@@ -21,13 +21,12 @@ use tokio::{sync::mpsc, task::JoinHandle};
 mod bind;
 mod hooks;
 mod local;
-mod options;
 mod prepare;
 mod record;
 mod seeds;
 use bind::Binding;
+pub use codetether_a2a_core::peer_options::SpawnOptions;
 pub use hooks::StartupHooks;
-pub use options::SpawnOptions;
 pub use prepare::prepare_a2a;
 pub use record::A2APreparation;
 

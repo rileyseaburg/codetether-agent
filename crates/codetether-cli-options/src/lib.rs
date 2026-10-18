@@ -23,6 +23,7 @@ mod ralph_args;
 mod rlm_args;
 mod serve_args;
 mod spawn_args;
+mod spawn_options;
 mod stats_args;
 mod swarm_args;
 mod worker_server_args;

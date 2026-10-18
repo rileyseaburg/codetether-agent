@@ -55,7 +55,6 @@ mod agent_card;
 pub use codetether_a2a_http::peer_handle::A2APeerHandle;
 mod background;
 mod command;
-mod options;
 pub use background::start_a2a_in_background;
 pub use codetether_a2a_discovery::naming::auto_agent_name;
 use codetether_a2a_http::peer_startup::A2APreparation;

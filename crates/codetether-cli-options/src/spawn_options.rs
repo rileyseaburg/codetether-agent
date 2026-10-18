@@ -1,5 +1,6 @@
 //! CLI argument adapter for shared peer startup options.
-use super::*;
+use crate::SpawnArgs;
+use codetether_a2a_core::peer_options::SpawnOptions;
 impl From<&SpawnArgs> for SpawnOptions {
     fn from(args: &SpawnArgs) -> Self {
         Self {
