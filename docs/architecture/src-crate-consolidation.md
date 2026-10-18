@@ -27810,3 +27810,18 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 617 crates. Unrelated files are unchanged; no manifest or lock changes were
 needed. Evidence: artifacts/consolidation-input-tail/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Frontend session-runtime execution binding
+
+Moved native prompt/worktree/notice operations and the typed execute wrapper
+into codetether-session-runtime::execute::frontend_binding. Removed both root
+execution implementation files. The root selects existing payload, notice,
+request and cancellation types and prompt/worktree callbacks.
+
+All seven expanded function bodies match after callback qualification.
+Cancellation and notice/worktree result sequencing remain in the unchanged
+shared executor. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Tests and unrelated files are unchanged; no manifest or lock changes
+were needed. Evidence: artifacts/consolidation-runtime-execution/. No Cargo,
+rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
