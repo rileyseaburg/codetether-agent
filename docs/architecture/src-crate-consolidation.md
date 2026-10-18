@@ -27840,3 +27840,18 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 617 crates. Unrelated files are unchanged; no manifest or lock changes were
 needed. Evidence: artifacts/consolidation-runtime-dispatch/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Runtime session identity and retained-view binding
+
+Moved frontend session identity and retained-view projection bodies into
+codetether-session-runtime::session_binding declarations. Root command/slot
+modules retain the same concrete type aliases and select their existing view
+and provenance types.
+
+Both expanded method bodies and all three root type aliases match their
+originals. Snapshot fields and principal derivation are unchanged. Declaration,
+module/dependency, native production-scope, standalone formatting, file-limit
+and whitespace checks pass for 725 roots and 617 crates. Tests and unrelated
+files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-runtime-session/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

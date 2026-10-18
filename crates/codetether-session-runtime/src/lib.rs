@@ -29,6 +29,7 @@ mod execution;
 mod inboxes;
 mod inboxes_drain;
 mod lease;
+mod session_binding;
 mod turn;
 mod turn_cancel;
 

@@ -6,8 +6,4 @@ use crate::{
 pub(crate) type PromptRequest =
     codetether_session_runtime::request::PromptRequest<Session, ProviderRegistry, ImageAttachment>;
 pub(crate) type SessionCommand = codetether_session_runtime::request::SessionCommand<PromptRequest>;
-impl codetether_session_runtime::request::SessionIdentity for Session {
-    fn session_id(&self) -> &str {
-        &self.id
-    }
-}
+codetether_session_runtime::impl_frontend_session_identity!(Session);
