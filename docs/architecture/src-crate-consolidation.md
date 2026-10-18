@@ -11979,3 +11979,19 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-status-timing/.
 - No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
   consolidation remains incomplete.
+
+### Remaining status badge and metric composition
+
+- Moved the worker-agent rail, completed-turn latency badge and elapsed-time heat
+  badge into codetether-chat-status. Native adapters provide names, processing
+  state and lazy timing lookups, preserving optional/idle behavior and colors.
+- Moved badge and metric sequence construction into that crate behind BadgeSource
+  and MetricSource. Native implementations supply the existing components in
+  the same call order, including live telemetry and sparkline sampling. Public
+  exports are grouped in an included exports module to keep the root focused.
+- Verification: 25 source comparisons passed for builders, sequence ordering,
+  every native provider delegation and lazy timing adapters. All 32 crate modules
+  contain at most 34 code lines. Full native chat-view reachability and shared
+  crate dependency checks, direct formatting, source limits and diff checks passed.
+- Evidence: artifacts/consolidation-status-assembly/. No Cargo, rustc, compilation,
+  tests or terminal rendering ran. Full consolidation remains incomplete.

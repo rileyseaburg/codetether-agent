@@ -6136,6 +6136,7 @@ name = "codetether-chat-status"
 version = "0.1.0"
 dependencies = [
  "codetether-chat-layout",
+ "codetether-theme",
  "codetether-tui-style",
  "ratatui",
 ]

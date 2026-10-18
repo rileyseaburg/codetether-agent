@@ -1,44 +1,55 @@
-//! Status-bar badge sequence assembly.
-
-use ratatui::text::Span;
-
+//! Native providers for ordered shared status badges.
+use super::{
+    auto_apply::auto_apply_spans, images_badge::pending_images_badge,
+    turn_badge::turn_latency_badge, yolo_badge::yolo_badge,
+};
 use crate::tui::app::state::App;
 use crate::tui::ui::{
     status_bar::{bus_status_badge_span, latency_badge_spans},
     trust_status::trust_status_badge_span,
 };
-
-use super::auto_apply::auto_apply_spans;
-use super::images_badge::pending_images_badge;
-use super::status_hints::session_label_spans;
-use super::turn_badge::turn_latency_badge;
-use super::yolo_badge::yolo_badge;
-
-/// Assemble session, bus, image, request, and turn latency badges.
-pub fn badge_spans(app: &App, session_label: &str) -> Vec<Span<'static>> {
-    let mut spans = session_label_spans(session_label);
-    spans.extend(auto_apply_spans(app));
-    push_optional_badge(&mut spans, yolo_badge(app));
-    push_optional_badge(&mut spans, trust_status_badge_span());
-    spans.push(Span::raw(" | "));
-    spans.push(bus_status_badge_span(app));
-    push_optional_badge(&mut spans, pending_images_badge(app));
-    if let Some(latency) = latency_badge_spans(app) {
-        spans.push(Span::raw(" | "));
-        spans.extend(latency);
+use ratatui::text::Span;
+impl codetether_chat_status::BadgeSource for App {
+    fn auto_apply_spans(&self) -> Vec<Span<'static>> {
+        auto_apply_spans(self)
     }
-    push_optional_badge(&mut spans, turn_latency_badge(app));
-    let rail = super::agent_rail::agent_rail_spans(app);
-    if !rail.is_empty() {
-        spans.push(Span::raw(" | "));
-        spans.extend(rail);
+    fn yolo_badge(&self) -> Option<Span<'static>> {
+        yolo_badge(self)
     }
-    spans
+    fn trust_status_badge_span(&self) -> Option<Span<'static>> {
+        trust_status_badge_span()
+    }
+    fn bus_status_badge_span(&self) -> Span<'static> {
+        bus_status_badge_span(self)
+    }
+    fn pending_images_badge(&self) -> Option<Span<'static>> {
+        pending_images_badge(self)
+    }
+    fn latency_badge_spans(&self) -> Option<Vec<Span<'static>>> {
+        latency_badge_spans(self)
+    }
+    fn turn_latency_badge(&self) -> Option<Span<'static>> {
+        turn_latency_badge(self)
+    }
+    fn agent_rail_spans(&self) -> Vec<Span<'static>> {
+        super::agent_rail::agent_rail_spans(self)
+    }
 }
-
-fn push_optional_badge(spans: &mut Vec<Span<'static>>, badge: Option<Span<'static>>) {
-    if let Some(badge) = badge {
-        spans.push(Span::raw(" | "));
-        spans.push(badge);
-    }
+/// Assemble badges from live application providers.
+///
+/// # Arguments
+/// * `app` - Application values supplied to the shared renderer.
+/// * `session_label` - Current session label.
+///
+/// # Returns
+/// Owned status display spans, or no badge when inactive.
+///
+/// # Examples
+/// ```no_run
+/// # fn example(app: &codetether_agent::tui::app::state::App) {
+/// let _display = codetether_agent::tui::ui::chat_view::badges::badge_spans(app, "session");
+/// # }
+/// ```
+pub fn badge_spans(app: &App, session_label: &str) -> Vec<Span<'static>> {
+    codetether_chat_status::badge_spans(app, session_label)
 }

@@ -1,29 +1,24 @@
-//! Chat-turn latency status badge.
-
-use ratatui::{
-    style::{Color, Modifier, Style},
-    text::Span,
-};
-
+//! Lazy turn-latency projection for the shared badge.
 use crate::tui::app::state::App;
-use crate::tui::ui::status_bar::format_duration_ms;
-
-/// Build the idle-only chat-turn latency badge.
+use ratatui::text::Span;
+/// Render the completed-turn latency badge while idle.
+///
+/// # Arguments
+/// * `app` - Application values supplied to the shared renderer.
+///
+/// # Returns
+/// Owned status display spans, or no badge when inactive.
+///
+/// # Examples
+/// ```no_run
+/// # fn example(app: &codetether_agent::tui::app::state::App) {
+/// let _display = codetether_agent::tui::ui::chat_view::turn_badge::turn_latency_badge(app);
+/// # }
+/// ```
 pub fn turn_latency_badge(app: &App) -> Option<Span<'static>> {
-    if app.state.processing {
-        return None;
-    }
-    let last = app.state.chat_latency.last_e2e_ms()?;
-    let avg = app
-        .state
-        .chat_latency
-        .avg_e2e_ms()
-        .map(format_duration_ms)
-        .unwrap_or_else(|| "—".to_string());
-    Some(Span::styled(
-        format!(" TURN {} (avg {})", format_duration_ms(last), avg),
-        Style::default()
-            .fg(Color::Magenta)
-            .add_modifier(Modifier::DIM),
-    ))
+    codetether_chat_status::turn_latency_badge(
+        app.state.processing,
+        || app.state.chat_latency.last_e2e_ms(),
+        || app.state.chat_latency.avg_e2e_ms(),
+    )
 }
