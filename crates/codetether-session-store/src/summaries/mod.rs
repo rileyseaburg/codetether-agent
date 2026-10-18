@@ -5,3 +5,5 @@ mod read;
 pub use import::import;
 pub use put::put;
 pub use read::read;
+mod snapshot;
+pub use snapshot::put_snapshot;

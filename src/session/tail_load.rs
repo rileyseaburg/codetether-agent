@@ -1,16 +1,12 @@
-//! Bounded-memory session load using the tail-cap deserializer.
+//! Bounded-memory session loading through the indexed store.
 //!
-//! `Session::load_tail` opens the session file with an incremental JSON
-//! reader and keeps only the last `window` messages/tool uses, so resuming
-//! a very large session does not allocate the full transcript.
+//! `Session::load_tail` restores only the requested message and tool-use
+//! windows. Legacy JSON is imported through the protected store migration path.
 
-use std::fs::File;
-use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
-use super::tail_seed::with_tail_cap;
 use super::types::Session;
 /// Result of loading a bounded native session window.
 pub type TailLoad = codetether_session_store::TailLoad<Session>;
@@ -30,21 +26,4 @@ impl Session {
     pub async fn load_tail_from_path(path: PathBuf, window: usize) -> Result<TailLoad> {
         super::store::load(&path, window).await
     }
-}
-
-fn parse_tail(path: &Path, window: usize) -> Result<TailLoad> {
-    let file_bytes = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
-    let file = File::open(path).with_context(|| format!("open session file {}", path.display()))?;
-    let reader = BufReader::with_capacity(64 * 1024, file);
-    let (parsed, dropped) = with_tail_cap(window, || {
-        serde_json::from_reader::<_, Session>(reader)
-            .with_context(|| format!("parse session file {}", path.display()))
-    });
-    let mut session = parsed?;
-    session.normalize_sidecars();
-    Ok(TailLoad {
-        session,
-        dropped,
-        file_bytes,
-    })
 }

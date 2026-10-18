@@ -23235,3 +23235,23 @@ were needed; unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-session-consumer/.
 No database operations, tests, Cargo, rustc or Python ran. Compilation and
 runtime behavior remain unverified. Full consolidation remains active.
+
+### Manual-summary checkpoint capture owned by session-store
+
+Moved source-checkpoint capture for manual summaries into
+codetether-session-store::summaries::put_snapshot. The native summary module
+now re-exports this operation. The captured checkpoint is still cloned before
+the unchanged revision-checked write operation; its SQLite writer reservation
+and conflict handling remain unchanged.
+
+Removed the unused native raw-JSON tail parser and unused summary-import
+adapter. Active tail-load methods still use protected migration and indexed
+restoration unchanged. The obsolete tail-seed import and misleading raw-reader
+module documentation were removed. Static comparisons preserve both public
+load method bodies, snapshot capture and the shared write path. Module and
+dependency scans cover 699 roots and 571 crates without missing modules or
+cycles. Direct rustfmt, file-size limits and whitespace checks passed. No
+manifest or lockfile changes were needed; unrelated working changes remain
+unchanged. Evidence: artifacts/consolidation-summary-snapshot/.
+No storage operations, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

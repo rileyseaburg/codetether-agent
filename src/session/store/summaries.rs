@@ -1,11 +1,3 @@
-//! Native checkpoint snapshot for shared manual-summary persistence.
-use crate::session::{
-    Session,
-    index::{SummaryNode, SummaryRange},
-};
-use anyhow::Result;
+//! Shared manual-summary persistence and source checkpoint capture.
+pub(crate) use codetether_session_store::summaries::put_snapshot as put;
 pub(super) use codetether_session_store::summaries::read;
-pub(crate) async fn put(session: &Session, range: SummaryRange, node: &SummaryNode) -> Result<()> {
-    let state = session.storage.0.lock().unwrap().clone();
-    codetether_session_store::summaries::put(state, range, node).await
-}

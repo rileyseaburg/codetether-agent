@@ -56,7 +56,6 @@ include!("storage_modules.rs");
 mod prompt_api;
 pub mod step_limit;
 mod tail_load;
-use codetether_tracked_vec::tail_seed;
 mod title;
 pub mod types;
 
