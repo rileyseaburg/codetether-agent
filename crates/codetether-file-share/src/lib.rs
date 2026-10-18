@@ -2,6 +2,7 @@
 //!
 //! build_file_share_snippet reads a file and returns text plus truncation and
 //! binary flags. display_path_for_workspace supplies a workspace-relative label.
+pub mod interactive;
 mod path;
 mod size;
 mod snippet;

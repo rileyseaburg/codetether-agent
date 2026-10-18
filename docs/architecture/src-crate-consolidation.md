@@ -14639,3 +14639,19 @@ Full workspace consolidation remains active.
   checks passed. Evidence: artifacts/consolidation-image-command/.
 - No dependencies changed. No Cargo, rustc, Rust tests or image file reads ran.
   Full workspace consolidation remains unfinished.
+
+### File attachment composer ownership
+
+- Moved file validation, snippet attachment, composer updates and attachment
+  notices into codetether-file-share::interactive. Separate modules own command
+  dispatch, file processing, composer mutation, notice text and view contracts.
+- Native code maps composer/picker operations only. Both normal and session-free
+  `/file` paths share the same empty-path picker behavior and explicit attachment
+  flow. File-picker selection retains the existing public attachment adapter.
+- Verification: seven static checks passed for exact composer mutations, notice
+  formatting, path/error handling, native bindings, byte-limit forwarding,
+  dispatcher parity and module bounds. Module reachability, dependency DAG,
+  direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-file-command/.
+- No dependencies changed. No Cargo, rustc, Rust tests, attachment reads or TUI
+  sessions ran. Full workspace consolidation remains unfinished.

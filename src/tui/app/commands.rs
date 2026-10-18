@@ -38,9 +38,7 @@ use crate::tui::app::state::App;
 use crate::tui::app::text::{
     command_with_optional_args, normalize_easy_command, normalize_slash_command,
 };
-use crate::tui::app::{
-    codex_sessions, file_share::attach_file_to_input, model_picker::open_model_picker,
-};
+use crate::tui::app::{codex_sessions, model_picker::open_model_picker};
 use crate::tui::chat::message::{ChatMessage, MessageType};
 use crate::tui::models::ViewMode;
 
@@ -146,11 +144,7 @@ pub async fn handle_slash_command(
 
     if let Some(rest) = command_with_optional_args(&normalized, "/file") {
         let cleaned = rest.trim().trim_matches(|c| c == '"' || c == '\'');
-        if cleaned.is_empty() {
-            crate::tui::app::file_picker::open_file_picker(app, cwd);
-        } else {
-            attach_file_to_input(app, cwd, Path::new(cleaned));
-        }
+        crate::tui::app::file_share::command(app, cwd, cleaned);
         return;
     }
 
