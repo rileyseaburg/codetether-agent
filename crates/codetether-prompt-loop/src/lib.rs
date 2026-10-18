@@ -50,3 +50,6 @@ pub mod lifecycle;
 
 /// Human text/image input and title-generation sequencing.
 pub mod input;
+
+/// Ordered model, workspace, and progress initialization.
+pub mod setup;

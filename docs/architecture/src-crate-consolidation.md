@@ -21351,3 +21351,23 @@ with only that edge staged in the lockfile. Source/dependency graphs across
 checks passed. Evidence: `artifacts/consolidation-swarm-create/`. No Cargo,
 rustc, or Python commands ran. Compilation/runtime tests remain unverified;
 full workspace consolidation remains active.
+
+### Shared prompt-turn initialization
+
+Moved prompt initialization sequencing into `codetether-prompt-loop::setup`.
+Shared setup sends the initial thinking notification, resolves model state,
+chooses the workspace, captures pre-existing dirty paths, generates the lease
+owner, and initializes progress, optional routing, and the sub-agent watcher.
+Native bindings retain session/provider access and application services; the
+native entrypoint assembles `Runner` from the shared prepared parts.
+
+Static source comparisons preserve operation order, workspace fallback, UUID
+format, field values, and all native effect calls. Prepared fields map directly
+into the existing runner. The first verifier expectation omitted parentheses
+on the new step-limit accessor; only that expectation was corrected and the
+initial failure was retained. Source/dependency graphs across 697 roots and
+563 crates, direct rustfmt, native file-size limits, and whitespace checks
+passed. No dependency or lockfile changes. Evidence:
+`artifacts/consolidation-prompt-setup/`. No Cargo, rustc, or Python commands ran;
+compilation and runtime tests remain unverified. Full workspace consolidation
+remains active.

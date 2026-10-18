@@ -1,53 +1,39 @@
-//! Construction of shared prompt-loop state.
-
-use anyhow::Result;
-use std::collections::HashSet;
-use std::sync::Arc;
-use tokio::sync::mpsc;
-
-use super::{
-    Runner,
-    progress::{LoopState, WorkspaceState},
-};
+//! Assemble the native prompt runner from shared initialization results.
+use super::Runner;
 use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent};
-
-/// Initializes shared loop state for a session and optional event channel.
-///
+use anyhow::Result;
+use std::sync::Arc;
+use tokio::sync::mpsc;
+mod host;
+struct Native<'a> {
+    session: &'a mut Session,
+    events: Option<&'a mpsc::Sender<SessionEvent>>,
+    registry: &'a ProviderRegistry,
+}
+/// Initialize the native runner through shared turn preparation.
 /// # Errors
-///
-/// Returns an error when provider selection or workspace inspection fails.
+/// Returns initial provider/model selection errors.
 pub(crate) async fn initialize<'a>(
     session: &'a mut Session,
     events: Option<mpsc::Sender<SessionEvent>>,
     registry: Arc<ProviderRegistry>,
 ) -> Result<Runner<'a>> {
-    if let Some(tx) = &events {
-        let _ = tx.send(SessionEvent::Thinking).await;
-    }
-    session.resolve_subcall_provider(&registry);
-    let model = super::super::step_model_restore::resolve_initial(session, &registry)?;
-    let cwd = session
-        .metadata
-        .directory
-        .clone()
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-    let baseline_dirty = super::super::validation::capture_git_dirty_files(&cwd).await;
-    let max_steps = session.max_steps;
-    let lease_owner = format!("{}:{}", session.id, uuid::Uuid::new_v4());
+    let parts = codetether_prompt_loop::setup::initialize(&mut Native {
+        session,
+        events: events.as_ref(),
+        registry: &registry,
+    })
+    .await?;
     Ok(Runner {
         session,
         events,
         registry,
-        lease_owner,
-        model,
-        workspace: WorkspaceState {
-            cwd,
-            baseline_dirty,
-            touched: HashSet::new(),
-        },
-        progress: LoopState::new(max_steps),
-        router: super::setup_support::router(),
-        subagents: super::super::prompt_events::subagent_watch::SubAgentWatch::default(),
+        lease_owner: parts.lease_owner,
+        model: parts.model,
+        workspace: parts.workspace,
+        progress: parts.progress,
+        router: parts.router,
+        subagents: parts.subagents,
     })
 }
