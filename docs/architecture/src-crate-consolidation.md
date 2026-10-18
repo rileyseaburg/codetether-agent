@@ -21543,3 +21543,20 @@ dependency or lockfile changes. Evidence:
 `artifacts/consolidation-worker-registration/`. No Cargo, rustc, or Python
 commands ran; compilation and live registration remain unverified. Full
 workspace consolidation remains active.
+
+### Shared stream-checkpoint persistence sequencing
+
+Moved confirmed-content extraction, assistant-message construction, and
+save-after-append ordering into `codetether-provider-step::checkpoint`.
+The native session implements only transcript append and persistence hooks;
+the existing internal persistence function name re-exports the shared helper.
+The no-checkpoint path still returns immediately without appending or saving.
+
+Static body comparison preserves the same shared checkpoint extractor, message
+role/content, persistence ordering, and error propagation. The native checkpoint
+persistence regression source is unchanged. Source/dependency graphs across
+698 roots and 564 crates, direct rustfmt, native file-size limits, and whitespace
+checks passed. No dependency or lockfile changes. Evidence:
+`artifacts/consolidation-checkpoint-persistence/`. No Cargo, rustc, or Python
+commands ran; compilation and runtime tests remain unverified. Full workspace
+consolidation remains active.

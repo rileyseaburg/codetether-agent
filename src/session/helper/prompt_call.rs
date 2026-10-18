@@ -15,7 +15,7 @@ use crate::session::SessionEvent;
 #[path = "prompt_call/checkpoint.rs"]
 mod checkpoint;
 
-pub(super) use checkpoint::persist as persist_stream_checkpoints;
+pub(super) use codetether_provider_step::checkpoint::persist as persist_stream_checkpoints;
 
 /// Execute one provider completion without bypassing retryable errors.
 ///
