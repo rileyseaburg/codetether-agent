@@ -10,7 +10,7 @@ impl FileBuffer {
     /// Unlike [`FileBuffer::open`], this does not read or write `path`. Saving
     /// remains controlled by the approval editor, which converts the content
     /// back into a revised patch rather than bypassing the approval gate.
-    pub(crate) fn proposed(path: impl AsRef<Path>, text: &str) -> Self {
+    pub fn proposed(path: impl AsRef<Path>, text: &str) -> Self {
         Self {
             path: path.as_ref().to_path_buf(),
             backend: HelixBackend::from_str(text),
@@ -19,14 +19,14 @@ impl FileBuffer {
     }
 
     /// Creates a clean in-memory draft; the caller owns persistence, not the file editor.
-    pub(crate) fn draft(label: &str, text: &str) -> Self {
+    pub fn draft(label: &str, text: &str) -> Self {
         let mut buffer = Self::proposed(label, text);
         buffer.dirty = false;
         buffer
     }
 
     /// Return the complete draft text without reading or writing a file.
-    pub(crate) fn text(&self) -> String {
+    pub fn text(&self) -> String {
         self.backend.to_text()
     }
 }

@@ -10,6 +10,12 @@
 /// Colors are optional 24-bit RGB triples; `None` means "use the theme
 /// default". Keeping styling as plain data avoids leaking any backend's
 /// theme types across the seam.
+///
+/// # Examples
+/// ```
+/// let cell = codetether_editor::EditorCell { ch: 'x', fg: None };
+/// assert_eq!(cell.ch, 'x');
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct EditorCell {
     /// The grapheme/character displayed in this cell.
@@ -19,6 +25,12 @@ pub struct EditorCell {
 }
 
 /// A logical line of editor text, already resolved to styled cells.
+///
+/// # Examples
+/// ```
+/// let line = codetether_editor::EditorLine::default();
+/// assert!(line.cells.is_empty());
+/// ```
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct EditorLine {
     /// The styled cells making up this line, left to right.
@@ -28,6 +40,9 @@ pub struct EditorLine {
 /// An editing engine that can supply rendered lines and a cursor.
 ///
 /// Implementors own the document state; the renderer is purely a consumer.
+///
+/// # Implementors
+/// [`super::builtin::BuiltinBackend`] and [`super::helix_backend::HelixBackend`].
 pub trait EditorBackend {
     /// Human-readable name of this backend (e.g. `"builtin"` or `"helix"`).
     fn name(&self) -> &'static str;

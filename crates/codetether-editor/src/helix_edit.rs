@@ -6,8 +6,8 @@
 //! # Examples
 //!
 //! ```
-//! use codetether_agent::tui::ui::editor::helix_backend::HelixBackend;
-//! use codetether_agent::tui::ui::editor::{EditorBackend, EditorEdit, Move};
+//! use codetether_editor::helix_backend::HelixBackend;
+//! use codetether_editor::{EditorBackend, EditorEdit, Move};
 //!
 //! let mut b = HelixBackend::from_str("ab\n");
 //! b.insert_char('X');           // "Xab"

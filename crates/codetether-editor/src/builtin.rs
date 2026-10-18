@@ -13,8 +13,8 @@ use super::backend::{EditorBackend, EditorCell, EditorLine};
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::tui::ui::editor::builtin::BuiltinBackend;
-/// use codetether_agent::tui::ui::editor::EditorBackend;
+/// use codetether_editor::builtin::BuiltinBackend;
+/// use codetether_editor::EditorBackend;
 ///
 /// let b = BuiltinBackend::from_str("fn main() {}\nlet x = 1;");
 /// assert_eq!(b.line_count(), 2);

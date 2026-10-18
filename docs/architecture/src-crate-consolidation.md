@@ -11658,3 +11658,22 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-file-picker/.
 - No Cargo, rustc, compilation, runtime tests, file scanning/preview reading or
   terminal rendering were run. Full workspace consolidation remains incomplete.
+
+### Shared embedded editor extraction
+
+- Moved editor backends, edit traits/actions, file and virtual buffers, cursor
+  math, highlighting, hover content rendering and editor drawing into
+  crates/codetether-editor. The native editor module re-exports the shared API.
+- Native code retains LSP-manager identity and draw_active, which projects
+  AppState scrolling, active buffer and hover content into the shared renderer.
+  Highlighting uses the same RLM tree-sitter oracle; hover text uses the shared
+  message formatter. Native approval/draft callers retain public buffer APIs.
+- Split file I/O from buffer accessors and gutter-width calculation from line
+  rendering. The shared crate has 27 modules, at most 44 code lines each.
+  Thirteen existing edit/input/cursor tests moved with their implementation.
+- Verification: 38 static comparisons cover moved files, split methods, buffer
+  schema, rendering helpers, native active drawing and unchanged LSP state.
+  Lexical module reachability, dependency cycles, direct rustfmt, native file
+  limits and git diff --check passed. Evidence: artifacts/consolidation-editor/.
+- No Cargo, rustc, compilation, runtime tests or editor rendering were run.
+  Full workspace consolidation remains incomplete.

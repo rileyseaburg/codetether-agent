@@ -23,6 +23,9 @@ pub enum Move {
 }
 
 /// Mutating operations layered on top of a render backend.
+///
+/// # Implementors
+/// [`super::helix_backend::HelixBackend`] supplies rope-backed edits.
 pub trait EditorEdit {
     /// Inserts `ch` at the cursor, advancing the cursor past it.
     fn insert_char(&mut self, ch: char);

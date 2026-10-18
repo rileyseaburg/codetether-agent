@@ -8,7 +8,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 
-use crate::tui::message_formatter::MessageFormatter;
+use codetether_message_formatter::MessageFormatter;
 
 /// Draws the hover popup if `contents` is non-empty.
 pub fn draw_hover(f: &mut Frame, area: Rect, contents: &str) {

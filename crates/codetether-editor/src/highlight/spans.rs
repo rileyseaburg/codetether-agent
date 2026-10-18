@@ -5,7 +5,7 @@
 //! caller renders unstyled text.
 
 use super::capture_color::capture_color;
-use crate::rlm::TreeSitterOracle;
+use codetether_rlm::TreeSitterOracle;
 
 /// A colored byte range: `(start, end, rgb)`.
 pub type Span = (usize, usize, (u8, u8, u8));

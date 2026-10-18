@@ -17,8 +17,8 @@ use super::highlight::HighlightMap;
 /// # Examples
 ///
 /// ```
-/// use codetether_agent::tui::ui::editor::helix_backend::HelixBackend;
-/// use codetether_agent::tui::ui::editor::EditorBackend;
+/// use codetether_editor::helix_backend::HelixBackend;
+/// use codetether_editor::EditorBackend;
 ///
 /// let b = HelixBackend::from_str("fn main() {}\nlet x = 1;\n");
 /// assert_eq!(b.name(), "helix");
