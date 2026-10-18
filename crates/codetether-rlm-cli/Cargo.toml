@@ -1,0 +1,13 @@
+[package]
+name = "codetether-rlm-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "RLM CLI input selection and oracle report formatting"
+
+[dependencies]
+anyhow = "1"
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
+serde_json = "1"

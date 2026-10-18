@@ -13639,3 +13639,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, provider loading or model execution ran.
   Full workspace consolidation remains unfinished.
+
+### RLM command input and reporting extraction
+
+- Moved content gathering, type selection, oracle status text and JSON report
+  projection from src/main.rs into codetether-rlm-cli. Modules separate input,
+  type selection, status text, variant fields and report metadata attachment.
+- File-error text, stdin behavior, explicit/automatic content type selection,
+  status messages and JSON fields remain unchanged. Provider initialization
+  and RLM analysis execution stay in the native command for now.
+- Verification: 13 static helper/binary-body/size comparisons passed, plus
+  module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-rlm-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, input reads or model execution ran. Full source
+  consolidation remains unfinished.

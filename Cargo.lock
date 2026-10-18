@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-rlm-cli",
  "codetether-rlm-selection",
  "codetether-cli-command",
  "codetether-cli-options",
@@ -6846,6 +6847,16 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-provider-core",
+]
+
+[[package]]
+name = "codetether-rlm-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-cli-options",
+ "codetether-rlm",
+ "serde_json",
 ]
 
 [[package]]

@@ -16,6 +16,9 @@ use codetether_agent::{
     a2a, benchmark, bus, cli, config, forage, github_pr, indexer, mcp, moltbook, mux, okr,
     provider, ralph, rlm, server, swarm, telemetry, tool, tui, worker_server,
 };
+use codetether_rlm_cli::{
+    detect_rlm_content_type, gather_rlm_content, oracle_json_value, oracle_status_line,
+};
 use std::sync::Arc;
 use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
 use telemetry::{TOKEN_USAGE, get_persistent_stats};
@@ -27,127 +30,6 @@ mod startup_vault;
 mod worktree_cli;
 
 mod native_cli;
-
-fn gather_rlm_content(args: &cli::RlmArgs) -> anyhow::Result<String> {
-    use std::io::Read;
-
-    if !args.file.is_empty() {
-        let mut parts = Vec::new();
-        for path in &args.file {
-            match std::fs::read_to_string(path) {
-                Ok(content) => parts.push(format!(
-                    "=== FILE: {} ===\n{}\n=== END FILE ===\n",
-                    path.display(),
-                    content
-                )),
-                Err(e) => parts.push(format!(
-                    "=== FILE: {} ===\nError: {}\n=== END FILE ===\n",
-                    path.display(),
-                    e
-                )),
-            }
-        }
-        return Ok(parts.join("\n"));
-    }
-
-    if let Some(ref c) = args.content {
-        if c == "-" {
-            let mut stdin_content = String::new();
-            std::io::stdin().read_to_string(&mut stdin_content)?;
-            return Ok(stdin_content);
-        }
-        return Ok(c.clone());
-    }
-
-    anyhow::bail!("Either --file or --content must be provided");
-}
-
-fn detect_rlm_content_type(args: &cli::RlmArgs, content: &str) -> rlm::ContentType {
-    if args.content_type == "auto" {
-        return rlm::RlmChunker::detect_content_type(content);
-    }
-
-    match args.content_type.as_str() {
-        "code" => rlm::ContentType::Code,
-        "logs" => rlm::ContentType::Logs,
-        "conversation" => rlm::ContentType::Conversation,
-        "documents" => rlm::ContentType::Documents,
-        _ => rlm::ContentType::Mixed,
-    }
-}
-
-fn oracle_status_line(result: &rlm::OracleResult) -> String {
-    match result {
-        rlm::OracleResult::Golden(_) => {
-            "[oracle: golden ✓] deterministic verification passed".to_string()
-        }
-        rlm::OracleResult::Consensus {
-            agreement_ratio, ..
-        } => format!(
-            "[oracle: consensus ✓] semantic agreement {:.1}%",
-            agreement_ratio * 100.0
-        ),
-        rlm::OracleResult::Unverified { reason, .. } => {
-            format!("[oracle: unverified —] {}", reason)
-        }
-        rlm::OracleResult::Failed { reason, .. } => format!("[oracle: failed ✗] {}", reason),
-    }
-}
-
-fn oracle_json_value(
-    result: &rlm::OracleResult,
-    split: Option<rlm::oracle::SplitWriteStats>,
-    persist: Option<rlm::OracleTracePersistResult>,
-) -> serde_json::Value {
-    let base = match result {
-        rlm::OracleResult::Golden(trace) => serde_json::json!({
-            "status": "golden",
-            "verification_method": format!("{:?}", trace.verification_method),
-            "verdict": trace.verdict,
-            "trace_id": trace.trace_id,
-        }),
-        rlm::OracleResult::Consensus {
-            trace,
-            agreement_ratio,
-        } => serde_json::json!({
-            "status": "consensus",
-            "agreement_ratio": agreement_ratio,
-            "verification_method": format!("{:?}", trace.verification_method),
-            "verdict": trace.verdict,
-            "trace_id": trace.trace_id,
-        }),
-        rlm::OracleResult::Unverified { reason, trace } => serde_json::json!({
-            "status": "unverified",
-            "reason": reason,
-            "verification_method": format!("{:?}", trace.verification_method),
-            "verdict": trace.verdict,
-            "trace_id": trace.trace_id,
-        }),
-        rlm::OracleResult::Failed {
-            reason,
-            diff,
-            trace,
-        } => serde_json::json!({
-            "status": "failed",
-            "reason": reason,
-            "diff": diff,
-            "verification_method": format!("{:?}", trace.verification_method),
-            "verdict": trace.verdict,
-            "trace_id": trace.trace_id,
-        }),
-    };
-
-    let mut object = base.as_object().cloned().unwrap_or_default();
-    object.insert(
-        "split".to_string(),
-        serde_json::to_value(split).unwrap_or_default(),
-    );
-    object.insert(
-        "persist".to_string(),
-        serde_json::to_value(persist).unwrap_or_default(),
-    );
-    serde_json::Value::Object(object)
-}
 
 async fn run_rlm_command(args: cli::RlmArgs) -> anyhow::Result<()> {
     use provider::ProviderRegistry;
