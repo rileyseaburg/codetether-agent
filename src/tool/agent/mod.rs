@@ -24,8 +24,11 @@ use codetether_collaboration_state::execution as execution_state;
 mod handlers;
 mod helpers;
 mod message;
-mod message_detach;
-mod message_finalize;
+codetether_child_turn::declare_turn_entrypoints!(
+    crate::tool::agent::turn_host::ApplicationHost,
+    crate::session::Session,
+    crate::session::SessionEvent,
+);
 use codetether_agent_input as params;
 pub(crate) mod persistence;
 mod registry;
@@ -33,7 +36,6 @@ pub(crate) mod residency;
 mod session_factory;
 mod spawn;
 use codetether_agent_input as spawn_request;
-mod spawn_run;
 mod spawn_store;
 mod spawn_validation;
 mod store;

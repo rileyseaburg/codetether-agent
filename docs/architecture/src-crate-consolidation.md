@@ -26885,3 +26885,21 @@ standalone formatting, file limits and whitespace checks pass. No manifest/lock
 changes were needed; unrelated working files are unchanged. Evidence:
 artifacts/consolidation-turn-binding/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Child-turn task and message entry points
+
+Moved typed kickoff/start, finalization, detached dispatch, message routing,
+message execution/start and remote fallback wrappers into child-turn's entrypoints
+and message_entrypoints modules. The root retains declarations selecting the
+existing host/session/event types and remote callback. Removed seven implementation
+files; generated application module paths continue to match existing callers.
+Remote context/owner/detach fields and execution guard/receipt arguments are unchanged.
+
+All eight expanded bodies match the originals after host-path substitution.
+Test sources are untouched. Module/dependency scans cover 727 roots and 617
+crates; the emptied message adapter directory was removed from explicit roots
+while the owning child-turn crate and root message module remain scanned.
+Declarations, native production scope, standalone formatting, file limits and
+whitespace checks pass. No dependency/lock changes were needed; unrelated working
+files are unchanged. Evidence: artifacts/consolidation-turn-entrypoints/. No
+Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
