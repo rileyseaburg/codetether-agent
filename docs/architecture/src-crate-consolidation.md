@@ -24310,3 +24310,20 @@ modules or cycles. Direct rustfmt, source file limits and whitespace checks
 passed. Unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-execution-factory/. No Cargo, rustc, Python, compilation,
 tool construction or tests ran. Full consolidation remains active.
+
+### Integration-tool factory moved into the construction crate
+
+Moved MCP bridge, RustyRoad and optional TetherScript catalog construction from
+src/tool/catalog/integrations.rs into
+codetether-tool-construction::application::integrations, deleting the native
+factory file. A small Types trait retains application-specific authorization
+and runtime type bindings in the native catalog. The existing root feature
+already forwards the TetherScript feature to the construction crate.
+
+Static token comparisons preserve match variants, fallback and native type
+selection; all three existing Default implementations call the original new()
+constructor. Module/dependency scans cover 692 roots and 573 crates without
+missing modules or cycles. Direct rustfmt, source file limits and whitespace
+checks passed. Unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-integration-factory/. No Cargo, rustc, Python,
+compilation, tool construction or tests ran. Full consolidation remains active.

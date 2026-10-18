@@ -21,7 +21,7 @@ impl Factories for Constructors {
         >(kind)
     }
     fn integrations(&self, kind: NativeTool) -> Option<Arc<dyn Tool>> {
-        integrations::create(kind)
+        codetether_tool_construction::application::integrations::create::<Self>(kind)
     }
     fn goals(&self, kind: ToolKind) -> Option<Arc<dyn Tool>> {
         goal::construct(kind)
@@ -29,4 +29,11 @@ impl Factories for Constructors {
     fn collaboration(&self, kind: ToolKind) -> Option<Arc<dyn Tool>> {
         collaboration::construct(kind)
     }
+}
+
+impl codetether_tool_construction::application::integrations::Types for Constructors {
+    type McpBridge = mcp_bridge::McpBridgeTool;
+    type RustyRoad = rustyroad::RustyRoadTool;
+    #[cfg(feature = "tetherscript")]
+    type TetherScript = tetherscript::TetherScriptPluginTool;
 }

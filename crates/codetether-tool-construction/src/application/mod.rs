@@ -7,6 +7,7 @@ use codetether_tool_registry::catalog::ToolKind;
 use std::sync::Arc;
 pub mod execution;
 mod host;
+pub mod integrations;
 mod native;
 pub use host::Factories;
 
