@@ -25,3 +25,12 @@ pub mod request;
 
 /// Approval command execution and paused-request release.
 pub mod command;
+
+mod request_binding;
+
+/// Types used by frontend approval-request declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use codetether_approval_core::interaction::LiveApprovalRequest;
+    pub use codetether_approval_queue::ApprovalSnapshot;
+}

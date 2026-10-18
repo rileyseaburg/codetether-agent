@@ -27089,3 +27089,20 @@ scope, standalone formatting, file-limit and whitespace checks pass for 725 root
 and 617 crates. No dependencies/lock changes were needed; unrelated working files
 remain untouched. Evidence: artifacts/consolidation-error-events-binding/. No
 Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### TUI incoming-approval presentation binding
+
+Moved request presentation, diagnostics state access and reviewer-context
+construction into codetether-approval-view::declare_request_view. Removed
+approval_host.rs and approval_review.rs. Root selection retains App, diagnostics,
+trust guidance, reviewer dispatch and its context type. Queue behavior, analysis
+before review ordering, and approval decisions remain unchanged.
+
+All eight expanded function bodies match the originals after the equivalent
+context-type alias and absolute standard-library path substitution. Reviewer
+workspace, session ID and model fields are unchanged. Other event sources and
+approval tests are untouched. Declaration, module/dependency, native production
+scope, standalone formatting, file-limit and whitespace checks pass for 725 roots
+and 617 crates. No dependency/lock changes were needed; unrelated working files
+remain untouched. Evidence: artifacts/consolidation-approval-view-binding/. No
+Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
