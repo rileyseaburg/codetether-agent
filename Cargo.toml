@@ -259,6 +259,7 @@ members = [
     "crates/codetether-model-failover",
     "crates/codetether-tool-tracker",
     "crates/codetether-watchdog",
+    "crates/codetether-task-tracker",
     "crates/codetether-tui-style",
     "crates/codetether-answer-review-view",
     "crates/codetether-message-cache",
@@ -595,6 +596,7 @@ codetether-chat-layout = { path = "crates/codetether-chat-layout", version = "0.
 codetether-message-cache = { path = "crates/codetether-message-cache", version = "0.1.0" }
 codetether-answer-review-view = { path = "crates/codetether-answer-review-view", version = "0.1.0" }
 codetether-tui-style = { path = "crates/codetether-tui-style", version = "0.1.0" }
+codetether-task-tracker = { path = "crates/codetether-task-tracker", version = "0.1.0" }
 codetether-watchdog = { path = "crates/codetether-watchdog", version = "0.1.0" }
 codetether-tool-tracker = { path = "crates/codetether-tool-tracker", version = "0.1.0" }
 codetether-model-failover = { path = "crates/codetether-model-failover", version = "0.1.0" }

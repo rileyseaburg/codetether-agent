@@ -1,5 +1,5 @@
-use crate::a2a::types::TaskState;
-use crate::bus::BusMessage;
+use codetether_a2a_core::TaskState;
+use codetether_bus_core::BusMessage;
 
 use super::ActiveTasks;
 use super::observe::MAX_ACTIVE_TASKS;

@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use crate::bus::BusMessage;
+use codetether_bus_core::BusMessage;
 
 use super::ActiveTasks;
 
@@ -10,6 +10,19 @@ pub(super) const MAX_ACTIVE_TASKS: usize = 1_024;
 
 impl ActiveTasks {
     /// Update tracking from a bus message. No-op for non-task messages.
+    ///
+    /// # Arguments
+    /// * `message` — Bus event whose task state may update the active set.
+    ///
+    /// # Returns
+    /// Updates tracking in place, retaining at most 1,024 active task IDs.
+    ///
+    /// # Examples
+    /// ```
+    /// let mut tasks = codetether_task_tracker::ActiveTasks::default();
+    /// tasks.observe(&codetether_bus_core::BusMessage::AgentShutdown { agent_id: "peer".into() });
+    /// assert_eq!(tasks.count(), 0);
+    /// ```
     pub fn observe(&mut self, message: &BusMessage) {
         let BusMessage::TaskUpdate { task_id, state, .. } = message else {
             return;

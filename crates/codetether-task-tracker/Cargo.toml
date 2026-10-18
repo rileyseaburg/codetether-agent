@@ -1,0 +1,13 @@
+[package]
+name = "codetether-task-tracker"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded protocol task activity tracking"
+
+[dependencies]
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+
+[dev-dependencies]
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }

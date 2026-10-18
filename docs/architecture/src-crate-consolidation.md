@@ -12504,3 +12504,18 @@ Full workspace consolidation remains active.
   artifacts/consolidation-agent-hierarchy/.
 - No dependency or lockfile changes were needed. No Cargo, rustc, compilation or
   Rust tests ran. Full workspace consolidation remains incomplete.
+
+### Active-task tracker extraction
+
+- Moved protocol active-task state, bounded TaskUpdate observation and all
+  three existing tests into codetether-task-tracker. Four modules contain at
+  most 38 code lines. The native module now re-exports ActiveTasks.
+- Terminal updates still remove tasks, duplicate active updates keep their
+  original timestamps, and missing terminal events cannot grow the tracker
+  beyond 1,024 entries. No UI or worker connection logic moved into this crate.
+- Verification: whole-source comparisons passed for state, observation and
+  tests, plus native facade/removal checks. Shared and full native bus module
+  graphs, dependency-cycle checks, direct rustfmt, file limits and whitespace
+  checks passed. Evidence: artifacts/consolidation-task-tracker/.
+- Only the crate's dependency and package record were staged from Cargo.lock.
+  No Cargo, rustc, compilation or Rust tests ran. Full consolidation is incomplete.
