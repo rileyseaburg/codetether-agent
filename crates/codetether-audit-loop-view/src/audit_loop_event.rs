@@ -3,6 +3,12 @@
 use super::audit_loop_model::{Gate, GateStatus, Iteration, IterationStatus};
 
 /// An event describing progress of the implement→audit→retry loop.
+/// # Examples
+/// ```
+/// use codetether_audit_loop_view::audit_loop_event::AuditLoopEvent;
+/// let event = AuditLoopEvent::Complete { passed: true, iterations: 1 };
+/// assert!(matches!(event, AuditLoopEvent::Complete { passed: true, .. }));
+/// ```
 #[derive(Debug, Clone)]
 pub enum AuditLoopEvent {
     /// Loop started with a task label and a retry cap.

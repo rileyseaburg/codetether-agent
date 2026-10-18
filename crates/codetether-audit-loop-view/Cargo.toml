@@ -1,0 +1,10 @@
+[package]
+name = "codetether-audit-loop-view"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Audit-loop progress state, reducers and terminal rendering"
+
+[dependencies]
+ratatui = { version = "0.30.2", default-features = false }

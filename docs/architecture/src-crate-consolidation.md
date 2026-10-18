@@ -11251,3 +11251,19 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-tui-worker/`. Compilation, runtime tests,
   worker startup and networking were not run; no Cargo or rustc commands executed.
 - Full `src/` consolidation remains active.
+
+### Audit-loop progress view extraction
+
+- Moved audit-loop event/model types, state reducer, line builders and rendering
+  into `crates/codetether-audit-loop-view`.
+- Fifteen modules separate state transitions, gate/iteration presentation and
+  regression tests; maximum module size is 40 code lines. Native module paths
+  remain re-exports, with the existing input-preview renderer passed through
+  the drawing adapter.
+- Four existing tests moved unchanged in behavior. Nineteen static comparisons
+  verify model/event files, reducer methods, rendering body, tests and unchanged
+  callers. Module reachability, dependency DAG, file-limit and whitespace passed.
+- Evidence: `artifacts/consolidation-audit-loop-view/`. One binding assertion was
+  made whitespace-insensitive after formatting wrapped the call. Compilation,
+  tests, rendering and audit-gate execution were not run; no Cargo or rustc
+  commands executed. Full consolidation remains active.
