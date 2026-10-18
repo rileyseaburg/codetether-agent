@@ -2,9 +2,9 @@
 use super::{super::AgentLoopExit, state::State};
 pub(super) fn reached(state: &State) -> Option<AgentLoopExit> {
     codetether_swarm_core::agent_loop::limit_reached(
-        state.steps,
+        state.conversation.steps,
         state.max_steps,
-        state.deadline,
+        state.conversation.deadline,
         state.timeout_secs,
     )
 }

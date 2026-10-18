@@ -2,11 +2,11 @@
 
 use super::state::State;
 use crate::bus::AgentBus;
-use crate::provider::{ContentPart, Message, Provider, Role, ToolDefinition};
+use crate::provider::{Provider, ToolDefinition};
 use crate::tool::ToolRegistry;
-use codetether_swarm_core::SwarmEvent;
-use std::{path::PathBuf, sync::Arc, time::Instant};
-use tokio::{sync::mpsc, time::Duration};
+use codetether_swarm_core::{SwarmEvent, agent_loop::Conversation};
+use std::{path::PathBuf, sync::Arc};
+use tokio::sync::mpsc;
 
 pub(super) fn state(
     provider: Arc<dyn Provider>,
@@ -22,15 +22,12 @@ pub(super) fn state(
     bus: Option<Arc<AgentBus>>,
     working_dir: Option<PathBuf>,
 ) -> State {
-    let text = |role, text: &str| Message {
-        role,
-        content: vec![ContentPart::Text {
-            text: text.to_string(),
-        }],
-    };
+    let model = model.to_string();
+    let mut conversation = Conversation::new(system, user, timeout_secs);
+    conversation.temperature = codetether_provider_policy::temperature_for(&model);
     State {
         provider,
-        model: model.into(),
+        model,
         tools,
         registry,
         max_steps,
@@ -39,13 +36,7 @@ pub(super) fn state(
         subtask_id,
         bus,
         working_dir,
-        messages: vec![text(Role::System, system), text(Role::User, user)],
-        steps: 0,
-        tool_calls: 0,
-        output: String::new(),
-        deadline: Instant::now() + Duration::from_secs(timeout_secs),
-        temperature: codetether_provider_policy::temperature_for(model),
+        conversation,
         control: crate::session::runtime::ControlHandle::current(),
-        steering_cursor: 0,
     }
 }

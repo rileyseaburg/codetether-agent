@@ -38,9 +38,10 @@ async fn cancellation_during_completion_prevents_tool_dispatch() {
         .await;
     state.provider = provider;
     assert!(driver::execute(&mut state).await.is_err());
-    assert_eq!(state.tool_calls, 0);
+    assert_eq!(state.conversation.tool_calls, 0);
     assert!(
         !state
+            .conversation
             .messages
             .iter()
             .any(|message| matches!(message.role, crate::provider::Role::Tool))

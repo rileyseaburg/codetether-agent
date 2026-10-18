@@ -19,10 +19,13 @@ impl AgentRuntime for State {
         limits::reached(self)
     }
     fn advance(&mut self) {
-        codetether_swarm_core::agent_loop::advance_turn(&mut self.steps, &mut self.messages);
+        codetether_swarm_core::agent_loop::advance_turn(
+            &mut self.conversation.steps,
+            &mut self.conversation.messages,
+        );
     }
     fn steps(&self) -> usize {
-        self.steps
+        self.conversation.steps
     }
     async fn request(&mut self) -> Result<RequestOutcome> {
         request::execute(self).await
@@ -37,7 +40,7 @@ impl AgentRuntime for State {
         output::record(self, text);
     }
     fn append_message(&mut self, message: Message) {
-        self.messages.push(message);
+        self.conversation.messages.push(message);
     }
     async fn execute_tools(&mut self, calls: Vec<ToolCall>) -> Result<bool> {
         tools::execute(self, calls).await

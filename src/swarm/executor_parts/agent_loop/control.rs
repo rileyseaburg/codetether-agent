@@ -9,7 +9,7 @@ pub(super) async fn ready(state: &State) -> anyhow::Result<()> {
 pub(super) fn apply_input(state: &mut State) -> bool {
     codetether_session_control::delegated::apply_input(
         state.control.as_ref(),
-        &mut state.steering_cursor,
-        &mut state.messages,
+        &mut state.conversation.steering_cursor,
+        &mut state.conversation.messages,
     )
 }

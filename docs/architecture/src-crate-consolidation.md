@@ -21122,3 +21122,26 @@ The root already depends on this crate. Verified the owner export and root
 dependency by source inspection; direct formatting, native file-size, and
 whitespace checks passed. No Cargo, rustc, or Python commands ran. Compilation
 remains unverified.
+
+### Sub-agent conversation data ownership
+
+Moved transcript history, provider/tool counters, accumulated output, absolute
+deadline, temperature, and steering cursor into
+`codetether-swarm-core::agent_loop::Conversation`. Its constructor owns initial
+system/user messages, zeroed progress, empty output, and deadline creation.
+Native sub-agent state now composes that shared conversation with service
+handles and execution configuration. Provider-policy temperature remains a
+native setting applied immediately after shared initialization.
+
+Updated 14 native callers/test files to address conversation fields explicitly;
+this preserves ordinary field borrowing instead of relying on dereference
+indirection. All seven field types and existing initialization values are
+retained. Every affected native source was compared against its saved version:
+changes are restricted to field paths and constructor/state composition.
+Existing regression assertions are preserved with adjusted field paths.
+
+Direct rustfmt, source graphs across 694 roots, native file-size checks, and
+whitespace checks passed. Evidence:
+`artifacts/consolidation-swarm-conversation/`. No dependencies changed. No Cargo,
+rustc, or Python commands ran. Rust tests and compilation remain unverified;
+the full consolidation goal is still active.

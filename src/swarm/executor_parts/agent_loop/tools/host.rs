@@ -15,6 +15,6 @@ impl codetether_swarm_core::agent_loop::tools::Host for State {
         tool_one::execute(self, call).await
     }
     fn record(&mut self, message: Message) {
-        self.messages.push(message);
+        self.conversation.messages.push(message);
     }
 }

@@ -12,7 +12,7 @@ pub(super) async fn process(
         codetether_swarm_output::Context {
             provider: &state.provider,
             model: &state.model,
-            deadline: state.deadline,
+            deadline: state.conversation.deadline,
             working_dir: state.working_dir.as_deref(),
         },
         name,

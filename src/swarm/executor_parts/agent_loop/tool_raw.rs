@@ -9,7 +9,7 @@ pub(super) async fn execute(state: &State, name: &str, args: Value) -> Result {
         state.registry.get(name),
         name,
         args,
-        state.deadline,
+        state.conversation.deadline,
         state.timeout_secs,
     )
     .await

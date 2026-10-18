@@ -1,12 +1,11 @@
 //! Mutable conversation state for a sub-agent loop.
 
 use crate::bus::AgentBus;
-use crate::provider::{Message, Provider, ToolDefinition};
+use crate::provider::{Provider, ToolDefinition};
 use crate::tool::ToolRegistry;
-use codetether_swarm_core::SwarmEvent;
+use codetether_swarm_core::{SwarmEvent, agent_loop::Conversation};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Instant;
 use tokio::sync::mpsc;
 
 pub(super) struct State {
@@ -20,13 +19,7 @@ pub(super) struct State {
     pub subtask_id: String,
     pub bus: Option<Arc<AgentBus>>,
     pub working_dir: Option<PathBuf>,
-    pub messages: Vec<Message>,
-    pub steps: usize,
-    pub tool_calls: usize,
-    pub output: String,
-    pub deadline: Instant,
-    pub temperature: Option<f32>,
+    pub conversation: Conversation,
     pub control: Option<crate::session::runtime::ControlHandle>,
-    pub steering_cursor: usize,
 }
 pub(super) use codetether_swarm_core::agent_loop::ToolCall;
