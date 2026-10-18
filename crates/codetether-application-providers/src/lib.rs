@@ -15,6 +15,7 @@ mod convert;
 mod create;
 mod integrations;
 mod task;
+pub mod task_factory;
 mod vault;
 
 /// Provider registry bound to the embedding application's factory and cache.

@@ -2032,6 +2032,7 @@ dependencies = [
  "async-trait",
  "codetether-a2a-worker-core",
  "codetether-autochat-core",
+ "codetether-bedrock-auth",
  "codetether-config",
  "codetether-embedding-backends",
  "codetether-forage-execution",

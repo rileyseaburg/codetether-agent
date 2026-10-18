@@ -15,8 +15,10 @@ impl<H: Application> ProviderRegistry<H> {
     /// # Ok(()) }
     /// ```
     pub async fn for_task_keys(keys: Option<&serde_json::Value>) -> Result<Self> {
-        codetether_provider_registry::task::load_task_provider_registry::<H::Factory>(keys)
-            .await
-            .map(Self::from)
+        codetether_provider_registry::task::load_task_provider_registry::<
+            task_factory::TaskFactory<H>,
+        >(keys)
+        .await
+        .map(Self::from)
     }
 }

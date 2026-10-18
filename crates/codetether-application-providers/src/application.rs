@@ -6,8 +6,8 @@ use tokio::sync::OnceCell;
 /// # Implementors
 /// Applications select their existing factory and return a static cache cell.
 pub trait Application: Send + Sync + Sized + 'static {
-    /// Native factory with the existing task-specific platform fallback.
-    type Factory: codetether_provider_registry::task::Host;
+    /// Native provider constructors; the application registry owns task fallback.
+    type Factory: codetether_provider_factory::Host;
     /// Return the process-wide cache used for Vault-backed registries.
     fn cache() -> &'static OnceCell<Arc<ProviderRegistry<Self>>>;
 }

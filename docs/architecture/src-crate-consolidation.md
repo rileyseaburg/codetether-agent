@@ -22526,3 +22526,30 @@ lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-session-workspace/`.
 No MCP connection, command-tool execution, Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Task provider fallback owned by application providers
+
+Moved the cached platform-registry fallback into
+`codetether-application-providers::task_factory`. Static ownership review found
+that native tenant_keys/platform still implemented an external task trait for
+the external ApplicationHost alias. TaskFactory now owns that implementation
+and forwards provider construction to the existing Application::Factory.
+The application factory contract requires provider constructors; task fallback
+is supplied by the owning application-provider crate. Native provider factory
+selection and its process-wide cache remain unchanged.
+
+Both ProviderRegistry::for_task_keys and the native PerTaskProviderKeys alias
+now select TaskFactory. The native platform adapter file was removed. Source
+comparisons preserve the cached Vault load, shared inner-registry clone and all
+eight constructor argument mappings. The core task credential selection,
+error context, fallback policy and key ownership/drop implementation remain
+unchanged. Three focused modules own the task factory type, construction
+forwarding and platform cache access.
+
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the application-provider crate's Bedrock credential-type dependency edge
+is staged in the lockfile; the unrelated working lockfile remains byte-identical.
+Evidence: `artifacts/consolidation-task-provider-factory/`.
+No provider requests, Cargo, rustc or Python ran; compilation and runtime tests
+remain unverified. Full consolidation is active.
