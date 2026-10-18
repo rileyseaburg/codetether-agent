@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-session-fork",
  "codetether-session-http",
  "codetether-session-recovery",
  "codetether-session-access",
@@ -6762,6 +6763,20 @@ dependencies = [
  "codetether-goal-core",
  "serde_json",
  "codetether-authorization-policy",
+ "codetether-session-fork",
+ "uuid",
+]
+
+[[package]]
+name = "codetether-session-fork"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-provider-core",
+ "codetether-session-metadata",
+ "codetether-provenance",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

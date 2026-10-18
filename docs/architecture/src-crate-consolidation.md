@@ -13484,3 +13484,21 @@ Full workspace consolidation remains active.
 - Only this crate's three added dependency entries were staged in Cargo.lock.
   No Cargo, rustc, Rust tests or goal mutations ran. Full source consolidation
   remains unfinished.
+
+### Edited conversation fork extraction
+
+- Moved exact source-message validation, prior-context copying, metadata reset
+  and branch-only persistence into codetether-session-fork. ForkSession binds
+  native fields and storage while preserving normal agent/message bookkeeping.
+- Moved the fork HTTP request, UUID validation, response and error mapping into
+  codetether-session-http. All session route registrations now use shared HTTP
+  routers; native modules supply hosts and retain native storage integration tests.
+- Forking still requires the exact user-role message, excludes that message and
+  later context, allocates a new identity, clears checkpoint/shared/delegated
+  state and creates fresh provenance. Only the new branch is saved.
+- Verification: 17 static policy/metadata/HTTP/test/size checks passed, plus
+  module reachability, dependency DAG, direct rustfmt, source file limits and
+  whitespace checks. Evidence: artifacts/consolidation-session-fork/.
+- Staged only the new package/root dependency and session-http's two added
+  dependencies from Cargo.lock. No Cargo, rustc, Rust tests, session creation
+  or persistence ran. The broader consolidation remains unfinished.
