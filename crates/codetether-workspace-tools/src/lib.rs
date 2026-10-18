@@ -39,3 +39,6 @@ pub fn finish<H: Host>(
     policy::apply(&mut registry, capability);
     registry
 }
+
+/// Workspace catalogs and capability-appropriate coordination extensions.
+pub mod composition;

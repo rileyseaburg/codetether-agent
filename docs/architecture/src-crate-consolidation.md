@@ -15364,3 +15364,23 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-workspace-tools/`.
 - No Cargo, rustc, Python, Rust compilation, or Rust tests ran. Full consolidation
   remains incomplete; this moves workspace policy ownership into its own crate.
+
+### Shared workspace registry composition
+
+- Moved provider/default catalog scoping, main-swarm coordination composition,
+  direct-worker capability selection, and result-sharing registration into
+  `codetether-workspace-tools::composition`.
+- Native workspace and direct-worker entry points now delegate. The factory
+  adapter retains application catalog construction, batch construction/binding,
+  provider search registration, and definition lookup.
+- Preserved the distinct main-swarm behavior: construct batch for every capability,
+  register batch and search only for mutating capability, wrap the finished registry
+  in Arc, bind batch weakly, then collect definitions. Direct-worker shared results
+  remain separate from those coordination extensions.
+- Verification: expanded the shared main-swarm body through native bindings and
+  compared it to the original; compared catalog and sharing bodies, direct-worker
+  capability construction, factory bindings, and untouched integration tests.
+  Module reachability, dependency DAG, direct rustfmt, file-size ratchet and diff
+  whitespace checks passed. Evidence: `artifacts/consolidation-registry-composition/`.
+- Cargo, rustc, Python, Rust compilation and Rust tests were not run. Unrelated
+  worktree changes were retained; full consolidation remains incomplete.

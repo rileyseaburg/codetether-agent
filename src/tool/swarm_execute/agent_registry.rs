@@ -4,7 +4,7 @@ use crate::provider::Provider;
 #[cfg(test)]
 use crate::swarm::executor::workspace_registry;
 use crate::swarm::result_store::ResultStore;
-use crate::tool::{ToolRegistry, swarm_share::SwarmShareTool};
+use crate::tool::ToolRegistry;
 use std::{path::Path, sync::Arc};
 
 #[path = "agent_registry_base.rs"]
@@ -21,27 +21,27 @@ pub(super) fn shared(
     provider: Arc<dyn Provider>,
     model: String,
 ) -> Arc<ToolRegistry> {
-    with_shared(
-        base::build_for_task(
-            read_only,
-            verification,
-            expects_changes,
-            workspace,
-            provider,
-            model,
-        ),
+    codetether_workspace_tools::composition::direct::shared::<
+        crate::swarm::executor::workspace_registry::RegistryHost,
+    >(
+        read_only,
+        verification,
+        expects_changes,
+        workspace,
         store,
         producer_id,
+        provider,
+        model,
     )
 }
 
+#[cfg(test)]
 fn with_shared(
-    mut registry: ToolRegistry,
+    registry: ToolRegistry,
     store: Arc<ResultStore>,
     producer_id: String,
 ) -> Arc<ToolRegistry> {
-    registry.register(Arc::new(SwarmShareTool::new(store, producer_id)));
-    Arc::new(registry)
+    codetether_workspace_tools::composition::with_shared(registry, store, producer_id)
 }
 
 #[cfg(test)]

@@ -7458,6 +7458,9 @@ dependencies = [
  "codetether-file-tools",
  "codetether-patch",
  "codetether-todo",
+ "codetether-provider-core",
+ "codetether-swarm-core",
+ "codetether-swarm-share",
 ]
 
 [[package]]

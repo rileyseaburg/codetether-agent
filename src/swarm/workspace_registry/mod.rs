@@ -3,7 +3,9 @@
 use crate::{provider::Provider, tool::ToolRegistry};
 use std::{path::Path, sync::Arc};
 
+mod composition_host;
 mod host;
+pub(crate) use host::Native as RegistryHost;
 mod local;
 
 pub(crate) use codetether_workspace_tools::Capability;
@@ -16,20 +18,14 @@ pub(crate) fn with_provider(
     root: &Path,
     capability: Capability,
 ) -> ToolRegistry {
-    finish(
-        ToolRegistry::with_provider(provider, model),
-        root,
-        capability,
+    codetether_workspace_tools::composition::with_provider::<host::Native>(
+        provider, model, root, capability,
     )
 }
 
 #[cfg(test)]
 pub(crate) fn with_defaults(root: &Path, capability: Capability) -> ToolRegistry {
-    finish(ToolRegistry::with_defaults(), root, capability)
-}
-
-fn finish(registry: ToolRegistry, root: &Path, capability: Capability) -> ToolRegistry {
-    codetether_workspace_tools::finish::<host::Native>(registry, root, capability)
+    codetether_workspace_tools::composition::with_defaults::<host::Native>(root, capability)
 }
 
 #[cfg(test)]

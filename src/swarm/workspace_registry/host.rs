@@ -1,7 +1,7 @@
 //! Application registry and feature-sensitive tool bindings.
 use crate::tool::{Tool, ToolRegistry};
 use std::{path::PathBuf, sync::Arc};
-pub(super) struct Native;
+pub(crate) struct Native;
 impl codetether_workspace_tools::Registry for ToolRegistry {
     fn register(&mut self, tool: Arc<dyn Tool>) {
         ToolRegistry::register(self, tool);

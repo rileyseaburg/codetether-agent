@@ -19,3 +19,7 @@ codetether-code-search = { path = "../codetether-code-search", version = "0.1.0"
 codetether-file-tools = { path = "../codetether-file-tools", version = "0.1.0" }
 codetether-patch = { path = "../codetether-patch", version = "0.1.0" }
 codetether-todo = { path = "../codetether-todo", version = "0.1.0" }
+
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+codetether-swarm-share = { path = "../codetether-swarm-share", version = "0.1.0" }
