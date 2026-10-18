@@ -1,10 +1,10 @@
 use super::command;
-use crate::tool::bash_shell;
-use crate::tool::sandbox::SandboxPolicy;
+use codetether_command_shell as bash_shell;
+use codetether_sandbox_policy::SandboxPolicy;
 
 #[tokio::test]
 async fn sandboxed_interactive_command_keeps_its_pty() {
-    if crate::tool::sandbox::unavailable_reason().is_some() {
+    if codetether_sandbox_runtime::unavailable_reason().is_some() {
         return;
     }
     let shell = bash_shell::resolve();
@@ -29,7 +29,7 @@ async fn sandboxed_interactive_command_keeps_its_pty() {
 
 #[tokio::test]
 async fn sandboxed_command_can_write_to_dev_null() {
-    if crate::tool::sandbox::unavailable_reason().is_some() {
+    if codetether_sandbox_runtime::unavailable_reason().is_some() {
         return;
     }
     let shell = bash_shell::resolve();

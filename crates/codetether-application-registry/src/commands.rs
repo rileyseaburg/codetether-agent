@@ -4,7 +4,9 @@
 //! registry for exec and stdin, with the optional working directory preserved.
 use crate::{Application, ToolRegistry};
 use codetether_bash_tool::BashTool;
-use codetether_command_session::{Registry, tool_registration::ToolHost};
+pub use codetether_command_session::spawn as command;
+use codetether_command_session::tool_registration::ToolHost;
+pub use codetether_command_session::{Poll, Registry, Running, SpawnMetadata, tool_result};
 use codetether_exec_command::ExecCommandTool;
 use codetether_tool_core::Tool;
 use codetether_write_stdin::WriteStdinTool;
@@ -41,3 +43,6 @@ impl<H: Application> ToolHost for Commands<'_, H> {
 pub fn register<H: Application>(registry: &mut ToolRegistry<H>, cwd: Option<PathBuf>) {
     codetether_command_session::tool_registration::register(&mut Commands(registry), cwd);
 }
+
+#[cfg(test)]
+mod native_tests;

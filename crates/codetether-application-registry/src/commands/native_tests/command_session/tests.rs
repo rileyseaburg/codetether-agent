@@ -1,5 +1,5 @@
 use super::{Registry, command};
-use crate::tool::bash_shell;
+use codetether_command_shell as bash_shell;
 
 fn shell_args(script: &str) -> (String, Vec<String>) {
     let shell = bash_shell::resolve();
@@ -26,7 +26,8 @@ async fn returns_incremental_output_before_process_completion() {
 
 #[tokio::test]
 async fn write_stdin_resumes_an_interactive_terminal_session() {
-    use crate::tool::{Tool, write_stdin::WriteStdinTool};
+    use codetether_tool_core::Tool;
+    use codetether_write_stdin::WriteStdinTool;
     let (program, args) = shell_args("read value; printf 'got:%s' \"$value\"");
     let cwd = std::env::current_dir().unwrap();
     let running = command(&program, &args, &cwd, true, &[], None)

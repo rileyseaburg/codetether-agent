@@ -25164,3 +25164,28 @@ in the two existing lockfile package entries. Unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-command-tests/. No Cargo, rustc,
 Python, shell-tool execution or runtime tests ran. Full consolidation remains
 active.
+
+### Command-session registration and tests consolidated in the registry crate
+
+Moved 12 files from src/tool/command_session.rs and its test directory into the
+existing codetether-application-registry commands module. That module already
+owns command registration and now exports the shared session types and spawn
+function used by the root compatibility path. The registration implementation,
+installation order, working-directory handling and shared Registry construction
+are unchanged. No new crate was added.
+
+All 16 tests remain: 15 moved alongside command registration; the assertion
+about the complete application default registry moved into the root integration
+test tests/command_registration.rs. Test imports now use the same owning tool,
+policy, sandbox, shell and approval crates directly. The approval test-support
+feature retains shared environment synchronization.
+
+Source comparisons preserve the registration body and all moved test logic.
+Static scans cover 706 module roots and 591 crates without missing modules,
+cycles or undeclared direct workspace dependencies. The graph's old explicit
+command_session source root was removed following the relocation. Declaration,
+file-limit, direct rustfmt and whitespace checks passed. Only new test
+dependencies in the existing registry lockfile entry are staged; unrelated
+working content remains unchanged. Evidence:
+artifacts/consolidation-command-session/. No Cargo, rustc, Python, subprocesses
+under test or runtime tests ran. Full consolidation remains active.

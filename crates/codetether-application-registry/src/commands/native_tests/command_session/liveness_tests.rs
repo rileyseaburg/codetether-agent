@@ -1,6 +1,7 @@
 use super::{Registry, command};
-use crate::tool::bash_shell;
-use crate::tool::{Tool, write_stdin::WriteStdinTool};
+use codetether_command_shell as bash_shell;
+use codetether_tool_core::Tool;
+use codetether_write_stdin::WriteStdinTool;
 
 fn shell_args(script: &str) -> (String, Vec<String>) {
     let shell = bash_shell::resolve();

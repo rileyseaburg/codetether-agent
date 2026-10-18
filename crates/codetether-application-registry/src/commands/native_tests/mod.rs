@@ -1,7 +1,7 @@
 //! Application tool registration around shared command sessions.
 pub(crate) use codetether_command_session::{Poll, Registry, Running, SpawnMetadata, tool_result};
 
-pub(crate) use codetether_application_registry::commands::register;
+pub(crate) use crate::commands::register;
 
 pub(crate) use codetether_command_session::spawn as command;
 

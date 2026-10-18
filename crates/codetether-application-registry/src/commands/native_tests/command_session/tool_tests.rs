@@ -1,6 +1,5 @@
 use super::Registry;
-use crate::tool::ToolRegistry;
-use crate::tool::exec_command::ExecCommandTool;
+use codetether_exec_command::ExecCommandTool;
 #[path = "tool_test_completion.rs"]
 mod completion;
 use completion::completed;
@@ -40,11 +39,4 @@ async fn exec_command_injects_session_runtime_context() {
     .await;
     assert!(result.success);
     assert!(result.output.contains("session-context-test"));
-}
-
-#[test]
-fn default_registry_exposes_unified_command_pair() {
-    let registry = ToolRegistry::with_defaults();
-    assert!(registry.contains("exec_command"));
-    assert!(registry.contains("write_stdin"));
 }

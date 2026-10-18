@@ -1,7 +1,9 @@
 //! Await an exec-command fixture without assuming its first poll is final.
 
 use super::Registry;
-use crate::tool::{Tool, ToolResult, exec_command::ExecCommandTool, write_stdin::WriteStdinTool};
+use codetether_exec_command::ExecCommandTool;
+use codetether_tool_core::{Tool, ToolResult};
+use codetether_write_stdin::WriteStdinTool;
 use serde_json::{Value, json};
 use std::sync::Arc;
 use tokio::time::{Duration, timeout};

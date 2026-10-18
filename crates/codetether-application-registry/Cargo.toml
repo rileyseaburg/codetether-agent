@@ -26,3 +26,13 @@ codetether-tool-construction = { path = "../codetether-tool-construction", versi
 codetether-tool-registry = { path = "../codetether-tool-registry", version = "0.1.0" }
 codetether-workspace-tools = { path = "../codetether-workspace-tools", version = "0.1.0" }
 serde_json = "1"
+
+[dev-dependencies]
+codetether-native-approval = { path = "../codetether-native-approval", version = "0.1.0", features = ["test-support"] }
+codetether-native-runtime-policy = { path = "../codetether-native-runtime-policy", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-command-shell = { path = "../codetether-command-shell", version = "0.1.0" }
+codetether-sandbox-policy = { path = "../codetether-sandbox-policy", version = "0.1.0" }
+codetether-sandbox-runtime = { path = "../codetether-sandbox-runtime", version = "0.1.0" }
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }

@@ -1,5 +1,5 @@
 use super::command;
-use crate::tool::bash_shell;
+use codetether_command_shell as bash_shell;
 
 #[tokio::test]
 async fn command_poll_retains_output_head_and_tail() {

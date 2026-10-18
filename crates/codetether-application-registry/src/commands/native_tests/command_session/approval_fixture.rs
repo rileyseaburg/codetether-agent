@@ -1,8 +1,8 @@
 //! Issue and decide exact escalation requests through the real approval store.
 
-use crate::approval::{ApprovalStore, test_env::ScopedEnv};
-use crate::config::{AccessMode, Config, SandboxMode};
-use crate::runtime_policy::evaluate_tool_invocation_with_config;
+use codetether_config::{AccessMode, Config, SandboxMode};
+use codetether_native_approval::{ApprovalStore, test_env::ScopedEnv};
+use codetether_native_runtime_policy::evaluate_tool_invocation_with_config;
 use serde_json::{Value, json};
 
 pub(super) fn command(cmd: &str, approve: bool) -> (tempfile::TempDir, ScopedEnv, Value) {

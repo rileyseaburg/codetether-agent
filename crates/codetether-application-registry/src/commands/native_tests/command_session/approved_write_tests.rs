@@ -1,12 +1,14 @@
 //! Approved escalation performs real offline Cargo and Git writes.
 
-use crate::tool::{Tool, command_session::Registry, exec_command::ExecCommandTool};
+use codetether_command_session::Registry;
+use codetether_exec_command::ExecCommandTool;
+use codetether_tool_core::Tool;
 use serde_json::json;
 use std::sync::Arc;
 
 #[tokio::test]
 async fn approved_escalation_runs_cargo_and_git_writes() {
-    let _lock = crate::approval::test_env::lock_env();
+    let _lock = codetether_native_approval::test_env::lock_env();
     let (dir, _env, args) = super::fixture::command(
         "cargo update --offline && git init -q && git add Cargo.toml Cargo.lock",
         true,

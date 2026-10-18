@@ -2,8 +2,8 @@
 
 pub use codetether_bash_tool as bash;
 pub mod collaboration;
+pub(crate) use codetether_application_registry::commands as command_session;
 pub(crate) use codetether_command_pty as command_pty;
-pub(crate) mod command_session;
 pub use codetether_exec_command as exec_command;
 use codetether_process_tree as process_tree;
 pub(crate) mod shell_command_guard;

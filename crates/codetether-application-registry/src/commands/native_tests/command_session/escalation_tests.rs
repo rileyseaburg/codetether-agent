@@ -8,8 +8,8 @@ mod fixture;
 mod writes;
 
 use super::Registry;
-use crate::tool::Tool;
-use crate::tool::exec_command::ExecCommandTool;
+use codetether_exec_command::ExecCommandTool;
+use codetether_tool_core::Tool;
 use serde_json::json;
 use std::sync::Arc;
 

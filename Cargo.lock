@@ -2120,6 +2120,14 @@ dependencies = [
  "codetether-write-stdin",
  "serde_json",
  "tracing",
+ "codetether-native-approval",
+ "codetether-native-runtime-policy",
+ "codetether-config",
+ "codetether-command-shell",
+ "codetether-sandbox-policy",
+ "codetether-sandbox-runtime",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
