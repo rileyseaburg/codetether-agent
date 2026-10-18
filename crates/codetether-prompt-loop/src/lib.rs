@@ -32,3 +32,6 @@ pub mod terminal;
 
 /// Policy and effect sequencing for one normalized tool call.
 pub mod tool_driver;
+
+/// Completed and synthetic tool-result publication sequencing.
+pub mod tool_publication;

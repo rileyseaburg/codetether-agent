@@ -15709,3 +15709,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-tool-driver/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared tool-result publication
+
+- Moved completed and synthetic tool-result publication into the cohesive
+  `codetether-prompt-loop::tool_publication` module. Native wrappers delegate
+  through a Host adapter for bus, archive, RLM routing, history and persistence.
+- Preserved bus/archive/live-event order, metadata delivery, bounded live output,
+  routed transcript content and persistence before code-search accounting.
+  Synthetic results retain their separate event-and-history-only behavior.
+- Verification: both complete function-body comparisons, both forwarding
+  wrappers and all seven native bindings; unchanged downstream implementations;
+  module/dependency graphs, direct rustfmt, file budgets, isolated lock addition
+  and diff whitespace. Evidence: `artifacts/consolidation-tool-publication/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.

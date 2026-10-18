@@ -7526,6 +7526,7 @@ dependencies = [
  "codetether-tool-call-parser",
  "codetether-context-policy",
  "codetether-tool-outcome",
+ "codetether-stream-bounds",
 ]
 
 [[package]]

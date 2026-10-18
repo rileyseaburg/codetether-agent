@@ -9,37 +9,8 @@ pub(super) async fn complete(
     call: &Call,
     outcome: Outcome,
 ) -> anyhow::Result<()> {
-    super::bus::response(runner, step, call, &outcome);
-    super::archive::write(runner, call, &outcome);
-    if let Some(tx) = &runner.events {
-        super::super::super::tool_metadata_event::send(
-            tx,
-            &call.id,
-            &call.name,
-            outcome.metadata.as_ref(),
-        )
-        .await;
-        super::super::super::tool_event_emit::complete(
-            tx,
-            &call.id,
-            &call.name,
-            super::super::super::event_payload::bounded_tool_output(&outcome.rendered),
-            outcome.success,
-            outcome.duration_ms,
-        )
-        .await;
-    }
-    let content = super::rlm::route(runner, call, &outcome.rendered);
-    runner
-        .session
-        .add_message(super::super::super::tool_output::tool_result_with_metadata(
-            call.id.clone(),
-            &call.name,
-            outcome.success,
-            content,
-            outcome.metadata.as_ref(),
-        ));
-    super::super::super::persist::after_tool(runner.session).await?;
-    super::codesearch::record(runner, outcome.codesearch_miss);
-    Ok(())
+    codetether_prompt_loop::tool_publication::complete(runner, step, call, outcome).await
 }
+
+#[path = "publication/host.rs"]
+mod host;

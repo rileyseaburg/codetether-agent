@@ -32,3 +32,5 @@ codetether-tool-call-parser = { path = "../codetether-tool-call-parser", version
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
 
 codetether-tool-outcome = { path = "../codetether-tool-outcome", version = "0.1.0" }
+
+codetether-stream-bounds = { path = "../codetether-stream-bounds", version = "0.1.0" }
