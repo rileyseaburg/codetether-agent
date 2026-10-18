@@ -54,3 +54,6 @@ pub mod outbound;
 
 /// Inbound MCP registered/fallback tool authorization.
 pub mod inbound;
+
+/// Policy authorization for external MCP server processes.
+pub mod subprocess;

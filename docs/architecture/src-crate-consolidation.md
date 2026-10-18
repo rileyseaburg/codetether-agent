@@ -20700,3 +20700,23 @@ Evidence: `artifacts/consolidation-swarm-output/`. Only the new package and root
 edge are staged in the lockfile; unrelated lockfile work is preserved. No Cargo,
 rustc, or Python commands ran. No RLM/provider calls or Rust tests were executed.
 Compilation and runtime behavior remain unverified; the broader goal is active.
+
+### MCP subprocess authorization ownership
+
+Moved command argument construction, approval-id filtering, primary MCP policy
+checking, and approved-alias re-evaluation into
+`codetether-mcp-approval::subprocess`. Its host extends the existing inbound
+policy evaluator with grant lookup. A single native `mcp/policy_host.rs`
+adapter now supplies both inbound-tool evaluation and subprocess authorization;
+`subprocess_policy.rs` delegates to the shared gate. Existing spawn call sites
+and policy denial text remain unchanged. No dependencies changed.
+
+Verification compares full guard, alias, argument-builder, and command-rendering
+bodies after explicit host substitutions. Primary policy still runs first;
+`mcp_bridge` evaluation remains conditional on an existing alias approval, and
+both paths use identical arguments. Existing native approval tests and their
+shared argument helper remain connected and unchanged. Direct rustfmt, source
+graph checks across 693 roots, native file-size checks, and whitespace checks
+passed. Evidence: `artifacts/consolidation-mcp-subprocess/`. No Cargo, rustc, or
+Python commands ran. Rust tests, subprocess launches, and compilation were not
+performed. Broader workspace consolidation remains active.

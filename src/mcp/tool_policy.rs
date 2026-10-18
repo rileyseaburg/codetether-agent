@@ -1,15 +1,10 @@
 //! Native evaluator and fallback-name bindings for shared MCP enforcement.
+use super::policy_host::Native;
 use super::types::CallToolResult;
-use crate::tool::{Tool, ToolResult};
+use crate::tool::Tool;
 use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;
-struct Native;
-impl codetether_mcp_approval::inbound::Evaluator for Native {
-    async fn evaluate(name: &str, args: &Value) -> Option<ToolResult> {
-        crate::runtime_policy::evaluate_tool_invocation(name, args).await
-    }
-}
 pub(super) fn call_registered(
     name: String,
     tool: Arc<dyn Tool>,

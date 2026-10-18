@@ -27,6 +27,7 @@ mod fallback_grep;
 mod fallback_run_command;
 mod fallback_search;
 mod fallback_search_files;
+mod policy_host;
 mod server;
 mod subprocess_policy;
 mod tool_policy;
