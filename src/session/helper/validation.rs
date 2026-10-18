@@ -7,6 +7,7 @@ use std::{
 };
 #[path = "validation_host.rs"]
 mod host;
+pub(crate) use host::NativeHost as ApplicationValidation;
 #[path = "validation_eslint.rs"]
 mod validation_eslint;
 pub async fn build_validation_report(

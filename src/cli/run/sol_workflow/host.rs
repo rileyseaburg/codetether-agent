@@ -1,5 +1,5 @@
 //! Native provider, worker and diagnostics binding for the Sol workflow.
-use super::{diagnostics, planner, worker::Worker};
+use super::worker::Worker;
 use crate::cli::RunArgs;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -8,7 +8,9 @@ pub(in crate::cli::run) struct NativeHost;
 impl codetether_sol_workflow::Host for NativeHost {
     type Worker = Worker;
     async fn complete(system: String, user: String) -> Result<String> {
-        planner::complete(system, user).await
+        codetether_sol_workflow::planner::complete::<crate::provider::registry::application::Native>(
+            system, user,
+        ).await
     }
     async fn start(args: &RunArgs, workspace: PathBuf) -> Result<Worker> {
         Worker::start(args, workspace).await
@@ -17,7 +19,12 @@ impl codetether_sol_workflow::Host for NativeHost {
         workspace: &Path,
         worker: &Worker,
     ) -> Result<Option<codetether_validation::ValidationReport>> {
-        diagnostics::collect(workspace, &worker.session).await
+        codetether_sol_workflow::diagnostics::collect(
+            workspace,
+            &worker.session.tool_uses,
+            &crate::session::helper::validation::ApplicationValidation,
+        )
+        .await
     }
 }
 #[async_trait::async_trait(?Send)]

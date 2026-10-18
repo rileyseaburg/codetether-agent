@@ -8229,6 +8229,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "codetether-agent-core",
+ "codetether-application-providers",
  "codetether-cli-options",
  "codetether-provider-core",
  "codetether-run-jsonl",

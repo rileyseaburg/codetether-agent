@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-pub(super) struct NativeHost;
+pub(crate) struct NativeHost;
 #[async_trait]
 impl codetether_validation::Host for NativeHost {
     type Client = crate::lsp::client::LspClient;

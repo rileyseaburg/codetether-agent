@@ -22765,3 +22765,23 @@ are staged in the lockfile; the unrelated working lockfile remains byte-identica
 Evidence: `artifacts/consolidation-run-services/`.
 No run execution, provider requests, bus startup, Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation is active.
+
+### Sol planning and touched-file diagnostics owned by the workflow crate
+
+Moved tool-free planner completion and worker-tool-history diagnostic
+collection into codetether-sol-workflow. The native planner and diagnostics
+implementation files were removed. Native workflow binding supplies the same
+application provider identity, worker tool records and validation host; the
+validation host is now re-exported within the crate for that binding.
+
+Static comparisons preserve cached provider loading, SOL_PLANNER_MODEL,
+request construction, response text extraction, successful-tool filtering,
+malformed-input Null fallback, touched-file tracking and an empty baseline.
+Native worker construction/execution and validation methods remain unchanged.
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the Sol workflow crate's agent-core and application-providers edges are
+staged in the lockfile; the unrelated working lockfile remains byte-identical.
+Evidence: `artifacts/consolidation-sol-services/`.
+No planning requests, diagnostics, Cargo, rustc or Python ran; compilation and
+runtime tests remain unverified. Full consolidation is active.

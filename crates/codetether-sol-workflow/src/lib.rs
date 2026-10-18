@@ -2,10 +2,14 @@
 //!
 //! [execute] runs the initial plan, implementation and up to two repair rounds.
 //! [Host] keeps native provider, session and diagnostics setup in the application.
+/// Validation of files touched by successful coding-worker tools.
+pub mod diagnostics;
 mod host;
 mod model;
 mod outcome;
 mod output;
+/// Tool-free planning using an application provider registry.
+pub mod planner;
 mod prompts;
 mod request;
 mod workflow;
