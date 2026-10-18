@@ -1,0 +1,19 @@
+[package]
+name = "codetether-clipboard"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "System clipboard image capture, text writes and Windows DIB decoding"
+
+[dependencies]
+anyhow = "1"
+codetether-image = { path = "../codetether-image", version = "0.1.0" }
+image = { version = "0.25", default-features = false, features = ["png", "bmp", "jpeg"] }
+
+[target.'cfg(not(windows))'.dependencies]
+arboard = "3.4"
+
+[target.'cfg(windows)'.dependencies]
+base64 = "0.23.1"
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Memory"] }

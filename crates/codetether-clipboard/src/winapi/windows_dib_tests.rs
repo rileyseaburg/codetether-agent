@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use super::super::windows_dib::dib_to_bmp;
+    use super::super::dib::dib_to_bmp;
 
     /// A 24-bit BMP (no palette, no bitfield masks) round-trips: stripping the
     /// 14-byte file header yields a DIB, and `dib_to_bmp` rebuilds a decodable

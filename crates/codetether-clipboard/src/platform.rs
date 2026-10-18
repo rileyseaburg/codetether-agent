@@ -1,11 +1,7 @@
-//! Capture and write system clipboard data for the image bridge.
-
-
+//! System clipboard capture and text writes through arboard.
 use anyhow::{Context, Result};
-#[cfg(not(windows))]
+use codetether_image::ImageAttachment;
 use codetether_image::attachment_from_rgba;
-
-use crate::session::ImageAttachment;
 
 /// Read the current system clipboard image as a PNG data URL.
 ///
@@ -17,7 +13,7 @@ use crate::session::ImageAttachment;
 /// # Examples
 ///
 /// ```rust,no_run
-/// let image = codetether_agent::image_clipboard::capture_image()?;
+/// let image = codetether_clipboard::capture_image()?;
 /// assert!(image.data_url.starts_with("data:image/png;base64,"));
 /// # Ok::<(), anyhow::Error>(())
 /// ```
@@ -31,20 +27,6 @@ pub fn capture_image() -> Result<ImageAttachment> {
         .context("clipboard image could not be encoded as PNG")
 }
 
-/// Read the current system clipboard image (Windows via raw-dylib).
-///
-/// Fetches `CF_DIB` from the clipboard, wraps it in a BMP file header, and
-/// re-encodes it as a PNG data URL for pasting over SSH.
-///
-/// # Errors
-///
-/// Returns an error when the clipboard is unavailable or contains no image.
-#[cfg(windows)]
-pub fn capture_image() -> Result<ImageAttachment> {
-    crate::tui::clipboard_winapi::get_clipboard_image()
-        .context("clipboard does not contain an image")
-}
-
 /// Replace the system clipboard with text.
 ///
 /// # Errors
@@ -54,7 +36,7 @@ pub fn capture_image() -> Result<ImageAttachment> {
 /// # Examples
 ///
 /// ```rust,no_run
-/// codetether_agent::image_clipboard::copy_text("hello")?;
+/// codetether_clipboard::copy_text("hello")?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 #[cfg(not(windows))]
@@ -63,11 +45,4 @@ pub fn copy_text(text: &str) -> Result<()> {
     clipboard
         .set_text(text.to_string())
         .context("failed to write image paste text to clipboard")
-}
-
-/// Replace the system clipboard with text (Windows via raw-dylib).
-#[cfg(windows)]
-pub fn copy_text(text: &str) -> Result<()> {
-    crate::tui::clipboard_winapi::set_clipboard_text(text)
-        .context("failed to write text to clipboard via raw-dylib")
 }

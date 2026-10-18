@@ -10890,3 +10890,23 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-bonsai-cli/`. Compilation, runtime tests and
   inference were not run. No Cargo or rustc commands were executed.
 - Full `src/` consolidation remains active; this is another extraction increment.
+
+### System clipboard backend extraction
+
+- Moved `src/image_clipboard/capture.rs` and the implementation under
+  `src/tui/clipboard_winapi` into `crates/codetether-clipboard`. Both native
+  entry points now re-export the shared backend.
+- Fourteen modules separate platform capture/write operations, Windows text
+  access, clipboard guard lifetime, image read/encoding, DIB layout and bounded
+  byte reads. Maximum module size is 35 code lines.
+- Preserved native caller behavior, raw-dylib Win32 APIs, clipboard format
+  constants, non-Windows optional-result stubs and portable image types.
+- Two existing DIB tests moved with their implementation. Twenty-nine static
+  assertions compare platform bodies, guard cleanup, constants, stubs, tests
+  and unchanged CLI/TUI callers. Module/dependency graph, file-limit and
+  whitespace checks passed.
+- Evidence: `artifacts/consolidation-clipboard/`. A misplaced copied module
+  comment was detected by direct formatting and corrected before verification.
+  No compilation, test execution or clipboard operations were performed;
+  Cargo and rustc were not executed.
+- Full `src/` consolidation remains active.

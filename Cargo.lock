@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-clipboard",
  "codetether-bonsai-cli",
  "codetether-context-cli",
  "codetether-search-cli",
@@ -5621,6 +5622,18 @@ dependencies = [
  "codetether-provider-core",
  "futures",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-clipboard"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "arboard",
+ "base64 0.23.1",
+ "codetether-image",
+ "image",
+ "windows",
 ]
 
 [[package]]
