@@ -1,0 +1,10 @@
+[package]
+name = "codetether-session-resume"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Session resume outcomes, diagnostic text, and bounded-window policy"
+
+[dependencies]
+tracing = "0.1"

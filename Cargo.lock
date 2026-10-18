@@ -1257,6 +1257,7 @@ dependencies = [
  "codetether-watchdog",
  "codetether-task-tracker",
  "codetether-paste-buffer",
+ "codetether-session-resume",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6287,6 +6288,13 @@ dependencies = [
 [[package]]
 name = "codetether-paste-buffer"
 version = "0.1.0"
+
+[[package]]
+name = "codetether-session-resume"
+version = "0.1.0"
+dependencies = [
+ "tracing",
+]
 
 [[package]]
 name = "codetether-tracked-vec"

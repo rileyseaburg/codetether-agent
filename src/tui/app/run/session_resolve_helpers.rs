@@ -45,10 +45,4 @@ pub(super) async fn resolve_new(reason: String, bus: &Arc<AgentBus>) -> Result<R
     };
     Ok(Resolved { session, outcome })
 }
-
-fn is_expected(reason: &str) -> bool {
-    reason.contains("requested fresh session")
-        || reason.contains("no session")
-        || reason.contains("No such file")
-        || reason.contains("not found")
-}
+use codetether_session_resume::is_expected_absence as is_expected;

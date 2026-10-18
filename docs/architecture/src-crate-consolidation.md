@@ -12621,3 +12621,20 @@ Full workspace consolidation remains active.
   passed. Evidence: artifacts/consolidation-git-report/.
 - No dependency or lockfile changes were needed. No moved Git functions, Cargo,
   rustc, compilation or Rust tests ran. Full consolidation remains incomplete.
+
+### Session resume outcome extraction
+
+- Moved startup load outcomes, history-source selection, status/banner text,
+  expected-absence classification and bounded resume-window configuration into
+  codetether-session-resume. Seven modules contain at most 31 code lines.
+- Native code retains session loading, forking and transcript mutation. It
+  projects session labels/counts into the shared formatter and appends returned
+  banner text. Existing method/constant behavior, message wording, environment
+  parsing and startup sequencing are preserved.
+- Verification: 14 source comparisons passed for outcome data, policies,
+  formatting, native effects and unchanged startup integration tests. Module
+  and dependency checks, direct rustfmt, file limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-session-resume/.
+- Only this crate's dependency and package record were staged from Cargo.lock.
+  No session loading, Cargo, rustc, compilation or Rust tests were executed.
+  Full workspace consolidation remains incomplete.

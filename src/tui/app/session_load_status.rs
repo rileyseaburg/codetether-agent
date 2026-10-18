@@ -1,5 +1,5 @@
+//! Native session projection for shared resume status text.
 use crate::session::Session;
-
 pub fn load_status_with_original(
     session: &Session,
     dropped: usize,
@@ -7,13 +7,11 @@ pub fn load_status_with_original(
     original_id: Option<&str>,
 ) -> String {
     let label = session.display_label();
-    if dropped == 0 {
-        return format!("Loaded session {label}");
-    }
-    let mb = file_bytes as f64 / (1024.0 * 1024.0);
-    format!(
-        "Loaded session {label}: showing last {} entries; {dropped} older entries remain on disk ({mb:.1} MiB locator); source {}",
+    codetether_session_resume::load_status_with_original(
+        &label,
         session.messages.len(),
-        original_id.unwrap_or("unknown")
+        dropped,
+        file_bytes,
+        original_id,
     )
 }
