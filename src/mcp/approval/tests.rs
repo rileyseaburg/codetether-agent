@@ -27,7 +27,7 @@ async fn mcp_decision_resumes_live_approval_request() {
     let request = store
         .create_request("bash", "execute", "bash:abc", "needs approval")
         .expect("request");
-    let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<crate::session::SessionEvent>(1);
     let live = LiveApprovalRequest::new(
         request.id.clone(),
         "call-1".into(),

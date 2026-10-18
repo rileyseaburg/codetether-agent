@@ -7,7 +7,7 @@
 
 mod decision_kind;
 mod exec_policy;
-pub mod live;
+pub use codetether_approval_session as live;
 pub mod session_command_grants;
 pub mod session_grants;
 

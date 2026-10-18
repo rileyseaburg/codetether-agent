@@ -27,7 +27,7 @@ async fn edited_patch_replaces_waiting_tool_arguments() {
         "src/lib.rs".into(),
         "patch write".into(),
     );
-    let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<crate::session::SessionEvent>(1);
     let waiter = tokio::spawn(async move { crate::approval::live::request(&tx, live).await });
     rx.recv().await.unwrap();
     let patch = "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1 +1 @@\n-old\n+edited\n";

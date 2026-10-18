@@ -1,6 +1,6 @@
 //! Tests for deterministic pending-request ordering.
 
-use crate::approval::{LiveApprovalDecision, LiveApprovalRequest};
+use crate::{LiveApprovalDecision, LiveApprovalRequest};
 
 fn request(id: &str) -> LiveApprovalRequest {
     LiveApprovalRequest::new(
@@ -14,7 +14,7 @@ fn request(id: &str) -> LiveApprovalRequest {
 }
 
 async fn register(
-    tx: tokio::sync::mpsc::Sender<crate::session::SessionEvent>,
+    tx: tokio::sync::mpsc::Sender<codetether_session_events::SessionEvent<()>>,
     request: LiveApprovalRequest,
 ) -> tokio::task::JoinHandle<LiveApprovalDecision> {
     let waiter = tokio::spawn(async move { super::request(&tx, request).await });
@@ -24,7 +24,7 @@ async fn register(
 
 #[tokio::test]
 async fn latest_falls_back_to_older_pending_request() {
-    let _lock = crate::approval::test_env::lock_env();
+    let _lock = crate::test_support::lock();
     let (tx, mut rx) = tokio::sync::mpsc::channel(2);
     let first_id = uuid::Uuid::new_v4().to_string();
     let second_id = uuid::Uuid::new_v4().to_string();

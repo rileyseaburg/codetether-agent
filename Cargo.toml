@@ -31,6 +31,7 @@ members = [
     "crates/codetether-agent-tools",
     "crates/codetether-agent-runtime",
     "crates/codetether-approval-core",
+    "crates/codetether-approval-session",
     "crates/codetether-approval-http",
     "crates/codetether-audit",
     "crates/codetether-autochat-core",
@@ -741,6 +742,7 @@ codetether-bedrock-auth = { path = "crates/codetether-bedrock-auth", version = "
 codetether-bedrock-protocol = { path = "crates/codetether-bedrock-protocol", version = "0.1.0" }
 codetether-bedrock-refresh = { path = "crates/codetether-bedrock-refresh", version = "0.1.0" }
 codetether-approval-core = { path = "crates/codetether-approval-core", version = "0.1.0" }
+codetether-approval-session = { path = "crates/codetether-approval-session", version = "0.1.0" }
 codetether-approval-http = { path = "crates/codetether-approval-http", version = "0.1.0" }
 codetether-browser = { path = "crates/codetether-browser", version = "0.1.1" }
 codetether-runtime-policy = { path = "crates/codetether-runtime-policy", version = "0.1.0" }

@@ -21245,3 +21245,29 @@ checks passed. No dependency or lockfile edits. Evidence:
 `artifacts/consolidation-cognition-aliases/`. No Cargo, rustc, or Python commands
 ran. Compilation/runtime tests remain unverified. The complete workspace
 consolidation goal remains active.
+
+### Dedicated live approval session crate
+
+Moved the complete native live-approval module into
+`codetether-approval-session`, including delivery and both regression tests.
+The root approval facade aliases the crate. Delivery accepts the existing
+`SessionEvent<S>` snapshot parameter rather than depending on the native
+`Session` type. Approval records, pending ordering, decision delivery, and
+cancellation cleanup continue to use the same approval-core implementations.
+The pending-state query is a hidden public re-export to allow cross-crate
+frontend reconciliation.
+
+The delivered-event/await body is byte-for-byte unchanged. Moved test assertions
+and event sequences are unchanged; they use unit snapshots and a local shared
+mutex rather than the application's environment/grant fixture. Those tests do
+not use environment or grant state. Two native caller tests now explicitly
+annotate their event channels, preserving the previously inferred native
+snapshot type. Production call sites already have typed session channels.
+
+Static comparisons, source/dependency graphs across 696 roots and 562 crates,
+direct rustfmt, native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-approval-session/`. The lock change adds only the new
+package and root dependency; unrelated working changes remain separate. No
+Cargo, rustc, or Python commands ran. Rust tests were relocated and inspected,
+not executed. Compilation and runtime behavior remain unverified, and full
+consolidation remains active.

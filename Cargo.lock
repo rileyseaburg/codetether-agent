@@ -1590,6 +1590,7 @@ dependencies = [
  "codetether-agent-replay",
  "codetether-application-mcp",
  "codetether-approval-core",
+ "codetether-approval-session",
  "codetether-approval-review",
  "codetether-audit",
  "codetether-autochat-core",
@@ -2028,6 +2029,16 @@ dependencies = [
  "codetether-swarm-core",
  "tokio",
  "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "codetether-approval-session"
+version = "0.1.0"
+dependencies = [
+ "codetether-approval-core",
+ "codetether-session-events",
+ "tokio",
  "uuid",
 ]
 
