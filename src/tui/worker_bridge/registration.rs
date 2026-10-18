@@ -1,5 +1,6 @@
 //! Preserve the application's canonical worker registration metadata.
-pub(super) struct NativeRegistration;
+/// Canonical application metadata used when starting a TUI worker.
+pub struct NativeRegistration;
 #[async_trait::async_trait]
 impl codetether_tui_worker::Registration for NativeRegistration {
     async fn register(

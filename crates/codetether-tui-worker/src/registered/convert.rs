@@ -1,8 +1,7 @@
-//! Field-preserving ownership conversion between native and shared bridges.
-use super::TuiWorkerBridge;
-use codetether_tui_worker::Bridge;
-impl From<TuiWorkerBridge> for Bridge {
-    fn from(bridge: TuiWorkerBridge) -> Self {
+//! Move bridge resources between registration-typed and plain handles.
+use super::*;
+impl<R: Registration> From<RegisteredBridge<R>> for Bridge {
+    fn from(bridge: RegisteredBridge<R>) -> Self {
         Self {
             worker_id: bridge.worker_id,
             worker_name: bridge.worker_name,
@@ -12,7 +11,7 @@ impl From<TuiWorkerBridge> for Bridge {
         }
     }
 }
-impl From<Bridge> for TuiWorkerBridge {
+impl<R: Registration> From<Bridge> for RegisteredBridge<R> {
     fn from(bridge: Bridge) -> Self {
         Self {
             worker_id: bridge.worker_id,
@@ -20,6 +19,7 @@ impl From<Bridge> for TuiWorkerBridge {
             cmd_tx: bridge.cmd_tx,
             task_rx: bridge.task_rx,
             handle: bridge.handle,
+            registration: PhantomData,
         }
     }
 }

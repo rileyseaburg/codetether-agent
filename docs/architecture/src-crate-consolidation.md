@@ -21605,3 +21605,25 @@ modules or cycles. Direct rustfmt, native file-size limits, and whitespace
 checks passed. Evidence: `artifacts/consolidation-private-module-aliases/`.
 No Cargo, rustc, or Python commands ran. Compilation and runtime tests remain
 unverified; the full implementation consolidation goal remains active.
+
+### Shared registration-typed TUI worker handle
+
+Moved the native bridge handle, resource conversions and associated spawn method
+into `codetether-tui-worker::RegisteredBridge<R>`. The native public name is now
+an alias selecting its canonical worker registration callback. Removed the
+three native handle implementation files; the registration callback remains an
+application binding and its implementation is unchanged.
+
+The shared handle owns the same five resources in the same order. Its additional
+zero-sized marker selects registration without holding runtime state. Both
+conversions still move each resource, and startup uses the same shared bridge
+function and optional-result behavior. Construction uses the existing spawn
+method or conversion from `Bridge`; the private marker means external callers
+should no longer construct the registered handle with a struct literal.
+
+Source comparisons, source/dependency graphs across 692 roots and 564 crates,
+direct rustfmt, native file-size limits, and whitespace checks passed. No
+dependency or lockfile changes. Evidence:
+`artifacts/consolidation-worker-bridge-handle/`. No Cargo, rustc, or Python
+commands ran; compilation and live bridge startup remain unverified. The full
+workspace consolidation goal remains active.

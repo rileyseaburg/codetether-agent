@@ -1,7 +1,6 @@
 //! Native worker registration binding for the shared TUI bridge runtime.
-mod types;
-mod convert;
 mod registration;
-mod spawn;
-pub use types::TuiWorkerBridge;
-pub use codetether_tui_worker::{WorkerBridgeCmd,IncomingTask};
+/// Worker handle bound to the application's canonical registration metadata.
+pub type TuiWorkerBridge =
+    codetether_tui_worker::RegisteredBridge<registration::NativeRegistration>;
+pub use codetether_tui_worker::{IncomingTask, WorkerBridgeCmd};
