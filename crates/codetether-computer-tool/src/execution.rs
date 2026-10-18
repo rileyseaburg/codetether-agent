@@ -2,7 +2,9 @@
 
 use super::input::ComputerUseInput;
 
-pub(super) async fn execute(input: ComputerUseInput) -> anyhow::Result<crate::tool::ToolResult> {
+pub(super) async fn execute(
+    input: ComputerUseInput,
+) -> anyhow::Result<codetether_tool_core::ToolResult> {
     #[cfg(windows)]
     {
         super::worker::execute(input).await

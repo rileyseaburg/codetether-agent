@@ -17313,3 +17313,21 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-computer-worker/`.
 - No Cargo, rustc, Python, worker subprocesses, Rust compilation or Rust tests
   ran. Full workspace consolidation remains incomplete.
+
+### Complete the native computer-use assembly extraction
+
+- Added `codetether-computer-tool` for the actual Tool implementation, platform
+  selection and child-worker dispatch binding. Native `src/tool/computer_use/`
+  now contains only one compatibility re-export module.
+- Removed redundant native input/schema/capture/routing/backend/worker aliases.
+  Existing catalog construction, Windows worker entry and TetherScript platform
+  calls retain their paths through the facade.
+- The root package now depends on the assembled tool crate instead of six
+  implementation crates; the tool crate owns conditional platform dependencies.
+- Verification: exact tool struct/impl comparison, all execution/dispatch/serve
+  bodies, platform aliases, unchanged external callers, and the single-file
+  native facade; module/dependency graphs, direct rustfmt, file limits and
+  whitespace. Lock changes only represent this dependency restructuring.
+- Evidence: `artifacts/consolidation-computer-tool/`. No Cargo, rustc, Python,
+  OS actions, Rust compilation or Rust tests ran. The computer-use subsystem
+  is extracted; the full workspace consolidation remains incomplete.

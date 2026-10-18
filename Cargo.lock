@@ -1574,12 +1574,7 @@ dependencies = [
  "codetether-command-pty",
  "codetether-command-session",
  "codetether-command-shell",
- "codetether-computer-capture",
- "codetether-computer-contract",
- "codetether-computer-linux",
- "codetether-computer-shadow",
- "codetether-computer-windows",
- "codetether-computer-worker",
+ "codetether-computer-tool",
  "codetether-config",
  "codetether-confirm-edit",
  "codetether-confirm-multiedit",
@@ -2407,6 +2402,20 @@ dependencies = [
  "serde_json",
  "tokio",
  "windows",
+]
+
+[[package]]
+name = "codetether-computer-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-computer-contract",
+ "codetether-computer-linux",
+ "codetether-computer-windows",
+ "codetether-computer-worker",
+ "codetether-tool-core",
+ "serde_json",
 ]
 
 [[package]]

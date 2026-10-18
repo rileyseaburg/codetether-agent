@@ -1,0 +1,21 @@
+[package]
+name = "codetether-computer-tool"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Computer-use tool assembly and isolated platform execution routing"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-computer-contract = { path = "../codetether-computer-contract", version = "0.1.0" }
+codetether-computer-worker = { path = "../codetether-computer-worker", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+codetether-computer-linux = { path = "../codetether-computer-linux", version = "0.1.0" }
+
+[target.'cfg(windows)'.dependencies]
+codetether-computer-windows = { path = "../codetether-computer-windows", version = "0.1.0" }
