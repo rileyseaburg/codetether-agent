@@ -11582,3 +11582,18 @@ Full workspace consolidation remains active.
   passed. Evidence: artifacts/consolidation-model-refresh/.
 - No Cargo, rustc, compilation, runtime tests or provider requests were run.
   Full workspace consolidation remains incomplete.
+
+### Shared TUI model types extraction
+
+- Moved ViewMode, InputMode, the simple RGB Theme, view registry, display names,
+  shortcut hints and help formatting from src/tui/models into the independent
+  codetether-tui-models crate. The native module now re-exports the shared API.
+- Preserved all 19 view variants and their ordering, serde derives, labels,
+  shortcuts, input modes, theme defaults and workspace snapshot type identity.
+  Split display labels and shortcuts into separate focused modules.
+- Verification: 16 static comparisons check complete definitions, helpers,
+  registry coverage/order, defaults, source removal and snapshot aliasing.
+  Nine modules contain at most 24 code lines each. Lexical module reachability,
+  dependency cycles, direct rustfmt, native file limits and git diff --check passed.
+- Evidence: artifacts/consolidation-tui-models/. No Cargo, rustc, compilation
+  or runtime tests were run. Full workspace consolidation remains incomplete.

@@ -19,6 +19,14 @@ use super::view_mode_registry::ALL_VIEW_MODES;
 ///
 /// A vector containing one formatted help row for each registered view mode.
 /// If no view modes are registered, the returned vector is empty.
+///
+/// # Arguments
+/// Takes no arguments; uses the canonical registry.
+/// # Examples
+/// ```
+/// let rows = codetether_tui_models::view_mode_help::view_mode_help_rows();
+/// assert_eq!(rows.len(), codetether_tui_models::view_mode_registry::ALL_VIEW_MODES.len());
+/// ```
 pub fn view_mode_help_rows() -> Vec<String> {
     ALL_VIEW_MODES
         .iter()
@@ -42,6 +50,14 @@ pub fn view_mode_help_rows() -> Vec<String> {
 ///
 /// A single string containing all view-mode display names. If the registry is
 /// empty, the returned string is empty.
+///
+/// # Arguments
+/// Takes no arguments; uses the canonical registry.
+/// # Examples
+/// ```
+/// let text = codetether_tui_models::view_mode_help::view_mode_compact_summary();
+/// assert!(text.starts_with("Chat | Sessions"));
+/// ```
 pub fn view_mode_compact_summary() -> String {
     ALL_VIEW_MODES
         .iter()

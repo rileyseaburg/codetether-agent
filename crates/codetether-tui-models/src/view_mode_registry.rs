@@ -1,7 +1,8 @@
 //! Canonical list of every [`ViewMode`] variant.
 
-use crate::tui::models::ViewMode;
+use crate::ViewMode;
 
+/// Every major view in canonical help/selection order.
 pub const ALL_VIEW_MODES: &[ViewMode] = &[
     ViewMode::Chat,
     ViewMode::Sessions,

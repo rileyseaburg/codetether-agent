@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-tui-models",
  "codetether-model-store",
  "codetether-model-discovery",
  "codetether-model-picker",
@@ -5961,6 +5962,14 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tracing",
+]
+
+[[package]]
+name = "codetether-tui-models"
+version = "0.1.0"
+dependencies = [
+ "codetether-workspace-snapshot",
+ "serde",
 ]
 
 [[package]]

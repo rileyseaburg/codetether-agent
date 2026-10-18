@@ -1,0 +1,11 @@
+[package]
+name = "codetether-tui-models"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Shared terminal view modes, input modes, theme data and view registry"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+codetether-workspace-snapshot = { path = "../codetether-workspace-snapshot", version = "0.1.0" }
