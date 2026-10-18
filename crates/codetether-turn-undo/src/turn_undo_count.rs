@@ -1,6 +1,7 @@
-use crate::provider::Message;
-use crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo::is_user_message;
-use crate::tui::chat::message::{ChatMessage, MessageType};
+//! Count session and displayed user turns.
+use crate::turn_undo::is_user_message;
+use codetether_chat_model::{ChatMessage, MessageType};
+use codetether_provider_core::Message;
 
 pub(crate) fn count_session_users(messages: &[Message]) -> usize {
     messages.iter().filter(|m| is_user_message(m)).count()

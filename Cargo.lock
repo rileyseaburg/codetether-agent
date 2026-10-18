@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-turn-undo",
  "codetether-server-runtime",
  "codetether-server-router",
  "codetether-http-error",
@@ -7268,6 +7269,15 @@ dependencies = [
  "codetether-util",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-turn-undo"
+version = "0.1.0"
+dependencies = [
+ "codetether-chat-model",
+ "codetether-context-policy",
+ "codetether-provider-core",
 ]
 
 [[package]]

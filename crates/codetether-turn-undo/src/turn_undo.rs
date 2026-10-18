@@ -1,14 +1,24 @@
-use crate::provider::{Message, Role};
-use crate::session::pages::PageKind;
-use crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo_count::{
-    count_session_users, count_ui_users,
-};
-use crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo_index::{
-    session_cut, ui_cut,
-};
-use crate::tui::chat::message::ChatMessage;
+//! Truncate corresponding user turns and page metadata.
+use crate::turn_undo_count::{count_session_users, count_ui_users};
+use crate::turn_undo_index::{session_cut, ui_cut};
+use codetether_chat_model::ChatMessage;
+use codetether_context_policy::pages::PageKind;
+use codetether_provider_core::{Message, Role};
 
-pub(crate) fn truncate_last_turns(
+/// Remove up to the requested number of complete user turns from both histories.
+/// # Arguments
+/// * `messages` - Persisted conversation history.
+/// * `pages` - Page metadata aligned with conversation messages.
+/// * `ui_messages` - Displayed chat history.
+/// * `requested` - Maximum number of user turns to remove.
+/// # Returns
+/// Number removed, limited by the smaller history's user-message count.
+/// # Examples
+/// ~~~
+/// let removed = codetether_turn_undo::truncate_last_turns(&mut vec![], &mut vec![], &mut vec![], 1);
+/// assert_eq!(removed, 0);
+/// ~~~
+pub fn truncate_last_turns(
     messages: &mut Vec<Message>,
     pages: &mut Vec<PageKind>,
     ui_messages: &mut Vec<ChatMessage>,

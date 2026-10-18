@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use crate::provider::{ContentPart, Message, Role};
-    use crate::session::pages::PageKind;
-    use crate::tui::app::turn_undo_registration::turn_undo_mods::turn_undo::truncate_last_turns;
-    use crate::tui::chat::message::{ChatMessage, MessageType};
+    use crate::turn_undo::truncate_last_turns;
+    use codetether_chat_model::{ChatMessage, MessageType};
+    use codetether_context_policy::pages::PageKind;
+    use codetether_provider_core::{ContentPart, Message, Role};
 
     fn msg(role: Role, text: &str) -> Message {
         Message {

@@ -14492,3 +14492,19 @@ Full workspace consolidation remains active.
   artifacts/consolidation-ralph-command/.
 - No dependencies or lock entries changed. No Cargo, rustc, Rust tests, Ralph
   loops or TUI sessions ran. Full workspace consolidation remains unfinished.
+
+### Turn-history undo ownership
+
+- Moved synchronized session/UI turn truncation, user counting and reverse
+  boundary lookup into the dedicated codetether-turn-undo crate. Its dependencies
+  are the existing provider, chat and page-policy data crates.
+- Moved both focused history tests with their implementation. Native `/undo`
+  calls the shared operation directly; the native `/remove` command integration
+  test remains in its original file and stays registered.
+- Verification: eight static checks passed for all moved source/test bodies,
+  imports, native call-site replacement, retained integration test and isolated
+  lock additions. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-turn-undo/.
+- No Cargo, rustc, Rust tests, session mutation or TUI runtime ran. The command's
+  UI/persistence orchestration and full workspace consolidation remain unfinished.
