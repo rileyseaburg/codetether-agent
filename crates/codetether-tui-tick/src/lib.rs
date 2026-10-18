@@ -4,6 +4,7 @@
 //! [Snapshot] describes visible change counters. [animation_epoch] throttles
 //! decorative redraws to the existing processing/interlude cadence.
 mod animation;
+mod binding;
 mod host;
 mod run;
 mod snapshot;

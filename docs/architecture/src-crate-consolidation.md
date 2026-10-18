@@ -23553,6 +23553,23 @@ unrelated working files are unchanged. No manifest or lock changes were needed.
 Evidence: artifacts/consolidation-reactor-selection/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
 
+### Periodic tick frontend bindings
+
+Moved the periodic subsystem host, tick/audit entry points, visible-state
+snapshot, approval reconciliation adapter and cursor-gated worker synchronization
+into separate codetether-tui-tick::binding modules. Removed the root tick host
+file; the remaining root files select frontend types and callbacks. Shared
+snapshot declarations still serve both event-selection and tick modules.
+
+Twenty expanded function bodies match their originals after explicit callback
+and audit view-type substitutions. Approval tests are byte-for-byte unchanged;
+worker synchronization retains its original restricted visibility. Declaration,
+module/dependency, native production-scope, standalone formatting, file-limit and
+whitespace checks pass for 725 roots and 617 crates. Unrelated working files are
+unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-tick-bindings/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
+
 ### Storage callers use the owning API names directly
 
 Removed the native projection and summary forwarding files after updating five
