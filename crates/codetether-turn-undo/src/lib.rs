@@ -2,7 +2,9 @@
 //!
 //! [`truncate_last_turns`] removes complete user turns from both histories,
 //! bounded by the smaller user-message count. Session page metadata follows
-//! the retained session messages. Persistence and UI refresh belong to callers.
+//! the retained session messages. [`command::execute`] coordinates persistence
+//! and UI refresh through caller-supplied session and view interfaces.
+pub mod command;
 mod turn_undo;
 mod turn_undo_count;
 mod turn_undo_index;

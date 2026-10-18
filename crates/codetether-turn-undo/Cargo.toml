@@ -7,6 +7,9 @@ license = "MIT"
 description = "Synchronized session and chat history turn truncation"
 
 [dependencies]
+anyhow = "1"
+chrono = "0.4"
+tracing = "0.1"
 codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

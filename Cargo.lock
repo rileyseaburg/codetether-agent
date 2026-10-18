@@ -7278,6 +7278,9 @@ dependencies = [
  "codetether-chat-model",
  "codetether-context-policy",
  "codetether-provider-core",
+ "anyhow",
+ "chrono",
+ "tracing",
 ]
 
 [[package]]

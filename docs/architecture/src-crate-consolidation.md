@@ -14508,3 +14508,20 @@ Full workspace consolidation remains active.
   artifacts/consolidation-turn-undo/.
 - No Cargo, rustc, Rust tests, session mutation or TUI runtime ran. The command's
   UI/persistence orchestration and full workspace consolidation remain unfinished.
+
+### Interactive undo command ownership
+
+- Moved undo processing guards, positive-count parsing, timestamp update,
+  persistence status and final notices into codetether-turn-undo::command.
+  Separate modules own execution, save handling, notices and host contracts.
+- Native Session and TUI view adapters expose existing fields and operations.
+  The command entry now forwards directly to shared execution. Tracked history
+  vectors still pass through their existing mutable Vec interfaces.
+- Verification: six static checks passed for fully expanded command behavior,
+  native forwarding, both adapter implementations, module bounds and isolated
+  lock additions. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-undo-command/.
+- Added anyhow, chrono and tracing to the owning crate, staging only its lock
+  dependencies. No Cargo, rustc, Rust tests, persistence or TUI runtime ran.
+  Full workspace consolidation remains unfinished.

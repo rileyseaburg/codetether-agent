@@ -15,6 +15,10 @@ mod ralph_registry;
 mod ralph_view;
 #[path = "commands/session_ops.rs"]
 mod session_ops;
+#[path = "commands/undo_session.rs"]
+mod undo_session;
+#[path = "commands/undo_view.rs"]
+mod undo_view;
 use open_editor::open_editor;
 
 use crate::provider::ProviderRegistry;
@@ -72,54 +76,7 @@ fn handle_context_command(app: &mut App, rest: &str) {
 /// followed it. Trailing system notices (e.g. a previous "Undid…" line) are
 /// ignored when locating the cut point.
 async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
-    if app.state.processing {
-        push_system_message(
-            app,
-            "Cannot undo while a response is in progress. Press Esc to cancel first.",
-        );
-        return;
-    }
-
-    let n: usize = match rest.trim() {
-        "" => 1,
-        s => match s.parse::<usize>() {
-            Ok(v) if v >= 1 => v,
-            _ => {
-                app.state.status =
-                    "Usage: /undo [N] (N = how many turns to undo, default 1)".to_string();
-                return;
-            }
-        },
-    };
-
-    let undo_count = codetether_turn_undo::truncate_last_turns(
-        &mut session.messages,
-        &mut session.pages,
-        &mut app.state.messages,
-        n,
-    );
-    if undo_count == 0 {
-        push_system_message(app, "Nothing to undo.");
-        return;
-    }
-
-    session.updated_at = chrono::Utc::now();
-    app.state.clear_streaming_text();
-    app.state.scroll_to_bottom();
-
-    if let Err(error) = session.save().await {
-        tracing::warn!(error = %error, "Failed to save session after undo");
-        app.state.status = format!("Undid {undo_count} turn(s) (not persisted: {error})");
-    } else {
-        app.state.status = format!("Undid {undo_count} turn(s)");
-    }
-
-    let partial_note = if undo_count < n {
-        format!(" (only {undo_count} available)")
-    } else {
-        String::new()
-    };
-    push_system_message(app, format!("Undid {undo_count} turn(s){partial_note}."));
+    codetether_turn_undo::command::execute(&mut undo_view::CommandView(app), session, rest).await;
 }
 
 /// Fork the current session: create a new session with a copy of the current
