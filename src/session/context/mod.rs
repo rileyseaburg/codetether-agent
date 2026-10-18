@@ -24,7 +24,6 @@ mod request;
 pub(crate) use codetether_context_request as request_guard;
 mod reset;
 use codetether_context_policy::derivation::reset::markers as reset_helpers;
-mod reset_threshold;
 mod state_header;
 mod state_header_pins;
 

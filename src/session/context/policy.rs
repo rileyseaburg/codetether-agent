@@ -12,7 +12,7 @@ use crate::session::derive_policy::DerivePolicy;
 /// - `CODETETHER_CONTEXT_POLICY=reset`
 /// - `CODETETHER_CONTEXT_RESET_THRESHOLD_TOKENS=<usize>`
 /// - `CODETETHER_CONTEXT_RESET_THRESHOLD_FRACTION=<f64>` (of the model's
-///   context window; see [`super::reset_threshold`])
+///   context window; see [`codetether_context_policy::derivation::reset_threshold`])
 ///
 /// When there is no explicit override and the persisted policy is still
 /// legacy, a recorded `[CONTEXT RESET]` marker auto-promotes the effective

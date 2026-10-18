@@ -1,8 +1,10 @@
 //! Prepared-summary fixtures with known coverage and rendered token cost.
 use super::super::{SummaryGap, summary_message};
-use crate::provider::{ContentPart, Message, Role};
-use crate::session::helper::token::estimate_tokens_for_messages;
-use crate::session::index::{Granularity, SummaryIndex, SummaryNode, SummaryRange};
+use codetether_context_policy::summary_index::{
+    Granularity, SummaryIndex, SummaryNode, SummaryRange,
+};
+use codetether_provider_core::{ContentPart, Message, Role};
+use codetether_request_tokens::estimate_tokens_for_messages;
 
 pub(super) fn prepared() -> (SummaryIndex, usize) {
     let range = SummaryRange::new(0, 2).unwrap();

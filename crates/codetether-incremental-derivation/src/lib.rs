@@ -19,3 +19,6 @@ pub use source::Source;
 /// Implementation support for application-local session bindings.
 #[doc(hidden)]
 pub mod session_binding;
+
+#[cfg(test)]
+mod native_tests;

@@ -6,9 +6,6 @@ use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 #[cfg(test)]
-#[path = "incremental_pack.rs"]
-mod pack;
-#[cfg(test)]
 #[path = "incremental_required.rs"]
 mod required;
 

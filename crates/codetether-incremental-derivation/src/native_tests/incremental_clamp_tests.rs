@@ -1,7 +1,7 @@
 //! Regression tests for active-turn-safe incremental overflow clamping.
 
-use crate::provider::Role;
-use crate::session::ResidencyLevel;
+use codetether_context_policy::pages::ResidencyLevel;
+use codetether_provider_core::Role;
 
 use super::incremental_clamp::clamp_and_recompute;
 use super::incremental_clamp_test_fixtures::active_tool_turn;

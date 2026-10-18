@@ -1,9 +1,8 @@
 //! Exercise prepared packing through projection assembly and the overflow clamp.
 use super::{fixtures, select};
-use crate::session::context::{
-    incremental_clamp::clamp_and_recompute, incremental_insert::interleave,
-};
-use crate::session::helper::token::{estimate_request_tokens, estimate_tokens_for_messages};
+use crate::clamp_and_recompute;
+use codetether_context_policy::projection::incremental_insert::interleave;
+use codetether_request_tokens::{estimate_request_tokens, estimate_tokens_for_messages};
 
 #[test]
 fn prepared_summary_survives_the_final_clamp() {
@@ -29,7 +28,10 @@ fn prepared_summary_survives_the_final_clamp() {
         &[(0, 2)],
     );
     assert_eq!(messages.len(), 2);
-    assert_eq!(levels[0], crate::session::ResidencyLevel::Compressed);
+    assert_eq!(
+        levels[0],
+        codetether_context_policy::pages::ResidencyLevel::Compressed
+    );
     assert!(dropped.is_empty());
     assert!(!tags.contains(&"incremental_overflow_clamp"));
     assert!(estimate_request_tokens("", &messages, &[]) <= budget);

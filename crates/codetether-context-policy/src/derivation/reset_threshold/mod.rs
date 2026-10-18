@@ -57,3 +57,6 @@ fn env_fraction(key: &str) -> Option<f64> {
         .filter(|f| *f > 0.0)
         .map(|f| f.min(MAX_RESET_FRACTION))
 }
+
+#[cfg(test)]
+mod native_tests;

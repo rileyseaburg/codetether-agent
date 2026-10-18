@@ -1,10 +1,10 @@
-//! Tests for [`reset_threshold`](super::reset_threshold).
+//! Tests for [`resolve_for_model`](super::resolve_for_model).
 //!
 //! Env-var precedence cases are *not* tested here because they mutate
 //! process-global state; only the env-free paths are exercised.
 
-use super::reset_threshold::resolve_for_model;
-use crate::provider::limits::context_window_for_model;
+use super::resolve_for_model;
+use codetether_provider_core::limits::context_window_for_model;
 
 #[test]
 fn default_is_half_the_model_context_window() {

@@ -25736,3 +25736,21 @@ new package/root dependency are staged in Cargo.lock; unrelated working files
 remain unchanged. Evidence: artifacts/consolidation-native-session-runtime/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
+
+### Context derivation regression ownership
+
+Moved prepared-summary packing, projection/clamp fixtures and regressions into
+codetether-incremental-derivation, and reset-threshold regressions into
+codetether-context-policy beside threshold resolution. Removed the test-only
+root packing adapter and the root threshold re-export; the policy documentation
+now links directly to the owning threshold module. Session-dependent context
+tests remain at their application integration boundary.
+
+Seven moved files retain all thirteen tests under transformed-source comparison;
+only owning-crate imports change. Test environment guards and assertions are
+unchanged. Module/dependency scans cover 718 roots and 604 crates without missing
+modules, cycles or undeclared direct dependencies. Declaration, file-limit,
+direct rustfmt and whitespace checks pass. No manifest or lockfile changes
+were needed; unrelated files remain unchanged. Evidence:
+artifacts/consolidation-context-regressions/. No Cargo, rustc, Python or tests
+ran. Full consolidation remains active.
