@@ -13187,3 +13187,19 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No task
   API calls, dispatches, Cargo, rustc or Rust tests ran. Full consolidation remains
   incomplete.
+
+### Voice REST bridge extraction
+
+- Moved voice create/get/delete/list REST compatibility behavior and request
+  records into codetether-voice-api. Six modules contain at most 21 code lines.
+- Native create/delete adapters provide the shared bus; get/list handlers are
+  imported directly. Existing payloads, default voice/mode, environment lookup,
+  timestamps and session-start/end bus notifications are unchanged.
+- Verification: 78 static comparisons passed for moved functions/schema and
+  remaining server functions/tests. The bus reference retains Arc ownership as
+  required by its handle API. Module/dependency checks, direct rustfmt, file
+  limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-voice-api/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  voice sessions, bus notifications, Cargo, rustc or Rust tests ran. Full
+  consolidation remains incomplete.

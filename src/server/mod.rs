@@ -82,6 +82,7 @@ use codetether_task_api::{CreateAgentTaskRequest, ListAgentTasksQuery};
 use codetether_tool_discovery::RegisterToolResponse;
 use codetether_tool_discovery::RegisteredToolView;
 pub use codetether_tool_discovery::{RegisterToolRequest, RegisteredTool, ToolRegistry};
+use codetether_voice_api::{CreateVoiceSessionRequest, get_voice_session_rest, list_voices_rest};
 use task_dispatch::dispatch_task;
 pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
 
@@ -954,78 +955,17 @@ async fn list_connected_workers(
         .collect();
     Ok(Json(serde_json::json!({ "workers": workers })))
 }
-
-// ── Voice REST bridge ───────────────────────────────────────────────────
-// Bridges the REST /v1/voice/* surface the dashboard expects to the
-// existing gRPC VoiceService implementation via the AgentBus.
-
-/// Create a voice session (REST bridge for VoiceService::CreateVoiceSession)
 async fn create_voice_session_rest(
     State(state): State<AppState>,
     Json(req): Json<CreateVoiceSessionRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let voice_id = req.voice.unwrap_or_else(|| "960f89fc".to_string());
-    let room_name = format!("voice-{}", uuid::Uuid::new_v4());
-
-    // Publish session started event to bus
-    let handle = state.bus.handle("voice-rest");
-    handle.send_voice_session_started(&room_name, &voice_id);
-
-    let livekit_url = std::env::var("LIVEKIT_URL").unwrap_or_default();
-
-    Ok(Json(serde_json::json!({
-        "room_name": room_name,
-        "voice": voice_id,
-        "mode": req.mode.unwrap_or_else(|| "chat".to_string()),
-        "access_token": "",
-        "livekit_url": livekit_url,
-        "expires_at": (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339(),
-    })))
+    codetether_voice_api::create_voice_session_rest(&state.bus, req).await
 }
-
-#[derive(Deserialize)]
-#[allow(dead_code)]
-struct CreateVoiceSessionRequest {
-    voice: Option<String>,
-    mode: Option<String>,
-    codebase_id: Option<String>,
-    user_id: Option<String>,
-}
-
-/// Get a voice session (REST bridge)
-async fn get_voice_session_rest(Path(room_name): Path<String>) -> Json<serde_json::Value> {
-    let livekit_url = std::env::var("LIVEKIT_URL").unwrap_or_default();
-    Json(serde_json::json!({
-        "room_name": room_name,
-        "state": "active",
-        "agent_state": "listening",
-        "access_token": "",
-        "livekit_url": livekit_url,
-    }))
-}
-
-/// Delete a voice session (REST bridge)
 async fn delete_voice_session_rest(
     State(state): State<AppState>,
     Path(room_name): Path<String>,
 ) -> Json<serde_json::Value> {
-    let handle = state.bus.handle("voice-rest");
-    handle.send_voice_session_ended(&room_name, "user_ended");
-    Json(serde_json::json!({ "status": "deleted" }))
-}
-
-/// List available voices (REST bridge)
-async fn list_voices_rest() -> Json<serde_json::Value> {
-    Json(serde_json::json!({
-        "voices": [
-            { "voice_id": "960f89fc", "name": "Riley", "language": "english" },
-            { "voice_id": "puck", "name": "Puck", "language": "english" },
-            { "voice_id": "charon", "name": "Charon", "language": "english" },
-            { "voice_id": "kore", "name": "Kore", "language": "english" },
-            { "voice_id": "fenrir", "name": "Fenrir", "language": "english" },
-            { "voice_id": "aoede", "name": "Aoede", "language": "english" },
-        ]
-    }))
+    codetether_voice_api::delete_voice_session_rest(&state.bus, Path(room_name)).await
 }
 
 // ── Session resume ──────────────────────────────────────────────────────
