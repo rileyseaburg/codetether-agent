@@ -10,7 +10,6 @@ mod open_editor;
 #[path = "commands/session_ops.rs"]
 mod session_ops;
 use open_editor::open_editor;
-use serde_json::Value;
 
 use crate::provider::ProviderRegistry;
 use crate::session::Session;
@@ -40,143 +39,12 @@ fn push_system_message(app: &mut App, content: impl Into<String>) {
         .push(ChatMessage::new(MessageType::System, content.into()));
     app.state.scroll_to_bottom();
 }
-
 async fn handle_mcp_command(app: &mut App, raw: &str) {
-    let rest = raw.trim();
-    if rest.is_empty() {
-        app.state.status =
-            "Usage: /mcp connect <name> <command...> | /mcp servers | /mcp tools [server] | /mcp call <server> <tool> [json]"
-                .to_string();
-        return;
+    let output = codetether_mcp_command::execute(&app.state.mcp_registry, raw).await;
+    app.state.status = output.status;
+    if let Some(message) = output.message {
+        push_system_message(app, message);
     }
-
-    if let Some(value) = rest.strip_prefix("connect ") {
-        let mut parts = value.trim().splitn(2, char::is_whitespace);
-        let Some(name) = parts.next().filter(|part| !part.is_empty()) else {
-            app.state.status = "Usage: /mcp connect <name> <command...>".to_string();
-            return;
-        };
-        let Some(command) = parts.next().map(str::trim).filter(|part| !part.is_empty()) else {
-            app.state.status = "Usage: /mcp connect <name> <command...>".to_string();
-            return;
-        };
-
-        match app.state.mcp_registry.connect(name, command).await {
-            Ok(tool_count) => {
-                app.state.status = format!("Connected MCP server '{name}' ({tool_count} tools)");
-                push_system_message(
-                    app,
-                    format!("Connected MCP server `{name}` with {tool_count} tools."),
-                );
-            }
-            Err(error) => {
-                app.state.status = format!("MCP connect failed: {error}");
-                push_system_message(app, format!("MCP connect failed for `{name}`: {error}"));
-            }
-        }
-        return;
-    }
-
-    if rest == "servers" {
-        let servers = app.state.mcp_registry.list_servers().await;
-        if servers.is_empty() {
-            app.state.status = "No MCP servers connected".to_string();
-            push_system_message(app, "No MCP servers connected.");
-        } else {
-            app.state.status = format!("{} MCP server(s) connected", servers.len());
-            let body = servers
-                .into_iter()
-                .map(|server| {
-                    format!(
-                        "- {} ({} tools) :: {}",
-                        server.name, server.tool_count, server.command
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
-            push_system_message(app, format!("Connected MCP servers:\n{body}"));
-        }
-        return;
-    }
-
-    if let Some(value) = rest.strip_prefix("tools") {
-        let server = Some(value.trim()).filter(|s| !s.is_empty());
-        match app.state.mcp_registry.list_tools(server).await {
-            Ok(tools) => {
-                if tools.is_empty() {
-                    app.state.status = "No MCP tools available".to_string();
-                    push_system_message(app, "No MCP tools available.");
-                } else {
-                    app.state.status = format!("{} MCP tool(s) available", tools.len());
-                    let body = tools
-                        .into_iter()
-                        .map(|(server_name, tool)| {
-                            let description = tool
-                                .description
-                                .unwrap_or_else(|| "Remote MCP tool".to_string());
-                            format!("- [{server_name}] {} — {}", tool.name, description)
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n");
-                    push_system_message(app, format!("Available MCP tools:\n{body}"));
-                }
-            }
-            Err(error) => {
-                app.state.status = format!("MCP tools failed: {error}");
-                push_system_message(app, format!("Failed to list MCP tools: {error}"));
-            }
-        }
-        return;
-    }
-
-    if let Some(value) = rest.strip_prefix("call ") {
-        let mut parts = value.trim().splitn(3, char::is_whitespace);
-        let Some(server_name) = parts.next().filter(|part| !part.is_empty()) else {
-            app.state.status = "Usage: /mcp call <server> <tool> [json]".to_string();
-            return;
-        };
-        let Some(tool_name) = parts.next().filter(|part| !part.is_empty()) else {
-            app.state.status = "Usage: /mcp call <server> <tool> [json]".to_string();
-            return;
-        };
-        let arguments = match parts.next().map(str::trim).filter(|part| !part.is_empty()) {
-            Some(raw_json) => match serde_json::from_str::<Value>(raw_json) {
-                Ok(value) => value,
-                Err(error) => {
-                    app.state.status = format!("Invalid MCP JSON args: {error}");
-                    return;
-                }
-            },
-            None => Value::Object(Default::default()),
-        };
-
-        match app
-            .state
-            .mcp_registry
-            .call_tool(server_name, tool_name, arguments)
-            .await
-        {
-            Ok(output) => {
-                app.state.status = format!("MCP tool finished: {server_name}/{tool_name}");
-                push_system_message(
-                    app,
-                    format!("MCP `{server_name}` / `{tool_name}` result:\n{output}"),
-                );
-            }
-            Err(error) => {
-                app.state.status = format!("MCP call failed: {error}");
-                push_system_message(
-                    app,
-                    format!("MCP `{server_name}` / `{tool_name}` failed: {error}"),
-                );
-            }
-        }
-        return;
-    }
-
-    app.state.status =
-        "Usage: /mcp connect <name> <command...> | /mcp servers | /mcp tools [server] | /mcp call <server> <tool> [json]"
-            .to_string();
 }
 
 /// Dispatch a `/context ...` command for context/RLM health status.

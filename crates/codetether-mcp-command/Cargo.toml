@@ -1,0 +1,11 @@
+[package]
+name = "codetether-mcp-command"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "MCP slash-command execution and presentation responses"
+
+[dependencies]
+codetether-mcp-connections = { path = "../codetether-mcp-connections", version = "0.1.0" }
+serde_json = "1"

@@ -12722,3 +12722,22 @@ Full workspace consolidation remains active.
 - Only the new crate's package and dependency records were staged from
   Cargo.lock. No subprocesses, MCP calls, Cargo, rustc, compilation or Rust tests
   ran. The full consolidation goal remains incomplete.
+
+### MCP command execution ownership
+
+- Moved the native MCP command handler's parsing, registry calls and response
+  construction into codetether-mcp-command. Seven modules separate dispatch,
+  connect, server listing, tool listing, call parsing and call responses.
+  Modules contain at most 34 code lines.
+- The native handler applies the returned status and optional system message.
+  Prefix matching, argument parsing, default JSON object, error text and
+  transcript notices preserve the previous behavior. Registry and subprocess
+  authorization remain on the existing connection-client path.
+- Verification: 18 static comparisons passed for all command branches, call
+  execution, dispatch order, native response application and unchanged nearby
+  handlers. Module/dependency checks, direct rustfmt, file limits and whitespace
+  checks passed. Review corrected a response/output variable shadow before
+  commit. Evidence: artifacts/consolidation-mcp-command/.
+- Only the new crate's dependency/package entries were staged from Cargo.lock.
+  No MCP commands, subprocesses, Cargo, rustc, compilation or Rust tests ran.
+  Full consolidation remains incomplete.
