@@ -1,3 +1,4 @@
+//! Scoped data directory and grant cleanup for route tests.
 pub(super) struct EnvGuard;
 
 impl EnvGuard {
@@ -9,7 +10,7 @@ impl EnvGuard {
 
 impl Drop for EnvGuard {
     fn drop(&mut self) {
-        crate::approval::session_command_grants::reset();
+        codetether_approval_core::session_command_grants::reset();
         unsafe { std::env::remove_var("CODETETHER_DATA_DIR") };
     }
 }

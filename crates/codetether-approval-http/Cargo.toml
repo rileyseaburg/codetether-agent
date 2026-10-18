@@ -1,0 +1,21 @@
+[package]
+name = "codetether-approval-http"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Approval request and decision HTTP routes"
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0", features = ["test-support"] }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+tempfile = "3"
+tokio = { version = "1.53.1", features = ["macros", "rt"] }
+tower = { version = "0.5", features = ["util"] }

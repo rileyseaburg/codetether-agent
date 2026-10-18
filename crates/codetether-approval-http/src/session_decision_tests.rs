@@ -1,5 +1,7 @@
-use crate::approval::{ApprovalStore, session_command_grants, test_env::lock_env};
+//! Session-wide approval grants through the HTTP router.
+use crate::test_env::lock_env;
 use axum::http::{Request, StatusCode};
+use codetether_approval_core::{ApprovalStore, session_command_grants};
 use serde_json::json;
 use tower::ServiceExt;
 

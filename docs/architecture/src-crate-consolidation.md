@@ -13310,3 +13310,22 @@ Full workspace consolidation remains active.
   Added explicit futures, Tokio sync and A2A worker-core dependencies; staged
   only those lockfile entries. No Cargo, rustc, compilation or Rust tests ran.
   Full consolidation remains incomplete.
+
+### Approval HTTP route extraction
+
+- Moved approval request/decision handlers, request types, response envelopes,
+  error mapping and router construction into codetether-approval-http.
+  The native approval_routes module now only re-exports the shared router;
+  existing server authentication and policy wrapping stays in place.
+- Shared approval-core owns ledger writes, decision interpretation, session
+  grants and live pending delivery. The HTTP crate calls these owners directly
+  with unchanged ordering, error mapping and response fields.
+- Moved both existing HTTP tests and their environment guard. Their per-process
+  lock preserves the same grant resets and configuration override cleanup;
+  a request fixture was separated to keep every module below 45 code lines.
+- Verification: 24 static code, route, test and size checks passed. Module
+  reachability, local dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-approval-http/.
+- Only the new package and root dependency were staged from the lockfile.
+  No Cargo, rustc, Rust tests, environment mutation or approval decisions ran.
+  Full source consolidation remains incomplete.

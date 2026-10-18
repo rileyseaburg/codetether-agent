@@ -1,3 +1,4 @@
+//! JSON request bodies accepted by approval routes.
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

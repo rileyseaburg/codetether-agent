@@ -1,5 +1,6 @@
-use crate::approval::ApprovalStore;
+//! Approval request creation over HTTP.
 use axum::Json;
+use codetether_approval_core::ApprovalStore;
 use serde_json::Value;
 
 use super::{error, response, types::RequestBody};

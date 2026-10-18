@@ -1,3 +1,4 @@
+//! Approval ledger failures mapped to HTTP status codes.
 use axum::http::StatusCode;
 
 pub(super) type RouteError = (StatusCode, String);

@@ -1,5 +1,6 @@
-use crate::approval::ApprovalStore;
+//! Approval decision persistence, session grants and pending delivery.
 use axum::{Json, extract::Path};
+use codetether_approval_core::ApprovalStore;
 use serde_json::Value;
 
 use super::{error, kind::DecisionKind, response, types::DecisionBody};
@@ -22,7 +23,7 @@ pub(super) async fn handle(
         store.deny(&id, &actor, &reason).map_err(error::map)?;
         None
     };
-    let delivered = crate::approval::live::decide(&id, kind.live());
+    let delivered = codetether_approval_core::interaction::pending::decide(&id, kind.live());
     let decision = store.decision(&id).map_err(error::map)?;
     Ok(Json(response::decided(
         &id,

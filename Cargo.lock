@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-approval-http",
  "codetether-cognition-api",
  "codetether-voice-api",
  "codetether-http-auth",
@@ -6638,6 +6639,21 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-approval-http"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "codetether-approval-core",
+ "codetether-config",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tower",
 ]
 
 [[package]]
