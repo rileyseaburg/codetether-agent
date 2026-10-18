@@ -7,7 +7,6 @@ use codetether_a2a_worker_clone as clone_task;
 use codetether_worktree::repository as clone_target;
 mod completion_retry;
 mod extended_heartbeat;
-mod forage_args;
 mod forage_task;
 #[cfg(test)]
 mod git_branch_tests;

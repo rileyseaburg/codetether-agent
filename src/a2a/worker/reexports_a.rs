@@ -6,7 +6,6 @@ pub(super) use super::{
     clone_target::prepare_clone_target,
     completion_retry::complete_worker_step_with_context_fallback,
     extended_heartbeat::send_extended_task_heartbeat,
-    forage_args::build_forage_args,
     forage_task::handle_forage_task,
     http_client::build_worker_http_client,
     metadata_flags::metadata_bool,
@@ -14,3 +13,4 @@ pub(super) use super::{
     metadata_numbers::{metadata_u64, metadata_usize},
     metadata_strings::metadata_str,
 };
+pub(super) use codetether_cli_options::forage_task::build_forage_args;

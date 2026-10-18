@@ -1,6 +1,21 @@
-//! Adapt shared forage task options to application CLI arguments.
-use crate::cli::ForageArgs;
-pub(super) fn build_forage_args(
+//! Translate worker task metadata into the forage command option schema.
+//!
+//! [`build_forage_args`] applies the shared metadata policy and maps every
+//! resolved field into [`ForageArgs`] without changing command defaults.
+use crate::ForageArgs;
+/// Resolve forage task metadata and construct command arguments.
+/// # Arguments
+/// `prompt` and `title` supply fallback mission text; `metadata` supplies task
+/// options and `selected_model` supplies the caller's model override.
+/// # Returns
+/// Forage command arguments retaining all resolved worker options.
+/// # Examples
+/// ```
+/// let args = codetether_cli_options::forage_task::build_forage_args(
+///     "mission", "title", &serde_json::Map::new(), None);
+/// assert_eq!(args.moonshots, ["mission"]);
+/// ```
+pub fn build_forage_args(
     prompt: &str,
     title: &str,
     metadata: &serde_json::Map<String, serde_json::Value>,
@@ -34,3 +49,6 @@ pub(super) fn build_forage_args(
         json: options.json,
     }
 }
+
+#[cfg(test)]
+mod tests;

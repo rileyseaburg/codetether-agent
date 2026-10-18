@@ -23255,3 +23255,21 @@ manifest or lockfile changes were needed; unrelated working changes remain
 unchanged. Evidence: artifacts/consolidation-summary-snapshot/.
 No storage operations, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Forage task-to-CLI conversion owned by CLI options
+
+Moved build_forage_args into codetether-cli-options::forage_task. Worker code
+re-exports the shared function, removing the native conversion file. The two
+conversion tests moved beside the shared builder; native coverage for metadata
+lookup remains where that helper is exposed.
+
+Static comparison preserves all nineteen option assignments and the shared
+metadata-policy call. Both moved test bodies and assertions are unchanged
+apart from the function's import path. Native forage execution, shared option
+resolution and the ForageArgs schema remain unchanged. Module/dependency scans
+cover 699 roots and 571 crates without missing modules or cycles. Direct
+rustfmt, file-size limits and whitespace checks passed. Existing dependencies
+cover the move, so no manifests or lockfiles changed. Evidence:
+artifacts/consolidation-forage-task-options/.
+No forage execution, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

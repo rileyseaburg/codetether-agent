@@ -7,6 +7,8 @@ mod benchmark_args;
 mod create_pr_args;
 mod exports;
 mod forage_args;
+/// Translate worker task metadata into forage CLI options.
+pub mod forage_task;
 mod git_credential_helper_args;
 mod mcp_args;
 mod moltbook_args;
