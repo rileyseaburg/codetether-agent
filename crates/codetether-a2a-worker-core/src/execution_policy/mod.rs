@@ -24,3 +24,6 @@ pub mod model_selection;
 
 mod tool_approval;
 pub use tool_approval::{is_safe_tool, is_tool_allowed};
+
+/// Worker agent selection and execution-result normalization.
+pub mod agent;

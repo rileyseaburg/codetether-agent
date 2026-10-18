@@ -16292,3 +16292,17 @@ Full workspace consolidation remains active.
   changed. Evidence: `artifacts/consolidation-prompt-worktree/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker agent execution selection
+
+- Moved swarm-versus-standard agent selection and normalized task-result
+  mapping into `codetether-a2a-worker-core::execution_policy::agent`.
+- Native adapters retain all task metadata, model/approval choices, bus and
+  session execution. Swarm receives a callback clone; standard execution takes
+  the original callback, preserving prior ownership behavior.
+- Verification: complete selection/result-map comparison, all native executor
+  arguments and callback ownership, unchanged session/swarm policies and task
+  caller, module/dependency graphs, direct rustfmt, file budgets and whitespace.
+  No dependencies changed. Evidence: `artifacts/consolidation-worker-agent/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

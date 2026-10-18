@@ -1,55 +1,23 @@
-//! Agent execution selector for claimed tasks.
-
-use std::sync::Arc;
-
-use anyhow::Result;
-
+//! Native entry to shared worker agent selection and result mapping.
+mod host;
+use super::{TaskContext, WorkerTaskRuntime};
 use crate::session::Session;
-
-use super::{
-    TaskContext, WorkerTaskRuntime, execute_session_with_policy, execute_swarm_with_policy,
-    task_agent_swarm_result::{map_session_result, map_swarm_result},
-};
-
+use std::sync::Arc;
 pub(super) async fn execute_task_agent(
     session: &mut Session,
     runtime: &WorkerTaskRuntime,
     context: &TaskContext,
     agent_type: &str,
     output_callback: Arc<dyn Fn(String) + Send + Sync + 'static>,
-) -> Result<(&'static str, Option<String>, Option<String>, Option<String>)> {
-    if super::is_swarm_agent(agent_type) {
-        return execute_swarm_with_policy(
+) -> anyhow::Result<codetether_a2a_worker_core::execution_policy::agent::AgentOutcome> {
+    codetether_a2a_worker_core::execution_policy::agent::execute(
+        &mut host::Native {
             session,
-            &context.prompt,
-            runtime.auto_approve,
-            context.model_tier.as_deref(),
-            context.selected_model.clone(),
-            &context.metadata,
-            context.complexity_hint.as_deref(),
-            context.worker_personality.as_deref(),
-            context.target_agent_name.as_deref(),
-            Some(&runtime.bus),
-            Some(Arc::clone(&output_callback)),
-        )
-        .await
-        .map(|(result, success)| map_swarm_result(result.text, success, result.session_id));
-    }
-    execute_session_with_policy(
-        session,
-        &context.prompt,
-        runtime.auto_approve,
-        context.model_tier.as_deref(),
-        &context.metadata,
-        Some(output_callback),
+            runtime,
+            context,
+            output: Some(output_callback),
+        },
+        agent_type,
     )
     .await
-    .map(|outcome| {
-        map_session_result(
-            outcome.result.text,
-            outcome.result.session_id,
-            outcome.budget_exhausted,
-            outcome.max_steps,
-        )
-    })
 }
