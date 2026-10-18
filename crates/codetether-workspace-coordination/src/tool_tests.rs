@@ -2,7 +2,7 @@
 
 #[test]
 fn timeout_message_tells_the_agent_not_to_wait_manually() {
-    let conflict = crate::mux::lease::WorktreeLease {
+    let conflict = codetether_worktree_lease::WorktreeLease {
         owner: "turn-a".into(),
         agent: "build".into(),
         workspace: "/work".into(),

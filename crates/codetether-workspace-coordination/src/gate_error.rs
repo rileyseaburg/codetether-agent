@@ -1,13 +1,13 @@
 //! Structured tool failures produced by the authoritative mutation gate.
 
-use crate::mux::lease::WorktreeLease;
+use codetether_worktree_lease::WorktreeLease;
 
 pub(super) fn conflict(
     tool: &str,
     conflicts: &[WorktreeLease],
     waited_ms: u64,
     retry_after_ms: u64,
-) -> super::super::tool_policy::ToolTuple {
+) -> codetether_tool_reporting::ToolTuple {
     let waited_seconds = waited_ms / 1_000;
     result(
         "WORKTREE_LEASE_WAIT_TIMEOUT",
@@ -28,7 +28,8 @@ pub(super) fn result(
     tool: &str,
     message: &str,
     detail: serde_json::Value,
-) -> super::super::tool_policy::ToolTuple {
-    let result = crate::tool::ToolResult::structured_error(code, tool, message, None, Some(detail));
+) -> codetether_tool_reporting::ToolTuple {
+    let result =
+        codetether_tool_core::ToolResult::structured_error(code, tool, message, None, Some(detail));
     (result.output, false, Some(result.metadata))
 }

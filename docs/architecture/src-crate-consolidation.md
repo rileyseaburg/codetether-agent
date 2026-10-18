@@ -10191,3 +10191,19 @@ new files contain at most 40 code lines. Evidence is in
 `artifacts/consolidation-worktree-lease/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python, coordinator processes or lease operations ran.
 Full workspace consolidation remains active.
+
+### Dedicated workspace-coordination gate
+
+Moved trusted runtime-field parsing, bounded mutation acquisition, coordinator
+reply classification and structured gate failures into
+`crates/codetether-workspace-coordination`. Ten modules use the shared mutation
+scope and worktree-lease contracts. The native Host supplies coordinator activity
+and authenticated acquisition; prompt-lifetime renewal/release remains unchanged.
+
+Twenty-one static comparisons cover original gate/error bodies, trusted fields,
+logging targets, native callbacks and untouched delegation/lifetime tests. Two
+existing coordinator-result tests moved without execution. Module/dependency
+graphs, file budgets and whitespace checks passed; new files contain at most 40
+code lines. Evidence is in `artifacts/consolidation-workspace-coordination/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or coordinator
+calls ran. Full workspace consolidation remains active.

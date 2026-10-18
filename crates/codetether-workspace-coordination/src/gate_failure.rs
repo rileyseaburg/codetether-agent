@@ -3,7 +3,7 @@
 pub(super) fn unavailable(
     tool: &str,
     error: &anyhow::Error,
-) -> super::super::tool_policy::ToolTuple {
+) -> codetether_tool_reporting::ToolTuple {
     super::gate_error::result(
         "WORKTREE_COORDINATOR_UNAVAILABLE",
         tool,
@@ -12,7 +12,7 @@ pub(super) fn unavailable(
     )
 }
 
-pub(super) fn invalid(tool: &str) -> super::super::tool_policy::ToolTuple {
+pub(super) fn invalid(tool: &str) -> codetether_tool_reporting::ToolTuple {
     super::gate_error::result(
         "WORKTREE_COORDINATOR_PROTOCOL",
         tool,
@@ -21,7 +21,7 @@ pub(super) fn invalid(tool: &str) -> super::super::tool_policy::ToolTuple {
     )
 }
 
-pub(super) fn missing(tool: &str) -> super::super::tool_policy::ToolTuple {
+pub(super) fn missing(tool: &str) -> codetether_tool_reporting::ToolTuple {
     super::gate_error::result(
         "WORKTREE_COORDINATOR_MISSING",
         tool,
