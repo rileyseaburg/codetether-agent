@@ -1,32 +1,20 @@
-//! Pending images badge for the status line.
-
-use ratatui::{
-    style::{Color, Modifier, Style},
-    text::Span,
-};
-
+//! Application-value adapter for the shared images_badge status renderer.
 use crate::tui::app::state::App;
-
-/// Badge showing the number of pending attached images, if any.
+use ratatui::text::Span;
+/// Render the status component from current application values.
+///
+/// # Arguments
+/// * `app` - Application values used for this status component.
+///
+/// # Returns
+/// The component's owned spans, or no badge when inactive.
 ///
 /// # Examples
-///
-/// ```rust,no_run
-/// use codetether_agent::tui::ui::chat_view::images_badge::pending_images_badge;
-/// # fn demo(app: &codetether_agent::tui::app::state::App) {
-/// let badge = pending_images_badge(app);
-/// // None when no images are attached
+/// ```no_run
+/// # fn example(app: &codetether_agent::tui::app::state::App) {
+/// let _display = codetether_agent::tui::ui::chat_view::images_badge::pending_images_badge(app);
 /// # }
 /// ```
 pub fn pending_images_badge(app: &App) -> Option<Span<'static>> {
-    let count = app.state.pending_images.len();
-    if count == 0 {
-        return None;
-    }
-    Some(Span::styled(
-        format!(" 📷 {count} attached "),
-        Style::default()
-            .fg(Color::Magenta)
-            .add_modifier(Modifier::BOLD),
-    ))
+    codetether_chat_status::images_badge::pending_images_badge(app.state.pending_images.len())
 }

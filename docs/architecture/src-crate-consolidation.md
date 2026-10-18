@@ -11928,3 +11928,21 @@ Full workspace consolidation remains active.
   and diff checks passed. No Cargo, rustc, compilation or tests ran. The earlier
   narrower module checks did not cover this native root; full consolidation
   remains incomplete.
+
+### Chat status presentation extraction
+
+- Moved full/compact keyboard hints, key styling, session labels, auto-apply and
+  image badges, full-auto and processing badges, status text and wide/stacked
+  line assembly into codetether-chat-status. Fourteen focused modules contain
+  at most 31 code lines. Two narrow-terminal hint-packing tests moved with them.
+- Native adapters provide simple display values. Task counting remains lazy
+  and only occurs while processing. Native status assembly preserves badge
+  construction before metric construction; telemetry and other application
+  badge providers are still native and not duplicated.
+- Verification: 22 source comparisons passed for moved functions, aliases,
+  native projections, ordering and tests. The expanded graph includes the whole
+  native chat-view tree and reports no missing modules, while recording the
+  already-unused mods_a.rs file. Dependency cycles, direct formatting, source
+  limits and git diff --check passed. Evidence: artifacts/consolidation-chat-status/.
+- No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
+  incomplete; source checks do not prove runtime or type correctness.

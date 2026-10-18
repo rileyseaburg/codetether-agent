@@ -1,11 +1,14 @@
 //! Narrow-terminal regression tests for status-bar hint packing.
 
 use super::compact_hints::compact_keybinding_spans;
-use super::status_pack::pack_spans;
+use codetether_chat_layout::pack_spans;
 use ratatui::text::Line;
 
 fn text(line: &Line<'_>) -> String {
-    line.spans.iter().map(|span| span.content.as_ref()).collect()
+    line.spans
+        .iter()
+        .map(|span| span.content.as_ref())
+        .collect()
 }
 
 /// iPhone portrait SSH clients render around 46 columns; a key must never be

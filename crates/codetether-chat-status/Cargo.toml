@@ -1,0 +1,12 @@
+[package]
+name = "codetether-chat-status"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Responsive chat status rendering, keyboard hints, and badges"
+
+[dependencies]
+codetether-chat-layout = { path = "../codetether-chat-layout", version = "0.1.0" }
+codetether-tui-style = { path = "../codetether-tui-style", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
