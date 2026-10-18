@@ -5,17 +5,14 @@ use super::store;
 mod host;
 pub use codetether_agent_view::{AgentOrigin, AgentSnapshot};
 pub(crate) use host::ApplicationHost;
-#[path = "bridge_live.rs"]
-mod live;
 #[cfg(test)]
 #[path = "bridge_test_fixture.rs"]
 mod test_fixture;
-#[path = "bridge_transcript.rs"]
-mod transcript;
-pub(crate) use live::{LiveTraceEntry, LiveTraceSnapshot, agent_tool_live_trace_for_parent};
 #[cfg(test)]
 pub(crate) use test_fixture::record_remote_turn;
-pub(crate) use transcript::agent_tool_transcript_for_parent;
+#[cfg(test)]
+#[path = "bridge_transcript_tests.rs"]
+mod transcript_tests;
 
 /// Returns snapshots of all agents spawned via the `agent` tool.
 pub fn list_agent_tool_agents() -> Vec<AgentSnapshot> {

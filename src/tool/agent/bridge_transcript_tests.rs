@@ -22,8 +22,11 @@ async fn transcript_bridge_is_scoped_to_the_parent_session() {
         depth: 0,
         model_id: None,
     });
-    let visible = super::agent_tool_transcript_for_parent(&name, "owner-a").unwrap();
+    let visible =
+        codetether_agent_view::transcript::<super::ApplicationHost>(&name, "owner-a").unwrap();
     assert_eq!(visible.len(), 1);
-    assert!(super::agent_tool_transcript_for_parent(&name, "owner-b").is_none());
+    assert!(
+        codetether_agent_view::transcript::<super::ApplicationHost>(&name, "owner-b").is_none()
+    );
     store::remove(&child_id);
 }

@@ -15,7 +15,8 @@ fn remote_turn_has_a_parent_scoped_dashboard_transcript() {
     let peer = peers.iter().find(|peer| peer.name == name).unwrap();
     assert!(peer.origin.is_remote());
     assert!(peer.is_processing);
-    let transcript = super::agent_tool_transcript_for_parent(&name, &parent).unwrap();
+    let transcript =
+        codetether_agent_view::transcript::<super::ApplicationHost>(&name, &parent).unwrap();
     assert_eq!(transcript.len(), 1);
 
     turn.settle(&PeerReply::ok("lint failed"));

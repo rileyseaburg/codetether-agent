@@ -24241,3 +24241,19 @@ and whitespace checks passed. Only the required lockfile dependency is staged;
 unrelated edits remain untouched. Evidence:
 artifacts/consolidation-agent-view-host/. No Cargo, rustc, Python, compilation,
 registry operations or tests ran. Full consolidation remains active.
+
+### Unused agent-view forwarders removed
+
+Removed native bridge_live.rs and bridge_transcript.rs. The live-trace forwarder
+had no remaining consumers, and only tests used the transcript forwarder. Those
+tests now call the identical shared transcript function and application host
+directly. The transcript test module remains attached to the native bridge so
+it can still exercise native registry ownership. No dependencies changed.
+
+Static comparisons preserve all test setup and assertions with only the direct
+call substitution. No stale forwarder references remain in src. Module and
+dependency scans cover 692 roots and 573 crates without missing modules or
+cycles. Direct rustfmt, source file limits and whitespace checks passed.
+Unrelated working edits are untouched. Evidence:
+artifacts/consolidation-agent-view-forwarders/. No tests, Cargo, rustc, Python
+or compilation ran. Full consolidation remains active.
