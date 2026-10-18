@@ -1241,6 +1241,7 @@ dependencies = [
  "codetether-tool-panel",
  "codetether-message-bubbles",
  "codetether-composer-view",
+ "codetether-slash-command",
  "codetether-trust-status",
  "codetether-chat-status",
  "codetether-chat-layout",
@@ -6199,6 +6200,10 @@ version = "0.1.0"
 dependencies = [
  "codetether-session-events",
 ]
+
+[[package]]
+name = "codetether-slash-command"
+version = "0.1.0"
 
 [[package]]
 name = "codetether-tracked-vec"

@@ -1,0 +1,7 @@
+[package]
+name = "codetether-slash-command"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Slash-command aliases, completion catalog, and usage hints"

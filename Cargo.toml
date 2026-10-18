@@ -260,6 +260,7 @@ members = [
     "crates/codetether-chat-status",
     "crates/codetether-trust-status",
     "crates/codetether-composer-view",
+    "crates/codetether-slash-command",
     "crates/codetether-message-bubbles",
     "crates/codetether-tool-panel",
     "crates/codetether-context-health",
@@ -579,6 +580,7 @@ codetether-agent-identity = { path = "crates/codetether-agent-identity", version
 codetether-context-health = { path = "crates/codetether-context-health", version = "0.1.0" }
 codetether-tool-panel = { path = "crates/codetether-tool-panel", version = "0.1.0" }
 codetether-message-bubbles = { path = "crates/codetether-message-bubbles", version = "0.1.0" }
+codetether-slash-command = { path = "crates/codetether-slash-command", version = "0.1.0" }
 codetether-composer-view = { path = "crates/codetether-composer-view", version = "0.1.0" }
 codetether-trust-status = { path = "crates/codetether-trust-status", version = "0.1.0" }
 codetether-chat-status = { path = "crates/codetether-chat-status", version = "0.1.0" }

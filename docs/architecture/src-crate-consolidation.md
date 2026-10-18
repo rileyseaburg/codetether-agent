@@ -12228,3 +12228,23 @@ Full workspace consolidation remains active.
   artifacts/consolidation-composer-history/.
 - No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
   incomplete.
+
+### Slash-command ownership extraction
+
+- Moved slash and easy-mode alias normalization, exact command argument parsing,
+  the completion catalog, both description tables, hint matching and completion
+  selection into the dependency-free codetether-slash-command crate. Its 19
+  modules contain at most 40 code lines, including nine existing parsing tests
+  moved from the native text module.
+- Five native implementation files are now compatibility exports. AppState
+  delegates completion matching and retains selection, visibility, input
+  assignment and other UI effects. Existing public import paths remain valid.
+- Verification: 25 source comparisons passed, including the moved test bodies,
+  catalog order, hint strings, completion logic and remaining native methods.
+  Module reachability, dependency-cycle checks, direct rustfmt, the native file
+  limit ratchet and diff whitespace checks passed. Evidence is recorded under
+  artifacts/consolidation-slash-command/.
+- Only this extraction's root dependency and package entry were staged from
+  Cargo.lock; preexisting lockfile drift and unrelated A2A edits were preserved.
+- No Cargo or rustc commands, compilation, or Rust tests ran. Full workspace
+  consolidation remains incomplete.

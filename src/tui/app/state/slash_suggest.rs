@@ -11,28 +11,7 @@ impl super::AppState {
             self.selected_slash_suggestion = 0;
             return;
         }
-        let raw_query = self.input.split_whitespace().next().unwrap_or("");
-        let query = crate::tui::app::text::normalize_slash_command(raw_query).to_lowercase();
-        let mut matches: Vec<&str> = super::slash_commands::SLASH_COMMANDS
-            .iter()
-            .filter(|cmd| cmd.starts_with(&query))
-            .copied()
-            .collect();
-        if matches.is_empty() && query.len() > 1 {
-            let needle = &query[1..];
-            matches = super::slash_commands::SLASH_COMMANDS
-                .iter()
-                .filter(|cmd| cmd.contains(needle))
-                .copied()
-                .collect();
-        }
-        if matches.is_empty() && query == "/" {
-            matches = super::slash_commands::SLASH_COMMANDS
-                .iter()
-                .copied()
-                .collect();
-        }
-        self.slash_suggestions = matches.into_iter().map(String::from).collect();
+        self.slash_suggestions = codetether_slash_command::suggestions(&self.input);
         if self.selected_slash_suggestion >= self.slash_suggestions.len() {
             self.selected_slash_suggestion = self.slash_suggestions.len().saturating_sub(1);
         }
