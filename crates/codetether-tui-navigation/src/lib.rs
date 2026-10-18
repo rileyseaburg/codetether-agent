@@ -26,3 +26,6 @@ pub mod terminal;
 
 /// Unmodified key dispatch and Enter/Escape priority rules.
 pub mod keys;
+
+/// Control/Alt shortcut priority, actions and status policy.
+pub mod modified;

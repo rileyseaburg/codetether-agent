@@ -17423,3 +17423,19 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-key-dispatch/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared modifier shortcut selection and status policy
+
+- Moved Ctrl/Alt shortcut matching and status updates into
+  `codetether-tui-navigation::modified`, with explicit UI effects and separate
+  state/routing/effect contracts.
+- Native bindings retain clipboard, voice, side-question, approval, Ctrl+C
+  and file-opening operations. Input effects and view mutations are split.
+- Preserved scroll/approval priority, chat-only guards, Shift+Insert and both
+  Ctrl+Shift+Y encodings, layout labels, watchdog cancellation and fallthrough.
+- Verification: complete original match-body comparison, every state/routing
+  and effect binding, unchanged voice variants and existing handler tests;
+  module/dependency graphs, direct rustfmt, file limits and whitespace.
+- No dependency changes. Evidence: `artifacts/consolidation-modified-keys/`.
+  No Cargo, rustc, Python, UI effects, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
