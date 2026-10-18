@@ -13925,3 +13925,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or provider requests ran. Full workspace
   consolidation remains unfinished.
+
+### Relay RLM refinement extraction
+
+- Moved CLI handoff refinement and shared-context distillation into
+  codetether-relay-rlm. Modules separate handoff orchestration, context
+  distillation, semantic answer extraction and fallback/message construction.
+- Calls the same router-backed RlmExecutor directly. Two-iteration limits,
+  queries, provider resolution, empty-answer handling, logs and deterministic
+  fallback behavior remain unchanged. Native shared_context.rs is a re-export.
+- Verification: ten static expanded-body/context/native-code/owner/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-relay-rlm/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, RLM analysis or provider calls ran. Full workspace
+  consolidation remains unfinished.

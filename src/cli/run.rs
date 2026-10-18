@@ -17,7 +17,6 @@ use crate::autochat::transport::{attach_handoff_receiver, consume_handoff_by_cor
 use crate::bus::{AgentBus, relay::ProtocolRelayRuntime, relay::RelayAgentProfile};
 use crate::okr::{ApprovalDecision, Okr, OkrRepository, OkrRun};
 use crate::provider::{ContentPart, Message, Role};
-use crate::rlm::{FinalPayload, RlmExecutor};
 use crate::session::{Session, import_codex_session_by_id};
 use anyhow::Result;
 use codetether_relay_plan::{
@@ -28,6 +27,7 @@ use codetether_relay_planner::{
     decide_dynamic_spawn_with_registry, plan_okr_draft_with_registry,
     plan_relay_profiles_with_registry,
 };
+use codetether_relay_rlm::prepare_autochat_handoff_with_registry;
 use codetether_run_command::{
     command_with_optional_args, is_easy_go_command, normalize_cli_go_command,
     resolve_autochat_model, validate_easy_go_task,
@@ -42,9 +42,6 @@ const AUTOCHAT_MAX_ROUNDS: usize = crate::autochat::AUTOCHAT_MAX_ROUNDS;
 const AUTOCHAT_MAX_DYNAMIC_SPAWNS: usize = crate::autochat::AUTOCHAT_MAX_DYNAMIC_SPAWNS;
 const AUTOCHAT_SPAWN_CHECK_MIN_CHARS: usize = crate::autochat::AUTOCHAT_SPAWN_CHECK_MIN_CHARS;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
-const AUTOCHAT_RLM_THRESHOLD_CHARS: usize = crate::autochat::AUTOCHAT_RLM_THRESHOLD_CHARS;
-const AUTOCHAT_RLM_FALLBACK_CHARS: usize = crate::autochat::AUTOCHAT_RLM_FALLBACK_CHARS;
-const AUTOCHAT_RLM_HANDOFF_QUERY: &str = crate::autochat::AUTOCHAT_RLM_HANDOFF_QUERY;
 
 /// Guarded UUID parse that logs warnings on invalid input instead of returning NIL UUID.
 /// Returns None for invalid UUIDs, allowing callers to skip operations rather than corrupt data.
@@ -463,59 +460,6 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
 
 fn normalize_for_convergence(text: &str) -> String {
     crate::autochat::normalize_for_convergence(text, 280)
-}
-
-fn extract_semantic_handoff_from_rlm(answer: &str) -> String {
-    match FinalPayload::parse(answer) {
-        FinalPayload::Semantic(payload) => payload.answer,
-        _ => answer.trim().to_string(),
-    }
-}
-
-async fn prepare_autochat_handoff_with_registry(
-    task: &str,
-    from_agent: &str,
-    output: &str,
-    model_ref: &str,
-    registry: Option<&std::sync::Arc<crate::provider::ProviderRegistry>>,
-) -> (String, bool) {
-    let mut used_rlm = false;
-    let mut relay_payload = if output.len() > AUTOCHAT_RLM_THRESHOLD_CHARS {
-        truncate_with_ellipsis(output, AUTOCHAT_RLM_FALLBACK_CHARS)
-    } else {
-        output.to_string()
-    };
-
-    if let Some(registry) = registry
-        && let Some((provider, model_name)) =
-            resolve_provider_for_model_autochat(registry, model_ref)
-    {
-        let mut executor =
-            RlmExecutor::new(output.to_string(), provider, model_name).with_max_iterations(2);
-        match executor.analyze(AUTOCHAT_RLM_HANDOFF_QUERY).await {
-            Ok(result) => {
-                let normalized = extract_semantic_handoff_from_rlm(&result.answer);
-                if !normalized.is_empty() {
-                    relay_payload = normalized;
-                    used_rlm = true;
-                }
-            }
-            Err(err) => {
-                tracing::warn!(
-                    error = %err,
-                    "CLI RLM handoff normalization failed; using fallback payload"
-                );
-            }
-        }
-    }
-
-    (
-        format!(
-            "Relay task:\n{task}\n\nIncoming handoff from @{from_agent}:\n{relay_payload}\n\n\
-             Continue the work from this handoff. Keep your response focused and provide one concrete next-step instruction for the next agent."
-        ),
-        used_rlm,
-    )
 }
 
 async fn run_protocol_first_relay(
