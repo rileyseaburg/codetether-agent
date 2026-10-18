@@ -1,0 +1,20 @@
+[package]
+name = "codetether-symbol-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Debounced workspace-symbol discovery, LSP queries and result application"
+
+[dependencies]
+anyhow = "1"
+codetether-lsp-core = { path = "../codetether-lsp-core", version = "0.1.0" }
+codetether-lsp-tool = { path = "../codetether-lsp-tool", version = "0.1.0" }
+codetether-symbol-search = { path = "../codetether-symbol-search", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+ignore = "0.4"
+serde_json = "1"
+tokio = { version = "1", features = ["rt", "time"] }
+
+[dev-dependencies]
+tempfile = "3"

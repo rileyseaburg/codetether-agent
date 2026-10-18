@@ -1,7 +1,7 @@
 //! Policy for whether a symbol-search keystroke should issue an LSP query.
 //!
 //! Pure logic, so it is unit-testable without a language server. Keeping this
-//! separate from [`super::refresh_symbol_search`] means the expensive I/O path
+//! separate from [crate::schedule] means the expensive I/O path
 //! has one decision point instead of scattered guards.
 
 use std::time::Duration;

@@ -1,3 +1,4 @@
+//! Workspace symbol languages operations.
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
@@ -19,7 +20,7 @@ pub fn representatives(root: &Path) -> Vec<PathBuf> {
 
 fn select(path: &Path, languages: &mut HashSet<&'static str>) -> Option<PathBuf> {
     let text = path.to_string_lossy();
-    let language = crate::lsp::detect_language_from_path(&text)?;
+    let language = codetether_lsp_core::types::detect_language_from_path(&text)?;
     languages.insert(language).then(|| path.to_path_buf())
 }
 

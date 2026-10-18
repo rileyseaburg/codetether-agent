@@ -11347,3 +11347,23 @@ Full workspace consolidation remains active.
 - Evidence: artifacts/consolidation-symbol-search/. No Cargo, rustc, compilation,
   runtime tests or language-server requests were run. Full consolidation remains
   incomplete.
+
+### Workspace symbol query runtime extraction
+
+- Moved native symbol query execution, language discovery, debounce gate,
+  cancellation epochs, task/result slots and result application into
+  crates/codetether-symbol-runtime. Removed the native parser/ranking forwarding
+  modules, since the runtime now uses codetether-symbol-search directly.
+- The host adapter passes its existing ApplicationHost into the generic LSP
+  runtime and projects App to SymbolSearchState. LSP identity and shared manager
+  cache remain unchanged. Composer mention insertion remains native.
+- Preserved the 150 ms debounce, two-character threshold, five-language discovery
+  cap, name/path deduplication, partial-success semantics, cancellation epochs,
+  current-query acceptance check and process-wide task/result slots.
+- Verification: 29 static comparisons, including unchanged composer code, plus
+  lexical module reachability and workspace dependency-cycle checks. Five existing
+  tests moved; 12 Rust modules contain at most 37 nonblank/noncomment code lines.
+  Direct rustfmt, the native file-limit ratchet and git diff --check passed.
+- Evidence: artifacts/consolidation-symbol-runtime/. No Cargo, rustc, compilation,
+  runtime tests, filesystem discovery or language-server requests were executed.
+  Full src-to-crates consolidation remains incomplete.

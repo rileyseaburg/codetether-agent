@@ -5,17 +5,12 @@ mod store;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::tui::symbol_search::SymbolEntry;
-
-pub(super) struct Completion {
-    pub query: String,
-    pub files: Vec<PathBuf>,
-    pub result: anyhow::Result<Vec<SymbolEntry>>,
-}
+use crate::completion::Completion;
+use codetether_lsp_tool::Host;
 
 static EPOCH: AtomicU64 = AtomicU64::new(0);
 
-pub(super) fn schedule(query: String, files: Vec<PathBuf>, root: PathBuf) {
+pub(crate) fn schedule<H: Host>(query: String, files: Vec<PathBuf>, root: PathBuf) {
     cancel();
     let epoch = EPOCH.load(Ordering::Acquire);
     let task = tokio::spawn(async move {
@@ -28,7 +23,7 @@ pub(super) fn schedule(query: String, files: Vec<PathBuf>, root: PathBuf) {
         } else {
             files
         };
-        let result = super::search::workspace(&files, &query).await;
+        let result = super::search::workspace::<H>(&files, &query).await;
         if EPOCH.load(Ordering::Acquire) == epoch {
             store::complete(Completion {
                 query,
@@ -40,7 +35,18 @@ pub(super) fn schedule(query: String, files: Vec<PathBuf>, root: PathBuf) {
     store::replace_task(task);
 }
 
-pub(super) fn cancel() {
+/// Cancels the pending process-wide query and invalidates its epoch.
+/// # Arguments
+/// Takes no arguments; this runtime serves one interactive TUI.
+/// # Returns
+/// Unit after aborting the stored task, if any.
+/// # Panics
+/// Panics if the task-slot mutex is poisoned.
+/// # Examples
+/// ```
+/// codetether_symbol_runtime::cancel();
+/// ```
+pub fn cancel() {
     EPOCH.fetch_add(1, Ordering::AcqRel);
     store::abort_task();
 }
