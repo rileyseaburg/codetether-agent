@@ -7,6 +7,9 @@ license = "MIT"
 description = "Durable JSONL history uploads and pointer reads over MinIO/S3"
 
 [dependencies]
+async-trait = "0.1"
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
+tokio = { version = "1", features = ["rt"] }
 anyhow = "1"
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
@@ -14,3 +17,6 @@ minio = "0.4.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
+
+[dev-dependencies]
+uuid = { version = "1", features = ["v4"] }

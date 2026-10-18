@@ -22,3 +22,6 @@ pub use upload_encoded::encoded as upload_encoded_history;
 pub use upload_full::upload_full_history;
 #[cfg(test)]
 mod tests;
+
+/// Incremental archival from durable consumer snapshots.
+pub mod archive;

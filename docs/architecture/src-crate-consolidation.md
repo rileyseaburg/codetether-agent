@@ -8761,3 +8761,25 @@ files contain at most 37 code lines. Evidence is in
 `artifacts/consolidation-history-sink/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. Archive scheduling and other
 remaining native code still require consolidation.
+
+### History-sink incremental archive worker
+
+Moved the active archive scheduler, wakeup-coalescing registry and immutable
+chunk upload loop from `src/session/store/archive` into
+`codetether-history-sink::archive`. Five modules separate native consumer access,
+queue state, scheduling and upload/acknowledgement order. The application supplies
+only its existing consumer reader and a borrowed message slice.
+
+Configuration selection and session identity cloning keep their prior order.
+The worker keeps the 128-message consumer batch, exact chunk keys, upload-before-
+projection commit ordering and failure cleanup. Repeated wakeups still coalesce
+into the same session-keyed registry, including arrivals during the final drain.
+The original worker logging target is retained.
+
+Seven static comparisons cover complete worker bodies, the queue and its moved
+race regression, native callbacks and configuration selection. Module references,
+workspace dependency cycles, file budgets and whitespace checks passed. The
+history-sink crate has 22 modules with at most 39 code lines. Evidence is in
+`artifacts/consolidation-history-archive/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python, upload or download operations ran. The full
+workspace consolidation remains incomplete.
