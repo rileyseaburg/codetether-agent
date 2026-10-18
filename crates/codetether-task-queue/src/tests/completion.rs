@@ -1,7 +1,7 @@
 //! Rejected releases cannot replace any part of the accepted receipt.
 
 use super::task;
-use crate::server::task_queue::{KnativeTaskQueue, ReleaseError, TaskCompletion};
+use crate::{KnativeTaskQueue, ReleaseError, TaskCompletion};
 
 pub(super) fn receipt() -> TaskCompletion {
     TaskCompletion {

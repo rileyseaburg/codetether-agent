@@ -1,21 +1,10 @@
-//! Runnable snapshots retain configuration without claiming or altering tasks.
-
-use super::task;
-use crate::server::task_queue::KnativeTaskQueue;
+//! Existing task-queue regression case.
+use super::*;
 
 #[tokio::test]
 async fn pending_snapshot_preserves_configuration_and_queue_state() {
     let queue = KnativeTaskQueue::new();
-    let statuses = [
-        "pending",
-        "queued",
-        "processing",
-        "working",
-        "completed",
-        "failed",
-        "cancelled",
-        "unknown",
-    ];
+    let statuses = super::STATUSES;
     for status in statuses {
         let mut original = task(status);
         original.task_id = status.into();

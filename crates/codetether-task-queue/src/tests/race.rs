@@ -1,7 +1,7 @@
 //! A simultaneous claim race has one winner and mutation-free conflicts.
 
 use super::task;
-use crate::server::task_queue::{ClaimError, KnativeTaskQueue};
+use crate::{ClaimError, KnativeTaskQueue};
 use std::sync::Arc;
 use tokio::{sync::Barrier, task::JoinSet};
 

@@ -1,7 +1,7 @@
 //! Accepted progress preserves task fields and notifies the working snapshot.
 
 use super::task;
-use crate::server::task_queue::KnativeTaskQueue;
+use crate::KnativeTaskQueue;
 use std::cell::Cell;
 
 #[tokio::test]

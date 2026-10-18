@@ -13137,3 +13137,20 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-openai-selection/.
 - No dependency changes were needed. No provider calls, Cargo, rustc or Rust
   tests ran. Full consolidation remains incomplete.
+
+### In-process task queue extraction
+
+- Moved KnativeTaskQueue, task/completion records, atomic claim/output/release
+  operations and the existing queue test suite into codetether-task-queue.
+  Twenty modules contain at most 41 code lines. The longest existing snapshot
+  test now shares its unchanged status fixture through its parent test module.
+- Native task_queue re-exports the shared API. snapshot_pending is public for
+  its native consumers. Lock scopes, status transitions, receipt semantics,
+  notification order and existing non-durable behavior are unchanged.
+- Verification: 24 static comparisons passed for moved modules/tests and
+  unchanged worker claim/release, output ingestion and server integration.
+  Module/dependency checks, direct rustfmt, file limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-task-queue/.
+- Only new package/root dependency entries were staged from Cargo.lock. No task
+  transitions, concurrency tests, Cargo, rustc or Rust tests ran. Full workspace
+  consolidation remains incomplete.

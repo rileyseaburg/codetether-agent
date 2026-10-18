@@ -7,7 +7,7 @@ impl KnativeTaskQueue {
     ///
     /// This is process-local state, not durable history. Delivery and claiming
     /// must recheck current state because this snapshot may become stale.
-    pub(crate) async fn snapshot_pending(&self) -> Vec<KnativeTask> {
+    pub async fn snapshot_pending(&self) -> Vec<KnativeTask> {
         self.tasks
             .lock()
             .await

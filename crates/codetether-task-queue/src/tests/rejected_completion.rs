@@ -1,7 +1,7 @@
 //! Invalid and missing transitions must not store a completion receipt.
 
 use super::{completion::receipt, task};
-use crate::server::task_queue::{KnativeTaskQueue, ReleaseError};
+use crate::{KnativeTaskQueue, ReleaseError};
 
 #[tokio::test]
 async fn invalid_and_missing_releases_do_not_store_a_receipt() {

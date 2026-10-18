@@ -1,7 +1,7 @@
 //! Rejected progress neither mutates terminal receipts nor notifies.
 
 use super::task;
-use crate::server::task_queue::{KnativeTaskQueue, OutputError, TaskCompletion};
+use crate::{KnativeTaskQueue, OutputError, TaskCompletion};
 
 #[tokio::test]
 async fn rejected_output_preserves_terminal_receipts() {

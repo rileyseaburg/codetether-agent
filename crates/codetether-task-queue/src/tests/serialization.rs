@@ -1,7 +1,7 @@
 //! Task receipt fields preserve older payloads and structured diagnostics.
 
 use super::task;
-use crate::server::task_queue::{KnativeTask, TaskCompletion};
+use crate::{KnativeTask, TaskCompletion};
 
 #[test]
 fn legacy_payload_without_completion_round_trips_without_new_null_fields() {

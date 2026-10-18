@@ -1,7 +1,7 @@
 //! Accepted and rejected claims must preserve the task payload.
 
 use super::task;
-use crate::server::task_queue::{ClaimError, KnativeTaskQueue};
+use crate::{ClaimError, KnativeTaskQueue};
 
 #[tokio::test]
 async fn pending_and_queued_return_processing_snapshots() {

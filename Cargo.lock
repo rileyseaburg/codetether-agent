@@ -1280,6 +1280,7 @@ dependencies = [
  "codetether-audit-http",
  "codetether-openai-stream",
  "codetether-openai-serving",
+ "codetether-task-queue",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6545,6 +6546,17 @@ dependencies = [
  "serde_json",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "codetether-task-queue"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "tokio",
 ]
 
 [[package]]

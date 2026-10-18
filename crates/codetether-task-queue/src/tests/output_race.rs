@@ -1,7 +1,7 @@
 //! Concurrent progress cannot notify after the terminal receipt.
 
 use super::task;
-use crate::server::task_queue::{KnativeTaskQueue, OutputError};
+use crate::{KnativeTaskQueue, OutputError};
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]
