@@ -9,3 +9,10 @@ mod refresh;
 pub use close::{apply, close};
 pub use host::{Session, View};
 pub use open::{open_for_session, open_without_session};
+
+mod selection;
+mod slot;
+mod verifier;
+pub use selection::selected;
+pub use slot::Slot;
+pub use verifier::apply_verifier_model;

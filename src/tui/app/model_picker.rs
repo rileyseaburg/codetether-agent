@@ -26,3 +26,16 @@ pub fn close_model_picker(app: &mut App) {
 pub fn apply_selected_model(app: &mut App, session: &mut Session) {
     codetether_model_picker::interactive::apply(&mut host::Picker(app), session);
 }
+
+mod slot;
+/// Apply the selected session or verifier model using native ownership bindings.
+pub(crate) fn apply_selection(
+    app: &mut App,
+    session_slot: &mut crate::tui::app::session_runtime::SessionSlot,
+) {
+    codetether_model_picker::interactive::selected(
+        &mut host::Picker(app),
+        &mut slot::SelectionSlot(session_slot),
+        crate::tool::goal::verify::set_verifier_model,
+    );
+}

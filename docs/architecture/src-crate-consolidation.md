@@ -19520,3 +19520,23 @@ source-file inventory, which includes tests and adapters and does not prove
 completion. Evidence: `artifacts/consolidation-finder-keys/`. No Cargo, rustc,
 Python, Rust tests or UI execution ran; compilation and runtime remain
 unverified.
+
+### Model selection target routing
+
+Moved session-versus-verifier model selection and verifier picker cleanup into
+`codetether-model-picker::interactive`. The crate now owns both application
+paths. A Slot contract exposes active session access and retained-view refresh;
+the native adapter supplies those two operations and the existing process-wide
+verifier setter callback. Removed the native verifier-policy file.
+
+Preserved verifier early return, session-slot refresh even when no session is
+available, selected-model conversion, status messages, picker close/target
+cleanup and chat-return ordering. Existing session model application and native
+view bindings remain unchanged. No dependencies changed.
+
+Validation: two complete translated policy bodies, two slot bindings, verifier
+callback and native delegates, unchanged model application/state/verifier and
+manifests, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-model-selection/`. No Cargo, rustc, Python or Rust
+tests ran; compilation and runtime remain unverified.
