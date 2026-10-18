@@ -2679,6 +2679,10 @@ name = "codetether-agent-storage"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "codetether-agent-registry",
+ "codetether-collaboration-state",
+ "lazy_static",
  "codetether-config",
  "serde",
  "serde_json",

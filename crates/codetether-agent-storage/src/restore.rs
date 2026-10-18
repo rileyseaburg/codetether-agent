@@ -1,8 +1,9 @@
 //! Restore one child session and its mailbox from a manifest.
 
-use super::super::store::{self, AgentEntry};
-use super::manifest::{Lifecycle, Manifest};
+use crate::Host;
+use crate::{Lifecycle, Manifest};
 use anyhow::{Result, bail};
+use codetether_agent_registry::AgentEntry;
 
 #[path = "restore/disk_entry.rs"]
 mod disk_entry;
@@ -10,17 +11,17 @@ mod disk_entry;
 mod register;
 pub(super) use register::{reserved as register_reserved, resident as register};
 
-pub(super) async fn manifest(manifest: Manifest) -> Result<usize> {
+pub(super) async fn manifest<H: Host>(manifest: Manifest) -> Result<usize> {
     if !manifest.supports_current_schema() || manifest.lifecycle == Lifecycle::Closed {
         return Ok(0);
     }
-    let entry = disk_entry::load(&manifest).await?;
-    register(manifest, entry).await?;
+    let entry = disk_entry::load::<H>(&manifest).await?;
+    register::<H>(manifest, entry).await?;
     Ok(1)
 }
 
-pub(super) async fn load(manifest: &Manifest) -> Result<AgentEntry> {
-    if let Some(existing) = store::get(&manifest.child_session_id) {
+pub(super) async fn load<H: Host>(manifest: &Manifest) -> Result<AgentEntry<H::Session>> {
+    if let Some(existing) = H::get(&manifest.child_session_id) {
         if existing.owner_session_id == manifest.owner_session_id {
             return Ok(existing);
         }
@@ -29,7 +30,7 @@ pub(super) async fn load(manifest: &Manifest) -> Result<AgentEntry> {
             manifest.child_session_id
         );
     }
-    let session = crate::session::Session::resume(&manifest.child_session_id).await?;
+    let session = H::resume(&manifest.child_session_id).await?;
     Ok(AgentEntry {
         name: manifest.name.clone(),
         instructions: manifest.instructions.clone(),

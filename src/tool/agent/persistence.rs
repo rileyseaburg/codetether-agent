@@ -2,6 +2,8 @@
 
 #[path = "persistence/atomic.rs"]
 pub(crate) mod atomic;
+#[path = "persistence/host.rs"]
+mod host;
 #[path = "persistence/hydrate.rs"]
 mod hydrate;
 #[path = "persistence/lifecycle.rs"]
@@ -18,8 +20,6 @@ mod manifest_scan;
 mod migration;
 #[path = "persistence/paths.rs"]
 pub(crate) mod paths;
-#[path = "persistence/restore.rs"]
-mod restore;
 
 pub(crate) use hydrate::parent as hydrate_parent;
 pub(in crate::tool::agent) use lifecycle::{
