@@ -20276,3 +20276,25 @@ file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-utility-commands/`. Cargo, rustc, Python, Rust tests,
 clipboard access and command execution were not run; compilation and runtime
 remain unverified.
+
+### Status-report and diff presentation ownership
+
+Moved status/permissions report construction, workspace trust refresh and
+individual report sections into `codetether-chat-status::command`. A borrowed
+snapshot supplies eleven native session/UI fields; the crate owns report
+formatting and presentation ordering. Moved diff command presentation into
+`codetether-git-view::command`, alongside its existing working-tree report.
+Removed the native status-lines and diff-render implementation files.
+
+Preserved trust refresh before reading report fields, policy-unavailable
+fallback, exact report text, system-message/scroll/input/status ordering, and
+Git query behavior. The status crate now depends on shared config and trust
+status; native trust state and existing command tests remain unchanged.
+
+Validation: complete translated report/policy/section/diff bodies, eleven-field
+snapshot and native effect bindings, unchanged config/trust/report implementations
+and tests, isolated lock delta, module reachability, dependency cycles,
+file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-status-diff/`. Cargo, rustc, Python, Rust tests,
+configuration loading and command execution were not run; compilation and
+runtime remain unverified.

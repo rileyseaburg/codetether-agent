@@ -30,3 +30,6 @@ mod report_query;
 mod report_text;
 pub use current_branch::current_branch;
 pub use report::working_tree_report;
+
+/// Working-tree report command presentation.
+pub mod command;

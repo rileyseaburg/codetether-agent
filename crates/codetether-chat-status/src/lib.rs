@@ -41,3 +41,6 @@ include!("exports.rs");
 mod streaming_header;
 mod title;
 pub mod title_brand;
+
+/// Session status and permissions report commands.
+pub mod command;

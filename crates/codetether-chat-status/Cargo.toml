@@ -11,3 +11,6 @@ codetether-theme = { path = "../codetether-theme", version = "0.1.0", features =
 codetether-chat-layout = { path = "../codetether-chat-layout", version = "0.1.0" }
 codetether-tui-style = { path = "../codetether-tui-style", version = "0.1.0" }
 ratatui = { version = "0.30.2", default-features = false }
+
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-trust-status = { path = "../codetether-trust-status", version = "0.1.0" }
