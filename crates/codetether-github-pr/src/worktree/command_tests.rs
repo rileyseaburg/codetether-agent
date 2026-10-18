@@ -2,8 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::tui::app::input::pr_command::create_pr_args;
-    use crate::worktree::WorktreeInfo;
+    use crate::worktree::command::create_pr_args;
+    use codetether_worktree::WorktreeInfo;
     use std::path::PathBuf;
 
     #[test]

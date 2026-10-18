@@ -12552,3 +12552,20 @@ Full workspace consolidation remains active.
 - Existing dependencies cover the move; no lockfile changes were needed. No
   image processing, file attachment loading, Cargo, rustc, compilation or Rust
   tests ran. Full workspace consolidation remains incomplete.
+
+### Worktree PR workflow consolidation
+
+- Moved the native worktree PR workflow into codetether-github-pr::worktree:
+  title/body generation, explicit request recognition, commit-log collection,
+  command arguments, staging/commit sequencing, branch push and PR creation.
+  Fourteen focused modules contain at most 44 code lines.
+- Native modules now re-export the same typed APIs. All nine existing title,
+  body, request and command-argument tests moved with the implementation.
+  WorktreeInfo uses its existing shared owner; credential handling is unchanged.
+- Verification: 34 source comparisons passed for command sequencing, arguments,
+  process handling, text logic, tests and native facades. Module/dependency
+  checks, direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-worktree-pr/.
+- Only the shared crate's added dependencies were staged from Cargo.lock.
+  No publication functions, Git pushes, PR creation, Cargo, rustc, compilation
+  or Rust tests were executed. Full workspace consolidation remains incomplete.

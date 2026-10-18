@@ -13,7 +13,5 @@ mod tests_image_paste;
 mod tests_paste;
 #[path = "tests_paste_chunked.rs"]
 mod tests_paste_chunked;
-#[path = "tests_pr.rs"]
-mod tests_pr;
 #[path = "tests_submit.rs"]
 mod tests_submit;

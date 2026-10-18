@@ -13,3 +13,7 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 
 reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }
+
+codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
+tokio = { version = "1", features = ["process", "rt"] }
+tracing = "0.1"
