@@ -9,7 +9,6 @@ mod models_catalog;
 mod openai_model_options;
 mod openai_stream;
 pub mod policy;
-mod policy_user;
 mod session_realtime;
 mod session_recovery;
 mod session_routes;
@@ -63,7 +62,7 @@ use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use codetether_audit_http::AuditQuery;
-use codetether_authorization_policy::routes::required_permission;
+use codetether_authorization_policy::policy_middleware;
 use codetether_cognition_api::BeliefFilter;
 use codetether_event_replay::{list_session_event_files, replay_session_events};
 use codetether_k8s_api::{ScaleRequest, SpawnSubagentRequest};
@@ -107,34 +106,6 @@ async fn audit_middleware(
     next: Next,
 ) -> Response {
     codetether_audit_http::audit_middleware(&state.audit_log, request, next).await
-}
-
-/// Policy authorization middleware for Axum.
-///
-/// Maps request paths to OPA permission strings and enforces authorization.
-/// Runs after `require_auth` so the bearer token is already validated.
-async fn policy_middleware(request: Request<Body>, next: Next) -> Result<Response, StatusCode> {
-    let path = request.uri().path();
-    let method = request.method().as_str();
-
-    let permission = match required_permission(path, method)? {
-        None => return Ok(next.run(request).await),
-        Some(permission) => permission,
-    };
-
-    let user = policy_user::from_request(&request);
-
-    if let Err(status) = policy::enforce_policy(&user, permission, None).await {
-        tracing::warn!(
-            path = %path,
-            method = %method,
-            permission = %permission,
-            "Policy middleware denied request"
-        );
-        return Err(status);
-    }
-
-    Ok(next.run(request).await)
 }
 
 /// Start the HTTP server

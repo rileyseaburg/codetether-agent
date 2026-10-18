@@ -2,7 +2,7 @@
 //!
 //! check_policy evaluates PolicyUser and PolicyResource context using the
 //! environment-selected mode. enforce_policy maps denial to HTTP forbidden.
-//! The application owns authentication, middleware and permission routing.
+//! The application authenticates requests before installing policy_middleware.
 mod check;
 mod client;
 mod config;
@@ -22,3 +22,6 @@ pub mod routes;
 
 /// Authenticated HTTP request identity projection.
 pub mod user;
+
+mod middleware;
+pub use middleware::policy_middleware;

@@ -13502,3 +13502,18 @@ Full workspace consolidation remains active.
 - Staged only the new package/root dependency and session-http's two added
   dependencies from Cargo.lock. No Cargo, rustc, Rust tests, session creation
   or persistence ran. The broader consolidation remains unfinished.
+
+### Authorization middleware consolidation
+
+- Moved HTTP permission lookup/enforcement middleware from src/server/mod.rs
+  into codetether-authorization-policy. The server imports the shared function
+  at the same middleware registration point; the now-unused private native
+  policy_user re-export was removed.
+- Exemption handling, fail-closed route lookup, authenticated-user projection,
+  enforcement, denial logging and downstream execution are unchanged. All
+  other server function/type bodies remain unchanged.
+- Verification: 55 static middleware/server-body checks passed, with module
+  reachability, dependency DAG, direct rustfmt, file limits and whitespace
+  checks. Evidence: artifacts/consolidation-policy-middleware/.
+- No dependencies or lockfile changes were needed. No Cargo, rustc, Rust tests
+  or live authorization requests ran. Full consolidation remains unfinished.
