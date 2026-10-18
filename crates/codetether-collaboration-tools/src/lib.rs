@@ -45,3 +45,15 @@ pub use codetether_collaboration_state::{Activity, ThreadStatus};
 pub use wait::{WaitAgentTool, WaitArgs};
 pub use wait_host::{WaitAgent, WaitHost};
 pub use wait_public::execute_wait;
+
+mod application_binding;
+
+/// Dependencies used by application-local collaboration host declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use codetether_tool_core::{Tool, ToolResult};
+    pub use serde_json::{Value, json};
+    pub use tokio::{sync::watch, time::Instant};
+}

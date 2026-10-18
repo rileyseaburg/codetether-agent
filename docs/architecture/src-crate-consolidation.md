@@ -26939,3 +26939,19 @@ root message_queue directory was removed from explicit scan roots; both owning
 crates remain scanned. No dependency/lock changes were needed; unrelated working
 files remain untouched. Evidence: artifacts/consolidation-mailbox-binding/. No
 Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### First-class collaboration application host
+
+Moved execution/canonical lookup, messaging and wait host implementations into
+codetether-collaboration-tools::declare_application_host. Removed collaboration/
+{host,messaging_host,wait_host}.rs. The root supplies the existing agent tool and
+service callbacks. Resume-context conversion stays with the application, avoiding
+a dependency cycle through the lifecycle crate.
+
+All ten expanded method bodies match the originals after explicit path
+substitution. Remaining collaboration source files, including tests and tool
+specializations, are byte-for-byte unchanged. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 726 roots and 617 crates. No dependency/lock changes were needed;
+unrelated working files are untouched. Evidence: artifacts/consolidation-collaboration-binding/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
