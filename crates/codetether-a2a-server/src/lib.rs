@@ -20,6 +20,7 @@ mod http_host;
 mod server_message_send_turn;
 mod server_session_event;
 mod server_turn;
+mod startup;
 mod stream;
 use bus::{emit_a2a_inbound, emit_a2a_outbound};
 use stream::handle_message_stream;

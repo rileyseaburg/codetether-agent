@@ -22662,3 +22662,22 @@ the unrelated working lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-mcp-serving/`.
 No MCP server, provider request, Cargo, rustc or Python ran; compilation and
 runtime tests remain unverified. Full consolidation is active.
+
+### Startup assembly placed with its owning service types
+
+Moved A2A card/root/nested router assembly onto the shared A2AServer,
+default-tool installation and plugin retention onto the shared ToolRegistry,
+and initialized Parts conversion onto the shared AppState. The native startup
+host calls those APIs directly. Three native assembly adapter files and their
+module declarations were removed.
+
+Static source comparisons preserve A2A card construction and both router
+instances, bus/server clone behavior, tool construction, plugin-registry clone
+and install order, and the original owned Parts bundle. HTTP routing and the
+shared server-runtime startup flow remain unchanged. Module/dependency checks
+cover 699 roots and 571 crates without missing modules or cycles. Direct
+rustfmt, native file-size limits and whitespace checks passed. No manifests
+or lockfile changes were needed. Evidence:
+`artifacts/consolidation-server-assembly/`.
+No server startup, provider requests, Cargo, rustc or Python ran; compilation
+and runtime tests remain unverified. Full consolidation is active.

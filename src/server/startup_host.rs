@@ -1,7 +1,4 @@
 //! Native runtime adapters for the shared server startup sequence.
-mod a2a;
-mod state;
-mod tools;
 use crate::cognition::CognitionRuntime;
 use axum::Router;
 use codetether_a2a_core::AgentCard;
@@ -18,16 +15,16 @@ impl codetether_server_runtime::Host for AppHost {
         CognitionRuntime::new_from_env()
     }
     fn install_tools(runtime: &mut CognitionRuntime) -> PluginRegistry {
-        tools::install(runtime)
+        crate::tool::ToolRegistry::install_defaults(|tools| runtime.set_tools(tools))
     }
     fn runtime_enabled(runtime: &CognitionRuntime) -> bool {
         runtime.is_enabled()
     }
     fn a2a(address: &str, bus: Arc<AgentBus>) -> (AgentCard, Router, Router) {
-        a2a::build(address, bus)
+        crate::a2a::server::A2AServer::startup_routers(address, bus)
     }
     fn state(parts: Parts<CognitionRuntime>) -> super::AppState {
-        state::build(parts)
+        parts.into()
     }
     fn router(state: &super::AppState, root: Router, nested: Router) -> Router {
         super::http_router::build(state, root, nested)

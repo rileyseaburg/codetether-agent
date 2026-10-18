@@ -7,6 +7,7 @@ use codetether_server_runtime::Parts;
 mod audit;
 mod bus;
 mod cognition;
+mod construction;
 mod discovery;
 mod k8s;
 mod plugin;

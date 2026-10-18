@@ -16,6 +16,7 @@ pub mod catalog;
 mod cognition;
 pub mod commands;
 mod construction;
+mod installation;
 mod lifecycle;
 mod search;
 pub mod session_tools;
