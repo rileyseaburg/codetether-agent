@@ -8,6 +8,7 @@ pub mod auth;
 mod bus_http_state;
 mod cognition_http_state;
 mod config_status;
+mod http_router;
 mod k8s_http_state;
 mod models_catalog;
 mod openai_http_host;
@@ -36,16 +37,9 @@ use crate::k8s::K8sManager;
 use crate::tool::{PluginRegistry as AgentPluginRegistry, hash_bytes};
 use anyhow::Result;
 use auth::AuthState;
-use axum::{
-    middleware,
-    response::{IntoResponse, Json, Response},
-    routing::post,
-};
 use futures::StreamExt;
 use std::sync::Arc;
-use tower_http::trace::TraceLayer;
 
-use codetether_authorization_policy::policy_middleware;
 use codetether_openai_adapter::{
     OpenAiApiResult, canonicalize_provider_name, convert_finish_reason, convert_openai_messages,
     convert_openai_tools, convert_response_message, make_openai_model_id,
@@ -181,70 +175,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     // Spawn the tool reaper background task (runs every 15s to clean up expired tools)
     codetether_tool_discovery::spawn_reaper(state.tool_registry.clone());
 
-    let app = approval_routes::router()
-        // Health check (public — auth exempt)
-        .merge(codetether_server_status::health_routes::<AppState>())
-        // CloudEvent receiver for Knative Eventing (public — auth exempt)
-        .merge(codetether_task_ingest::http::router::<AppState>())
-        // Knative task queue APIs
-        .merge(codetether_task_api::http::queue_routes::<AppState>())
-        // API routes
-        .merge(session_routes::router())
-        .merge(session_realtime::router())
-        .merge(config_status::router(state.config.clone()))
-        .merge(codetether_server_status::discovery_routes::<AppState>())
-        // OpenAI-compatible APIs
-        .merge(codetether_model_catalog::http::router::<
-            models_catalog::AppHost,
-            AppState,
-        >())
-        .merge(codetether_openai_serving::http::router::<
-            openai_http_host::AppHost,
-            AppState,
-        >())
-        .merge(codetether_cognition_api::http::router::<AppState>())
-        // Audit trail API
-        .merge(codetether_audit_http::http::router::<AppState>())
-        // Event stream replay API (for SOC 2, FedRAMP, ATO compliance)
-        .merge(codetether_event_replay::router::<AppState>())
-        // K8s self-deployment APIs
-        .merge(codetether_k8s_api::http::router::<AppState>())
-        // Plugin registry API
-        .merge(codetether_plugin_http::http::router::<AppState>())
-        // Tool registry API
-        .merge(codetether_tool_discovery::router::<AppState>())
-        // Agent task APIs (compatibility surface for dashboard)
-        .merge(codetether_task_api::http::agent_routes::<AppState>())
-        // Worker lifecycle and Rust-native mux realtime
-        .merge(worker_modules::router())
-        // Task dispatch (Knative-backed)
-        .merge(codetether_task_api::http::dispatch_routes::<AppState>())
-        // Voice REST bridge (dashboard expects REST, server has gRPC)
-        .merge(codetether_voice_api::http::router::<AppState>())
-        // Session resume (dashboard uses this for codebase-scoped resume)
-        .route(
-            "/v1/agent/codebases/{codebase_id}/sessions/{session_id}/resume",
-            post(session_recovery::handle),
-        )
-        // Agent Bus — SSE stream + publish
-        .merge(codetether_bus_sse::http::router::<AppState>())
-        .with_state(state.clone())
-        // A2A routes at both the root and /a2a so local runtimes can discover
-        // and invoke the same server through either shape.
-        .merge(a2a_router)
-        .nest("/a2a", a2a_nested_router)
-        // Mandatory auth middleware — applies to all routes
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
-            codetether_audit_http::http::audit_request::<AppState>,
-        ))
-        .layer(middleware::from_fn(policy_middleware))
-        .layer(middleware::from_fn(auth::require_auth))
-        .layer(axum::Extension(state.auth.clone()))
-        // CORS + tracing — explicit origin allowlist so headers are present on
-        // ALL responses (including 4xx/5xx) and not dependent on request mirroring.
-        .layer(codetether_server_cors::http())
-        .layer(TraceLayer::new_for_http());
+    let app = http_router::build(&state, a2a_router, a2a_nested_router);
 
     tracing::info!(
         elapsed_ms = t0.elapsed().as_millis(),

@@ -14384,3 +14384,22 @@ Full workspace consolidation remains active.
   Evidence: artifacts/consolidation-http-error/.
 - No Cargo, rustc, Rust tests or server startup ran. Full workspace consolidation
   remains unfinished; unrelated working edits remain untouched.
+
+### Application router composition ownership
+
+- Moved shared endpoint ordering, A2A root/nested mounts and the mandatory
+  middleware stack from src/server/mod.rs into codetether-server-router.
+  Focused modules own route assembly, layers, state requirements, native
+  extension inputs and already-bound A2A transport inputs.
+- Native http_router supplies session/provider/worker adapters while the shared
+  crate assembles domain routers. Native startup only calls the shared builder.
+- Preserved authentication, policy, audit, CORS and trace layer order. Kept the
+  existing Tower HTTP 0.7.0 version with the trace feature. Staged only the new
+  package and root dependency in Cargo.lock.
+- Verification: native adapter expressions and expanded full route/middleware
+  assembly match the previous builder; remaining startup is unchanged. Module
+  reachability, dependency DAG, module-size bounds, isolated lock additions,
+  direct rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-server-router/.
+- No Cargo, rustc, Rust tests or server startup ran. Full consolidation remains
+  unfinished; native startup and other source modules still need migration.

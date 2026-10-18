@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-server-router",
  "codetether-http-error",
  "codetether-server-cors",
  "codetether-run-cli",
@@ -7217,6 +7218,28 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "http",
+]
+
+[[package]]
+name = "codetether-server-router"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "codetether-audit-http",
+ "codetether-authorization-policy",
+ "codetether-bus-sse",
+ "codetether-cognition-api",
+ "codetether-event-replay",
+ "codetether-http-auth",
+ "codetether-k8s-api",
+ "codetether-plugin-http",
+ "codetether-server-cors",
+ "codetether-server-status",
+ "codetether-task-api",
+ "codetether-task-ingest",
+ "codetether-tool-discovery",
+ "codetether-voice-api",
+ "tower-http 0.7.1",
 ]
 
 [[package]]
