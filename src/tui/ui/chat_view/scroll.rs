@@ -7,7 +7,7 @@ impl codetether_chat_layout::messages::Scroll for App {
         self.state.history_page.set_viewport_height(height);
     }
     fn apply_pending_anchor(&mut self, total_lines: usize) {
-        self.state.apply_pending_history_anchor(total_lines);
+        crate::tui::app::state::history_page::apply_pending_anchor(&mut self.state, total_lines);
     }
     fn viewport(&mut self) -> &mut codetether_chat_layout::ChatScrollState {
         &mut self.state.chat_viewport

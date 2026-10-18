@@ -28461,3 +28461,22 @@ production-scope, formatting, whitespace and file-limit checks pass (724 roots,
 617 crates). Evidence: artifacts/consolidation-view-transition/.
 No dependencies or unrelated working files changed. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active and incomplete.
+
+### Crate-owned history update view
+
+Replaced the root-generated history View implementation with
+codetether-history-page::interactive::UpdateView. The owning crate now contains
+all ten view methods. Root drain and anchor entry points construct fresh views,
+borrowing pager/messages/status/scroll fields and supplying cache invalidation.
+Initial follow mode, manual scroll, cached-line count and last maximum are
+captured before each operation, matching the existing access order. The adapter
+is documented for one drain or anchor call; each root entry constructs it anew.
+
+Removed the inherent AppState anchor wrapper and updated the message-panel
+anchor callback. Static checks cover all view methods, the root projection,
+both entry points and the callback. Shared page application, anchor and request
+policies remain unchanged. Declaration, module/dependency, production-scope,
+formatting, whitespace and file-limit checks pass (724 roots, 617 crates).
+Evidence: artifacts/consolidation-history-view/. No dependencies or unrelated
+working files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.

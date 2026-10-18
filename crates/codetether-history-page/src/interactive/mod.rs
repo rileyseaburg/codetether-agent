@@ -10,12 +10,14 @@ mod render_anchor;
 mod request;
 mod reset;
 mod state;
+mod update_view;
 mod view;
 mod viewport;
 use crate::Page;
 pub use drain::drain;
 pub use render_anchor::apply_pending_history_anchor;
 pub use state::HistoryPageState;
+pub use update_view::UpdateView;
 pub use view::View;
 #[cfg(test)]
 mod fixtures;
