@@ -21111,3 +21111,14 @@ accounted for the equivalent shorthand temperature initializer. Evidence:
 `artifacts/consolidation-swarm-request/`. No dependencies changed. No Cargo,
 rustc, or Python commands ran. Rust tests and compilation remain unverified;
 full consolidation remains active.
+
+### Stale sub-agent temperature-policy reference
+
+The native sub-agent initializer still referenced
+`session::helper::request_state::settings::temperature_for`, which is no longer
+exported by that module. Updated it to the public owning function in
+`codetether-provider-policy`, matching the shared request-preparation builder.
+The root already depends on this crate. Verified the owner export and root
+dependency by source inspection; direct formatting, native file-size, and
+whitespace checks passed. No Cargo, rustc, or Python commands ran. Compilation
+remains unverified.

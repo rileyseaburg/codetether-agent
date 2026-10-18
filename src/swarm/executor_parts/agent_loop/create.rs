@@ -44,7 +44,7 @@ pub(super) fn state(
         tool_calls: 0,
         output: String::new(),
         deadline: Instant::now() + Duration::from_secs(timeout_secs),
-        temperature: crate::session::helper::request_state::settings::temperature_for(model),
+        temperature: codetether_provider_policy::temperature_for(model),
         control: crate::session::runtime::ControlHandle::current(),
         steering_cursor: 0,
     }
