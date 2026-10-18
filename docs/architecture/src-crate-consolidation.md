@@ -23214,3 +23214,24 @@ passed. No manifests or lockfile changes were needed. Evidence:
 artifacts/consolidation-obsolete-routing/.
 No runtime operations, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Consumer snapshot assembly owned by session-store
+
+Moved explicit-path consumer hydration and asynchronous session-location
+resolution into codetether-session-store::consumer. Native cursor access now
+selects the Session decoder with a one-call adapter; the native synchronous
+cursor implementation was removed. Projection lookup by session identity and
+constraint-prefix rendering also moved into their owning storage modules,
+with native paths reduced to re-exports.
+
+Static comparisons preserve path resolution, blocking-task ownership, legacy
+migration, cursor arguments, snapshot hydration and constraint formatting.
+Two native storage tests explicitly select Session as the shared reader's type
+parameter; their bodies and assertions are otherwise unchanged. Transaction
+and hydration implementations remain unchanged. Module/dependency scans cover
+699 roots and 571 crates without missing modules or cycles. Direct rustfmt,
+file-size limits and whitespace checks passed. No manifest/lockfile changes
+were needed; unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-session-consumer/.
+No database operations, tests, Cargo, rustc or Python ran. Compilation and
+runtime behavior remain unverified. Full consolidation remains active.

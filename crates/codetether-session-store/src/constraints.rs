@@ -1,10 +1,12 @@
 //! Preserve the existing eight-excerpt hard-constraint header across window eviction.
 mod capture;
+mod prefix;
 mod text;
 use anyhow::Result;
 pub use capture::evicted;
 use codetether_context_policy::pages::PageKind;
 use codetether_provider_core::Message;
+pub use prefix::prefix;
 use rusqlite::{Connection, Transaction, params};
 pub use text::excerpt;
 /// Index a protected page excerpt inside the active transaction.

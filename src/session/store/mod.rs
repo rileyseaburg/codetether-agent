@@ -7,10 +7,11 @@ mod blobs;
 mod connection;
 pub(crate) mod constraints;
 pub(crate) mod cursor;
-mod cursor_read;
+#[cfg(test)]
+use codetether_session_store::consumer as cursor_read;
+pub(crate) mod append;
 pub(crate) mod delete;
 mod events;
-pub(crate) mod append;
 mod header;
 pub(crate) mod header_read;
 pub(crate) mod id;

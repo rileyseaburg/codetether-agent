@@ -57,3 +57,5 @@ pub mod window;
 pub mod lifecycle;
 mod messages;
 pub use messages::read_messages;
+/// Legacy-aware consumer snapshots from explicit or resolved session locations.
+pub mod consumer;

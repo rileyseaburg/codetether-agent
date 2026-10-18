@@ -11,7 +11,7 @@ async fn projection_waits_for_an_existing_writer() {
     let mut session = Session::new().await.unwrap();
     session.messages.push(message("preserved"));
     save(&session, &path).await.unwrap();
-    let ticket = cursor_read::next(&path, &session.id, "recall", 1)
+    let ticket = cursor_read::next::<Session>(&path, &session.id, "recall", 1)
         .unwrap()
         .unwrap()
         .ticket;
@@ -23,7 +23,10 @@ async fn projection_waits_for_an_existing_writer() {
     ));
     let early = tokio::time::timeout(Duration::from_millis(150), &mut commit).await;
     writer.execute_batch("COMMIT").unwrap();
-    assert!(early.is_err(), "projection did not wait for writer: {early:?}");
+    assert!(
+        early.is_err(),
+        "projection did not wait for writer: {early:?}"
+    );
     assert!(commit.await.unwrap().unwrap());
     let position: usize = writer
         .query_row(

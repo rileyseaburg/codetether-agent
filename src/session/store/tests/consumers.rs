@@ -9,19 +9,19 @@ async fn independent_cursors_and_edit_invalidation() {
     let mut session = Session::new().await.unwrap();
     session.messages.extend((0..20).map(|_| message("old")));
     save(&session, &path).await.unwrap();
-    let first = cursor_read::next(&path, &session.id, "recall", 8)
+    let first = cursor_read::next::<Session>(&path, &session.id, "recall", 8)
         .unwrap()
         .unwrap();
-    let retry = cursor_read::next(&path, &session.id, "recall", 8)
+    let retry = cursor_read::next::<Session>(&path, &session.id, "recall", 8)
         .unwrap()
         .unwrap();
     assert_eq!(first.ticket.from, retry.ticket.from);
     assert!(cursor::acknowledge(first.ticket).await.unwrap());
-    let next = cursor_read::next(&path, &session.id, "recall", 8)
+    let next = cursor_read::next::<Session>(&path, &session.id, "recall", 8)
         .unwrap()
         .unwrap();
     assert_eq!(next.ticket.from, 8);
-    let archive = cursor_read::next(&path, &session.id, "archive", 8)
+    let archive = cursor_read::next::<Session>(&path, &session.id, "archive", 8)
         .unwrap()
         .unwrap();
     assert_eq!(archive.ticket.from, 0);
@@ -33,7 +33,7 @@ async fn independent_cursors_and_edit_invalidation() {
             .await
             .unwrap()
     );
-    let corrected = cursor_read::next(&path, &session.id, "recall", 8)
+    let corrected = cursor_read::next::<Session>(&path, &session.id, "recall", 8)
         .unwrap()
         .unwrap();
     assert_eq!(corrected.ticket.from, 0);
