@@ -27869,3 +27869,17 @@ native production-scope, standalone formatting, file-limit and whitespace checks
 pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
 lock changes were needed. Evidence: artifacts/consolidation-clipboard-bindings/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Guarded drawing frontend binding
+
+Moved the frontend draw entry and pre-frame crash-context projection into
+codetether-terminal-runtime::frontend. Removed the root context file; the root
+selects concrete terminal/application/view types and existing telemetry/render
+callbacks. Shared size, panic and resynchronization policies are unchanged.
+
+Both expanded function bodies match after expression-only render closure
+normalization. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Unrelated files are unchanged; no manifest or lock changes were
+needed. Evidence: artifacts/consolidation-safe-draw/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

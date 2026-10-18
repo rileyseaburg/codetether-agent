@@ -6,6 +6,7 @@
 mod clear;
 mod display_mode;
 mod enter;
+mod frontend;
 mod panic_cleanup;
 mod recovery_scope;
 mod restore;
