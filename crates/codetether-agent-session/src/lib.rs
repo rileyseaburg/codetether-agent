@@ -24,3 +24,7 @@ pub use isolated::create_isolated;
 
 mod message;
 pub use message::prepare_message;
+
+/// Implementation support for application-local session bindings.
+#[doc(hidden)]
+pub mod session_binding;

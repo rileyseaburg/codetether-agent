@@ -12,3 +12,7 @@ mod resolve;
 mod scope;
 pub use entry::{AgentEntry, Session};
 pub use registry::Registry;
+
+/// Implementation support for application-local session bindings.
+#[doc(hidden)]
+pub mod session_binding;

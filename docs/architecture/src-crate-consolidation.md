@@ -24621,3 +24621,23 @@ Unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-session-contract-bindings/. No Cargo, rustc, Python,
 compiler macro expansion, session operations or tests ran. Full consolidation
 remains active.
+
+### Managed-agent session bindings moved into their owning crates
+
+Moved seventeen methods for managed-child settings/lifecycle, registry identity
+and child-result notices into codetether-agent-session, codetether-agent-registry
+and codetether-agent-messages. Native declarations preserve the same session type
+and prior-context policy callback. Removed session_factory/binding/access.rs and
+runtime.rs. Added the agent-session crate's direct dependencies for the same bus,
+summary-index and timestamp operations.
+
+Static comparisons preserve signatures and bodies after explicit path
+substitution, including borrowed setting fields, the 16-message parent lookup,
+bus attachment, timestamp-before-save ordering, and delegated notice insertion.
+Module/dependency scans cover 693 roots and 574 crates without missing modules
+or cycles. Direct dependency audit, direct rustfmt, file limits and whitespace
+checks passed. Only required lockfile dependencies are staged; unrelated working
+changes remain untouched. Evidence:
+artifacts/consolidation-managed-session-bindings/. No Cargo, rustc, Python,
+compiler macro expansion, child execution, storage writes or tests ran. Full
+consolidation remains active.

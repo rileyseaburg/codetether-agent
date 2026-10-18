@@ -20,3 +20,7 @@ mod system_tests;
 
 /// Parent-scoped collection and insertion of child-result notices.
 pub mod notice;
+
+/// Implementation support for application-local session bindings.
+#[doc(hidden)]
+pub mod session_binding;

@@ -3672,6 +3672,9 @@ dependencies = [
  "codetether-agent-registry",
  "codetether-provider-core",
  "tracing",
+ "chrono",
+ "codetether-bus-core",
+ "codetether-context-policy",
 ]
 
 [[package]]
