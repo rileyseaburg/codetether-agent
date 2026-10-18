@@ -19966,3 +19966,23 @@ inside set_worker_bridge; corrected to a whole-identifier replacement and kept
 the failed log. Evidence: `artifacts/consolidation-startup-hydrate/`. No Cargo,
 rustc, Python, Rust tests or startup/environment execution ran; compilation and
 runtime remain unverified.
+
+### Startup session scanning and resolution
+
+Moved explicit-session scanning, loaded-session continuation and fresh-session
+outcome selection into `codetether-tui-startup::resolve`. Seven native bindings
+retain session storage, creation, bus attachment, labels/history and truncated
+continuation behavior. Removed the native resolver-helper implementation.
+
+Preserved lazy resume-window lookup, no blank allocation before a successful
+load, label/count ordering, truncation warnings and source-ID propagation.
+Expected absence still produces a fresh outcome; genuine scan failures retain
+the reason. All original resolver log targets remain unchanged.
+
+Validation: four complete translated function bodies, seven native bindings,
+lazy scan and resolver delegates, unchanged startup tests/fork/hydration,
+isolated lockfile delta, module reachability, dependency cycles, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-session-resolution/`. No Cargo, rustc, Python, Rust
+tests or session-resolution execution ran; compilation and runtime remain
+unverified.

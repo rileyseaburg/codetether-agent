@@ -19,3 +19,6 @@ pub use state::{Resolved, Startup};
 
 /// Initial and completed frontend state hydration.
 pub mod hydrate;
+
+/// Explicit-session scanning and startup session resolution.
+pub mod resolve;

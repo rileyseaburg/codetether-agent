@@ -19,3 +19,4 @@ codetether-workspace-snapshot = { path = "../codetether-workspace-snapshot", ver
 ratatui = { version = "0.30.2", default-features = false }
 tokio = { version = "1", features = ["macros", "rt"] }
 tracing = "0.1"
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }

@@ -6623,6 +6623,7 @@ dependencies = [
  "codetether-config",
  "codetether-secrets",
  "codetether-session-resume",
+ "codetether-session-store",
  "codetether-terminal-runtime",
  "codetether-workspace-snapshot",
  "ratatui",

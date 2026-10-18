@@ -18,7 +18,7 @@ mod provider;
 mod secrets;
 mod session_outcome;
 mod session_resolve;
-mod session_resolve_helpers;
+mod session_resolve_host;
 mod session_scan;
 #[cfg(test)]
 mod session_start_tests;
