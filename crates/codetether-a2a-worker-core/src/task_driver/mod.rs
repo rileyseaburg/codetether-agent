@@ -15,3 +15,6 @@ pub use run::handle_task;
 
 /// Policy-gated dispatch for clone and forage tasks.
 pub mod special;
+
+/// End-to-end execution of already-claimed tasks.
+pub mod claimed;

@@ -16322,3 +16322,20 @@ Full workspace consolidation remains active.
   and diff whitespace. Evidence: `artifacts/consolidation-task-session/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared claimed-task execution lifecycle
+
+- Moved claimed-task orchestration from `src/a2a/worker/task_execute.rs` into
+  `codetether-a2a-worker-core::task_driver::claimed`, with cohesive preparation,
+  execution and finalization modules.
+- The crate now owns special-task branching, checkpoint order, sink sequencing,
+  execution-error normalization and final session-ID fallback. Native adapters
+  retain concrete session execution, title updates and event transport.
+- Removed the obsolete native task-finalization wrapper and its registration;
+  shared finalization receives the same directory and provenance metadata.
+- Verification: reconstructed full execution-body comparison, every native
+  adapter binding, unchanged agent/sink/title/session/special/finalization code,
+  module/dependency graphs, direct rustfmt, file budgets and diff whitespace.
+  No dependencies changed. Evidence: `artifacts/consolidation-claimed-task/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
