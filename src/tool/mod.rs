@@ -4,9 +4,9 @@
 
 pub use codetether_advanced_edit as advanced_edit;
 pub mod agent;
-pub use codetether_tool_core as alias;
-pub mod auto_apply;
 pub use codetether_avatar_tool as avatar;
+pub use codetether_native_edit::auto_apply;
+pub use codetether_tool_core as alias;
 include!("command_modules.rs");
 use codetether_command_environment as bash_identity;
 pub use codetether_command_guard as bash_file_edit_guard;
@@ -49,7 +49,7 @@ pub use codetether_patch as patch;
 pub use codetether_plan as plan;
 pub use codetether_podcast_tool as podcast;
 pub use codetether_prd_tool as prd;
-pub mod profile;
+pub use codetether_tool_core::profile;
 pub mod progress;
 pub use codetether_question_tool as question;
 pub mod ralph;
@@ -66,12 +66,12 @@ pub use codetether_sandbox_runtime as sandbox;
 pub mod session_recall;
 pub use codetether_skill_tool as skill;
 pub mod swarm_execute;
+pub use codetether_native_edit::undo;
 #[cfg(feature = "tetherscript")]
 pub use codetether_native_tetherscript as tetherscript;
 pub use codetether_swarm_share as swarm_share;
 pub use codetether_task_tool as task;
-pub mod todo;
-pub mod undo;
+pub use codetether_todo as todo;
 pub use codetether_voice_input_tool as voice_input;
 pub use codetether_voice_stream_tool as voice_stream;
 pub use codetether_voice_tool as voice;

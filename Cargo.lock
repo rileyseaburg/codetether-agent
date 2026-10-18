@@ -3656,6 +3656,12 @@ dependencies = [
  "codetether-morph-backend",
  "codetether-multiedit",
  "codetether-native-providers",
+ "codetether-native-runtime-policy",
+ "codetether-tool-core",
+ "codetether-session-metadata",
+ "codetether-edit-confirmation",
+ "codetether-undo-tool",
+ "async-trait",
 ]
 
 [[package]]
@@ -6268,6 +6274,8 @@ dependencies = [
  "codetether-tool-core",
  "serde",
  "serde_json",
+ "codetether-native-approval",
+ "tempfile",
 ]
 
 [[package]]

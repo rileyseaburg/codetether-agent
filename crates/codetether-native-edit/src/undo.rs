@@ -4,7 +4,7 @@ pub use codetether_undo_tool::UndoInput;
 ///
 /// # Examples
 /// ```rust
-/// use codetether_agent::tool::undo::UndoTool;
+/// use codetether_native_edit::undo::UndoTool;
 /// let _tool: UndoTool = UndoTool;
 /// ```
 pub type UndoTool = codetether_undo_tool::Undo<ApplicationPolicy>;
@@ -12,7 +12,7 @@ pub type UndoTool = codetether_undo_tool::Undo<ApplicationPolicy>;
 ///
 /// # Examples
 /// ```rust
-/// let _tool = codetether_agent::tool::undo::UndoTool;
+/// let _tool = codetether_native_edit::undo::UndoTool;
 /// ```
 #[allow(non_upper_case_globals)]
 pub const UndoTool: UndoTool = codetether_undo_tool::Undo::new();
@@ -20,12 +20,12 @@ pub const UndoTool: UndoTool = codetether_undo_tool::Undo::new();
 ///
 /// # Examples
 /// ```rust
-/// let _policy=codetether_agent::tool::undo::ApplicationPolicy;
+/// let _policy=codetether_native_edit::undo::ApplicationPolicy;
 /// ```
 pub struct ApplicationPolicy;
 #[async_trait::async_trait]
 impl codetether_undo_tool::Policy for ApplicationPolicy {
-    async fn blocked(args: &serde_json::Value) -> Option<super::ToolResult> {
-        crate::runtime_policy::evaluate_tool_invocation("undo", args).await
+    async fn blocked(args: &serde_json::Value) -> Option<codetether_tool_core::ToolResult> {
+        codetether_native_runtime_policy::evaluate_tool_invocation("undo", args).await
     }
 }

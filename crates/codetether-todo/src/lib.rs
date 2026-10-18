@@ -34,3 +34,6 @@ pub use todoitem::TodoItem;
 pub use todoreadtool::TodoReadTool;
 pub use todostatus::TodoStatus;
 pub use todowritetool::TodoWriteTool;
+
+#[cfg(test)]
+mod native_path_tests;

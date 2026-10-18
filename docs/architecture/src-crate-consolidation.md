@@ -25328,3 +25328,24 @@ entries are staged in Cargo.lock, preserving existing version-qualified
 external dependency references. Unrelated working changes remain untouched.
 Evidence: artifacts/consolidation-native-cli/. No Cargo, rustc, Python, CLI
 execution or runtime tests ran. Full consolidation remains active.
+
+### Undo, auto-apply and todo storage adapters consolidated
+
+Moved undo authorization and automatic-edit confirmation adapters into the
+existing codetether-native-edit crate. The undo type/constant and policy hook
+retain their behavior. Auto-apply now directly accepts the same shared
+SessionMetadata type already re-exported by the root session module.
+
+Moved the todo path adapter and three storage-isolation tests into the existing
+codetether-todo crate. Root todo and provider-profile modules now directly
+re-export their owners, removing two additional wrapper files. Test setup
+continues to share the native approval environment lock.
+
+Four moved files match after explicit crate-path substitutions and formatting.
+Static scans cover 710 module roots and 596 crates without missing modules,
+cycles or undeclared direct workspace imports. Declaration, file-limit, direct
+rustfmt and whitespace checks pass. Only dependency additions in the two
+existing package lock entries are staged; unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-edit-todo/. No Cargo, rustc,
+Python, undo/edit execution or runtime tests ran. Full consolidation remains
+active.

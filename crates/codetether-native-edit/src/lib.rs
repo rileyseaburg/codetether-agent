@@ -6,3 +6,8 @@
 pub mod edit;
 pub mod morph_backend;
 pub mod multiedit;
+
+/// Session metadata and environment policy for automatic edit confirmation.
+pub mod auto_apply;
+/// Runtime-authorized undo using the shared application policy.
+pub mod undo;

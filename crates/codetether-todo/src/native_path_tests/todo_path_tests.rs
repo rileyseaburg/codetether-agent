@@ -3,8 +3,8 @@
 use serde_json::json;
 
 use super::{ROOT_FILE, load, resolve, save};
-use crate::approval::test_env::lock_env;
-use crate::tool::todo::{Priority, TodoItem, TodoStatus};
+use crate::{Priority, TodoItem, TodoStatus};
+use codetether_native_approval::test_env::lock_env;
 
 #[test]
 fn session_id_selects_a_per_session_file() {
