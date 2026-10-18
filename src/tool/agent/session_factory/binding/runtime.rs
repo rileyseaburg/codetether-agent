@@ -14,6 +14,9 @@ impl ChildSession for Session {
     fn set_title(&mut self, title: String) {
         Session::set_title(self, title);
     }
+    fn has_bus(&self) -> bool {
+        self.bus.is_some()
+    }
     fn attach_bus(&mut self) {
         self.bus = crate::bus::global();
     }

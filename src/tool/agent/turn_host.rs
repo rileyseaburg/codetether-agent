@@ -3,4 +3,6 @@ pub(super) use super::event_loop::ApplicationHost;
 mod finalize;
 mod mailbox;
 mod message;
+mod prompt;
 mod runtime;
+mod startup;

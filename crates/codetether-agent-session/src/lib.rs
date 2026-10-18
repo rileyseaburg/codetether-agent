@@ -21,3 +21,6 @@ pub use settings::Settings;
 mod isolated;
 mod workspace_binding;
 pub use isolated::create_isolated;
+
+mod message;
+pub use message::prepare_message;

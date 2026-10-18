@@ -8338,3 +8338,23 @@ added crate modules contain at most 39 code lines. Evidence is in
 `artifacts/consolidation-child-message/`. Compilation and runtime tests were
 not run; no messages or agent turns were executed. No Cargo, rustc or Python
 commands ran. The full consolidation goal remains active.
+
+### Shared child prompt startup
+
+Moved first-turn and message-turn startup ordering into `codetether-child-turn`
+and message-time inherited-policy preparation into `codetether-agent-session`.
+Five added core modules separate provider/prompt operations, startup effects and
+policy preparation. Application adapters retain native session lookup, provider
+registry acquisition and the distinct plain/image-capable prompt APIs. Existing
+bus connections are preserved, and both startup paths keep their 256-event
+channels and the original steering/status/trace sequence.
+
+Twenty-four static preservation checks cover startup ordering, error tracking,
+message policy, registry selection, prompt arguments, image conversion and
+native wrappers. Existing policy and event-loop tests remain unchanged.
+Module/dependency, file-budget and whitespace checks passed; added core files
+contain at most 27 code lines. Evidence is in
+`artifacts/consolidation-child-startup/`, including the corrected backup-name
+collision caught by the initial formatter parse. Compilation and runtime tests
+were not run; no child prompts were started. No Cargo, rustc or Python commands
+ran. The full consolidation goal remains active.

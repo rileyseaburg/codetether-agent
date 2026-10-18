@@ -25,3 +25,12 @@ pub use mailbox_host::MailboxHost;
 pub use message::handle_message;
 pub use message_host::MessageHost;
 pub use message_run::execute as run_message;
+
+mod prompt_host;
+mod startup_first;
+mod startup_host;
+mod startup_message;
+pub use prompt_host::PromptHost;
+pub use startup_first::begin_first;
+pub use startup_host::StartupHost;
+pub use startup_message::begin_message;

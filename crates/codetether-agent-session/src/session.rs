@@ -15,6 +15,14 @@ pub trait ChildSession: codetether_agent_registry::Session + SessionAccess + Sen
     fn set_agent_name(&mut self, name: String);
     /// Apply the native title setter.
     fn set_title(&mut self, title: String);
+    /// Return whether this session already has a bus connection.
+    fn has_bus(&self) -> bool;
+    /// Preserve an existing bus, otherwise attach the current process-global bus.
+    fn ensure_bus(&mut self) {
+        if !self.has_bus() {
+            self.attach_bus();
+        }
+    }
     /// Attach the existing process-global bus.
     fn attach_bus(&mut self);
     /// Update the modification timestamp and save; propagate the native save error.

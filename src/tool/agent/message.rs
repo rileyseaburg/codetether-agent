@@ -12,8 +12,6 @@ pub(in crate::tool::agent) mod remote_fallback;
 pub(super) mod run;
 #[path = "message/start.rs"]
 pub(in crate::tool::agent) mod start;
-#[path = "message/session.rs"]
-mod task_session;
 /// Route a message through shared child-turn coordination.
 pub(super) async fn handle_message(params: &helpers::Params) -> Result<ToolResult> {
     codetether_child_turn::handle_message::<super::turn_host::ApplicationHost>(params).await
