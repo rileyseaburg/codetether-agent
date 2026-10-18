@@ -1,10 +1,10 @@
 //! Delegate shared wrapper operations to the existing authorized MCP client.
-use crate::mcp::{CallToolResult, McpClient, McpTool};
+use super::{Application, CallToolResult, McpClient, McpTool};
 use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;
 #[async_trait::async_trait]
-impl codetether_mcp_tools::Client for McpClient {
+impl<H: Application> codetether_mcp_tools::Client for McpClient<H> {
     async fn connect_subprocess_with_approval(
         command: &str,
         args: &[&str],

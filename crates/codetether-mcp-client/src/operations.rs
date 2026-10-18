@@ -1,6 +1,6 @@
 //! Application MCP client operations adapter.
 use super::*;
-impl McpClient {
+impl<H: Application> McpClient<H> {
     /// Call a tool
     pub async fn call_tool(&self, name: &str, arguments: Value) -> Result<CallToolResult> {
         self.call_tool_checked(name, arguments).await

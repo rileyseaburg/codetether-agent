@@ -1,0 +1,19 @@
+[package]
+name = "codetether-mcp-client"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Policy-bound MCP clients, subprocess connections and server registries"
+
+[dependencies]
+anyhow = "1"
+codetether-mcp-approval = { path = "../codetether-mcp-approval", version = "0.1.0" }
+codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
+codetether-mcp-transport = { path = "../codetether-mcp-transport", version = "0.1.0" }
+serde_json = "1"
+tokio = { version = "1", features = ["rt"] }
+async-trait = "0.1"
+codetether-mcp-bridge = { path = "../codetether-mcp-bridge", version = "0.1.0" }
+codetether-mcp-tools = { path = "../codetether-mcp-tools", version = "0.1.0" }
+codetether-mcp-connections = { path = "../codetether-mcp-connections", version = "0.1.0" }

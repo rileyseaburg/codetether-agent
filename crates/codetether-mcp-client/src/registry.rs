@@ -1,7 +1,7 @@
 //! Application connection authorization for the shared MCP registry.
 use super::*;
 mod connection;
-impl McpRegistry {
+impl<H: Application> McpRegistry<H> {
     /// Construct an empty registry of application MCP clients.
     pub fn new() -> Self {
         Self {
@@ -15,20 +15,20 @@ impl McpRegistry {
         name: &str,
         command: &str,
         args: &[&str],
-    ) -> Result<Arc<McpClient>> {
+    ) -> Result<Arc<McpClient<H>>> {
         self.inner
-            .connect::<connection::Native>(name, command, args)
+            .connect::<connection::Policy<H>>(name, command, args)
             .await
     }
 }
 
-impl Default for McpRegistry {
+impl<H: Application> Default for McpRegistry<H> {
     fn default() -> Self {
         Self::new()
     }
 }
-impl std::ops::Deref for McpRegistry {
-    type Target = codetether_mcp_core::registry::ServerRegistry<McpClient>;
+impl<H: Application> std::ops::Deref for McpRegistry<H> {
+    type Target = codetether_mcp_core::registry::ServerRegistry<McpClient<H>>;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

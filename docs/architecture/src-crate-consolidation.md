@@ -21857,3 +21857,29 @@ Direct rustfmt, source comparisons, native file-size limits and whitespace
 checks passed. Evidence: `artifacts/consolidation-mcp-application/`.
 No Cargo, rustc or Python commands ran; compilation and runtime tests remain
 unverified. Full consolidation remains active.
+
+### Dedicated policy-bound MCP client crate
+
+Created `codetether-mcp-client` and moved the client/registry ownership and ten
+implementation files out of `src/mcp`. The crate owns transport construction,
+subprocess receive-loop startup, initialization, metadata, resource/prompt/tool
+operations, registry access, connection setup and registry-client dispatch.
+`Application` supplies only package version, subprocess authorization and the
+outgoing tool policy. Native `McpClient` and `McpRegistry` names are type aliases.
+
+Moved the tool-wrapper, resource-bridge and named-connection trait implementations
+into the client-owning crate too, avoiding orphan implementations after the
+native types become aliases. Two additional native files were removed; the TUI
+module retains its public registry and summary aliases. Native bridge policy
+is unchanged.
+
+Source comparisons cover all ten client files and all three integration trait
+implementations, preserving authorization-before-spawn, receiver-before-init,
+independent per-client registries, original tool argument evaluation and the
+shared approval-metadata stripping path. The native policy callback bodies
+retain the original calls. Module/dependency checks cover 693 roots and 565
+crates, with no missing modules or dependency cycles. Direct rustfmt, native
+file-size limits and whitespace checks passed. Staged lock changes contain
+only the new package and root dependency; the unrelated working lock is intact.
+Evidence: `artifacts/consolidation-mcp-client/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation stays active.

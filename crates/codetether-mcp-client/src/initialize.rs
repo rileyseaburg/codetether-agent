@@ -1,9 +1,9 @@
 //! Application MCP client initialize adapter.
 use super::*;
-impl McpClient {
+impl<H: Application> McpClient<H> {
     /// Initialize the connection with the server
     pub async fn initialize(&self) -> Result<InitializeResult> {
-        self.inner.initialize(env!("CARGO_PKG_VERSION")).await
+        self.inner.initialize(H::version()).await
     }
 
     /// Refresh the list of available tools

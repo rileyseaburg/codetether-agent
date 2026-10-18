@@ -1,6 +1,6 @@
 //! Application MCP client metadata adapter.
 use super::*;
-impl McpClient {
+impl<H: Application> McpClient<H> {
     /// Get the server name if set
     pub async fn server_name(&self) -> Option<String> {
         self.inner.server_name().await

@@ -1,8 +1,8 @@
 //! Application MCP client registry access adapter.
 use super::*;
-impl McpClient {
+impl<H: Application> McpClient<H> {
     /// Get the registry associated with this client
-    pub fn registry(&self) -> Arc<McpRegistry> {
+    pub fn registry(&self) -> Arc<McpRegistry<H>> {
         Arc::clone(&self.registry)
     }
 

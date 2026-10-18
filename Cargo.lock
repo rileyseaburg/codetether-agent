@@ -1699,6 +1699,7 @@ dependencies = [
  "codetether-lsp-tool",
  "codetether-marketplace",
  "codetether-mcp-bridge",
+ "codetether-mcp-client",
  "codetether-mcp-core",
  "codetether-mcp-tools",
  "codetether-mcp-transport",
@@ -4050,6 +4051,22 @@ dependencies = [
  "codetether-mcp-tools",
  "codetether-tool-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-mcp-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-mcp-approval",
+ "codetether-mcp-bridge",
+ "codetether-mcp-connections",
+ "codetether-mcp-core",
+ "codetether-mcp-tools",
+ "codetether-mcp-transport",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

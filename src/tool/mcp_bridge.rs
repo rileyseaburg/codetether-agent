@@ -2,8 +2,6 @@
 #[cfg(test)]
 #[path = "mcp_bridge_policy.rs"]
 mod policy;
-#[path = "mcp_bridge_resources.rs"]
-mod resources;
 /// MCP bridge using application authorization and resource access.
 ///
 /// # Examples

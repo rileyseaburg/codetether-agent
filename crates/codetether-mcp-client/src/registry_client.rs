@@ -1,6 +1,6 @@
 //! Delegate registry operations through the application's client policy.
 use super::*;
-impl codetether_mcp_core::registry::RegistryClient for McpClient {
+impl<H: Application> codetether_mcp_core::registry::RegistryClient for McpClient<H> {
     fn tools(&self) -> impl std::future::Future<Output = Vec<McpTool>> + Send {
         McpClient::tools(self)
     }

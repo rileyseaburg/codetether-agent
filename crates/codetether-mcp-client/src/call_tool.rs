@@ -1,18 +1,16 @@
 //! Native policy and transport bindings for shared outbound MCP enforcement.
-use super::{CallToolResult, McpClient};
+use super::{Application, CallToolResult, McpClient};
 use anyhow::Result;
 use serde_json::Value;
-impl codetether_mcp_approval::outbound::Host for McpClient {
+impl<H: Application> codetether_mcp_approval::outbound::Host for McpClient<H> {
     async fn blocked(&self, name: &str, arguments: &Value) -> Option<String> {
-        crate::runtime_policy::evaluate_tool_invocation(name, arguments)
-            .await
-            .map(|result| result.output)
+        H::blocked(name, arguments).await
     }
     async fn call(&self, name: &str, arguments: Value) -> Result<CallToolResult> {
         self.inner.connection().call_tool(name, arguments).await
     }
 }
-impl McpClient {
+impl<H: Application> McpClient<H> {
     pub(super) async fn call_tool_checked(
         &self,
         name: &str,
