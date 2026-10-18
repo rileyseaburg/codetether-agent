@@ -23350,3 +23350,20 @@ lockfiles changed; unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-bus-facades/.
 No bus runtime, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### A2A facade paths point directly to owning crate modules
+
+Replaced eleven native A2A re-export files with direct aliases for peer-message
+publication, claims, HTTP clients, gRPC services, LAN discovery, liveness,
+authentication, task scope and workspace metadata. All sixteen previously
+exported symbol paths resolve through the same owning crate/module prefixes.
+The A2A module's transport documentation now names the shared implementations.
+
+Static alias comparisons and module/dependency scans pass across 699 roots
+and 571 crates without missing modules or cycles. Shared authentication and
+workspace implementations remain unchanged, as do unrelated native spawn and
+extended-heartbeat edits. Direct rustfmt, file-size limits and whitespace
+checks passed. No manifests or lockfiles changed. Evidence:
+artifacts/consolidation-a2a-facades/.
+No network, authentication operations, tests, Cargo, rustc or Python ran.
+Compilation and runtime behavior remain unverified. Full consolidation is active.

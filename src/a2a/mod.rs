@@ -4,42 +4,42 @@
 //! this agent to work as both a client and server in the A2A ecosystem.
 //!
 //! ## Transports
-//! - **JSON-RPC** (default) — `server.rs` / `client.rs`
-//! - **gRPC** — `grpc.rs` (tonic-based, compiled from `crates/codetether-a2a-grpc/proto/a2a/v1/a2a.proto`)
+//! - **JSON-RPC** (default) — native server adapter and shared HTTP client
+//! - **gRPC** — shared gRPC service (tonic-based, compiled from `crates/codetether-a2a-grpc/proto/a2a/v1/a2a.proto`)
 
 pub use codetether_a2a_grpc::bridge;
+pub use codetether_a2a_http as client;
 pub(crate) use codetether_a2a_http::identity as agent_identity;
-pub mod bus_emit;
-pub mod claim;
-pub mod client;
+pub use codetether_a2a_worker_core::claim;
+pub use codetether_bus_core::peer_messages as bus_emit;
 pub(crate) mod collaboration_token;
 #[path = "git_credentials/mod.rs"]
 pub mod git_credentials;
-pub mod grpc;
+pub use codetether_a2a_grpc::server as grpc;
 pub mod intro;
-pub mod lan;
+pub use codetether_a2a_discovery::lan;
 pub use codetether_a2a_inbox as live_inbox;
 pub(crate) mod local_identity;
 pub mod mdns;
 pub use codetether_a2a_discovery::address as mdns_addr;
+pub use codetether_a2a_discovery::liveness as peer_liveness;
 pub use codetether_a2a_discovery::presence as mdns_liveness;
-pub mod peer_liveness;
 pub(crate) mod peer_prompt;
 pub(crate) mod peer_route;
 pub mod prompt_runtime;
 pub mod server;
-pub mod server_auth;
+pub use codetether_a2a_http::auth as server_auth;
 pub mod session_config;
 pub mod session_resolve;
 pub mod spawn;
 pub mod stream;
-pub mod task_scope;
 pub use codetether_a2a_core as types;
-pub mod voice_grpc;
+pub use codetether_a2a_grpc::voice as voice_grpc;
+pub use codetether_a2a_worker_core::task_scope;
 pub mod worker;
 pub mod worker_tool_registry;
-pub mod worker_workspace_context;
-pub mod worker_workspace_record;
+pub use codetether_a2a_http::workspace as worker_workspace_context;
+pub use codetether_a2a_http::workspace as worker_workspace_record;
 
 /// Generated protobuf/tonic types from `crates/codetether-a2a-grpc/proto/a2a/v1/a2a.proto`.
 pub use codetether_a2a_grpc::proto;
