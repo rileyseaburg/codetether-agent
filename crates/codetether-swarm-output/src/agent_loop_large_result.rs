@@ -1,6 +1,6 @@
 //! Deadline-bound processing for oversized sub-agent tool results.
 
-use crate::provider::Provider;
+use codetether_provider_core::Provider;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::time::timeout;
@@ -21,9 +21,9 @@ pub(super) async fn process(
     {
         Ok(processed) => (processed, false),
         Err(_) => {
-            tracing::warn!(tool = %tool_name, "Large-result processing exceeded sub-agent deadline");
+            tracing::warn!(target: "codetether_agent::swarm::executor::agent_loop_large_result", tool = %tool_name, "Large-result processing exceeded sub-agent deadline");
             (
-                crate::swarm::token_truncate::truncate_single_result(
+                codetether_swarm_core::context::truncate_single_result(
                     result,
                     super::large_result::SIMPLE_TRUNCATE_CHARS,
                 ),

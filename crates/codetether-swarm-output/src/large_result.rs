@@ -1,8 +1,8 @@
 //! RLM summarization for oversized tool output.
 
-use crate::provider::Provider;
-use crate::rlm::RlmExecutor;
-use crate::swarm::token_truncate::truncate_single_result;
+use codetether_provider_core::Provider;
+use codetether_rlm::router_executor::RlmExecutor;
+use codetether_swarm_core::context::truncate_single_result;
 use std::sync::Arc;
 
 pub(super) const RLM_THRESHOLD_CHARS: usize = 50_000;
@@ -20,7 +20,7 @@ pub(super) async fn process(
     if content.len() <= RLM_THRESHOLD_CHARS {
         return truncate_single_result(content, SIMPLE_TRUNCATE_CHARS);
     }
-    tracing::info!(tool = %tool_name, content_len = content.len(), "Summarizing large tool result");
+    tracing::info!(target: "codetether_agent::swarm::executor::large_result", tool = %tool_name, content_len = content.len(), "Summarizing large tool result");
     summarize(content, tool_name, provider, model).await
 }
 
@@ -32,7 +32,7 @@ async fn summarize(content: &str, tool: &str, provider: Arc<dyn Provider>, model
     match rlm.analyze(&query).await {
         Ok(result) => super::large_result_format::success(content, tool, &result.answer),
         Err(error) => {
-            tracing::warn!(tool = %tool, %error, "RLM analysis failed; truncating result");
+            tracing::warn!(target: "codetether_agent::swarm::executor::large_result", tool = %tool, %error, "RLM analysis failed; truncating result");
             truncate_single_result(content, SIMPLE_TRUNCATE_CHARS)
         }
     }

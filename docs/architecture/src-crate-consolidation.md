@@ -20675,3 +20675,28 @@ checks across 558 crates, and whitespace checks passed. Evidence is retained in
 `artifacts/consolidation-swarm-validation/`. No Cargo, rustc, or Python commands
 ran; no Rust tests or runtime Git probes were executed. Compilation remains
 unverified. The complete workspace consolidation is still in progress.
+
+### Dedicated swarm output processing crate
+
+Moved oversized-result classification, three-iteration RLM summarization,
+success formatting, deadline enforcement, truncation fallback, and tool feedback
+rendering into the new `codetether-swarm-output` crate. Its borrowed `Context`
+contains the provider handle, model, deadline, and working directory. The native
+agent-loop handler only projects its state into that context. Removed all three
+obsolete executor module registrations and their original files.
+
+Behavior retained: byte-length thresholds of 6,000 and 50,000; shared truncation;
+12,000-character summary truncation argument; remaining-deadline timeout;
+original fallback output and timeout flag; unchanged tool feedback formatting;
+and the original tracing targets. Provider handles are still cloned only when
+oversized output enters summarization. The same router-backed RLM executor is
+used directly from its owning crate.
+
+Verification compares complete moved implementations after import substitutions
+and explicit original tracing targets, plus the renderer body after native state
+projection. Direct rustfmt, native file-size checks, source graphs across 693
+roots, dependency-cycle checks across 559 crates, and whitespace checks passed.
+Evidence: `artifacts/consolidation-swarm-output/`. Only the new package and root
+edge are staged in the lockfile; unrelated lockfile work is preserved. No Cargo,
+rustc, or Python commands ran. No RLM/provider calls or Rust tests were executed.
+Compilation and runtime behavior remain unverified; the broader goal is active.

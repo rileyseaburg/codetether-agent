@@ -22,7 +22,6 @@ macro_rules! executor_module {
 executor_module!(accessors => "executor_parts/accessors.rs");
 #[path = "executor_parts/agent_loop/mod.rs"]
 mod agent_loop;
-executor_module!(agent_loop_large_result => "agent_loop_large_result.rs");
 executor_module!(builder => "executor_parts/builder.rs");
 executor_module!(bus_publish => "bus_publish.rs");
 executor_module!(cache_api => "executor_parts/cache_api.rs");
@@ -34,8 +33,6 @@ executor_module!(executor_trace => "executor_trace.rs");
 executor_module!(exit => "executor_parts/exit.rs");
 #[path = "executor_parts/k8s_stage/mod.rs"]
 mod k8s_stage;
-executor_module!(large_result => "executor_parts/large_result.rs");
-executor_module!(large_result_format => "executor_parts/large_result_format.rs");
 #[path = "executor_parts/local_stage/mod.rs"]
 mod local_stage;
 executor_module!(pub loop_step => "loop_step.rs");

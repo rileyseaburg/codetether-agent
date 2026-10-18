@@ -1774,6 +1774,7 @@ dependencies = [
  "codetether-skill-tool",
  "codetether-swarm-bus",
  "codetether-swarm-core",
+ "codetether-swarm-output",
  "codetether-swarm-validation",
  "codetether-swarm-delegation",
  "codetether-swarm-git",
@@ -8387,6 +8388,18 @@ dependencies = [
  "codetether-provider-core",
  "codetether-provider-policy",
  "codetether-swarm-core",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-swarm-output"
+version = "0.1.0"
+dependencies = [
+ "codetether-provider-core",
+ "codetether-rlm",
+ "codetether-swarm-core",
+ "codetether-tool-core",
+ "tokio",
  "tracing",
 ]
 
