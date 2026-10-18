@@ -240,47 +240,6 @@ pub struct SpawnArgs {
 }
 
 #[derive(Parser, Debug)]
-pub struct ContextArgs {
-    #[command(subcommand)]
-    pub command: ContextCommand,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum ContextCommand {
-    /// Emit a [CONTEXT RESET] marker into the latest session
-    Reset(ContextResetArgs),
-    /// Browse the latest session as virtual turn files
-    Browse(ContextBrowseArgs),
-}
-
-#[derive(Parser, Debug)]
-pub struct ContextResetArgs {
-    /// Optional summary for the reset marker
-    #[arg(long)]
-    pub summary: Option<String>,
-}
-
-#[derive(Parser, Debug)]
-pub struct ContextBrowseArgs {
-    #[command(subcommand)]
-    pub command: Option<ContextBrowseCommand>,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum ContextBrowseCommand {
-    /// List virtual paths for each turn in the latest session
-    List,
-    /// Show one turn as markdown-like text
-    ShowTurn(ContextShowTurnArgs),
-}
-
-#[derive(Parser, Debug)]
-pub struct ContextShowTurnArgs {
-    /// Zero-based turn index
-    pub turn: usize,
-}
-
-#[derive(Parser, Debug)]
 pub struct SwarmArgs {
     /// Task to execute with swarm
     pub task: String,
@@ -675,6 +634,7 @@ pub struct OkrArgs {
     pub evidence: bool,
 }
 pub use codetether_search_cli::SearchArgs;
+pub use codetether_context_cli::{ContextArgs, ContextCommand, ContextResetArgs, ContextBrowseArgs, ContextBrowseCommand, ContextShowTurnArgs};
 
 
 #[derive(Parser, Debug)]

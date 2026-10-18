@@ -10853,3 +10853,21 @@ and whitespace checks passed; modules have at most 24 code lines. Evidence is
 in `artifacts/consolidation-search-cli/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, provider initialization or search operation ran.
 Full workspace consolidation remains active.
+
+### Context CLI extraction
+
+- Moved context reset/browse dispatch, marker insertion, request translation,
+  output handling and all six argument types from `src/cli` into
+  `crates/codetether-context-cli`.
+- Eight cohesive Rust modules separate argument schemas, dispatch, reset,
+  browse/output and the persistence contract (maximum 25 code lines).
+- Reuses the existing context loader, reset formatter and bounded browser.
+  The native adapter supplies only session append/save operations and delegates
+  execution; existing session selection and persistence remain unchanged.
+- Static verification: 25 assertions compare argument schemas and moved bodies,
+  preserving reset ordering, assistant message role, summary default, browse
+  payload and output behavior. Module reachability, workspace dependency DAG,
+  file-limit ratchet and whitespace checks passed.
+- Evidence: `artifacts/consolidation-context-cli/`. Compilation, runtime tests
+  and session operations were not run; no Cargo or rustc commands were executed.
+- This extraction is one increment. Full `src/` consolidation remains active.
