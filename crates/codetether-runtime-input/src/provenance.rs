@@ -1,5 +1,6 @@
+//! Provenance fields and optional signatures preserve supplied field precedence.
 use super::insert_field;
-use crate::provenance::{ExecutionProvenance, sign_provenance};
+use codetether_provenance::{ExecutionProvenance, sign_provenance};
 use serde_json::{Map, Value, json};
 
 /// Insert the standard provenance fields into a tool input object.
@@ -7,8 +8,8 @@ use serde_json::{Map, Value, json};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::provenance::{ExecutionOrigin, ExecutionProvenance};
-/// use codetether_agent::session::helper::runtime::insert_provenance_fields;
+/// use codetether_provenance::{ExecutionOrigin, ExecutionProvenance};
+/// use codetether_runtime_input::insert_provenance_fields;
 /// use serde_json::{Map, Value};
 ///
 /// let mut obj = Map::<String, Value>::new();
@@ -18,6 +19,10 @@ use serde_json::{Map, Value, json};
 /// assert_eq!(obj["__ct_origin"], "swarm");
 /// assert!(obj.get("__ct_provenance_id").is_some());
 /// ```
+/// # Arguments
+/// Receives a tool object and execution provenance.
+/// # Returns
+/// Adds missing provenance fields and an optional signature.
 pub fn insert_provenance_fields(obj: &mut Map<String, Value>, provenance: &ExecutionProvenance) {
     for (key, value) in [
         (
@@ -53,7 +58,7 @@ pub fn insert_provenance_fields(obj: &mut Map<String, Value>, provenance: &Execu
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::session::helper::runtime::insert_provenance_field;
+/// use codetether_runtime_input::insert_provenance_field;
 /// use serde_json::{Map, Value};
 ///
 /// let mut obj = Map::<String, Value>::new();
@@ -63,6 +68,10 @@ pub fn insert_provenance_fields(obj: &mut Map<String, Value>, provenance: &Execu
 /// assert_eq!(obj["__ct_origin"], "swarm");
 /// assert!(!obj.contains_key("__ct_missing"));
 /// ```
+/// # Arguments
+/// Receives a tool object, field key and optional value.
+/// # Returns
+/// Adds the value only when present and its key is absent.
 pub fn insert_provenance_field(obj: &mut Map<String, Value>, key: &str, value: Option<&str>) {
     insert_field(obj, key, value);
 }

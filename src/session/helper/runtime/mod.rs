@@ -1,17 +1,13 @@
 mod context;
+mod input_host;
 mod light_prompt;
-mod path;
 mod prior_context;
 mod prompt;
-mod provenance;
 mod session_input;
 
 #[cfg(test)]
 #[path = "light_prompt_tests.rs"]
 mod light_prompt_tests;
-
-#[cfg(test)]
-mod context_tests;
 
 pub use context::{enrich_tool_input_with_runtime_context, insert_field};
 pub use light_prompt::prefers_light_system_prompt;

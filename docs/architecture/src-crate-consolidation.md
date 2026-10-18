@@ -9585,3 +9585,20 @@ graphs, file budgets and whitespace checks passed; the largest crate file has
 32 code lines. Evidence is in `artifacts/consolidation-prior-context-access/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or worker
 commands ran. Full workspace consolidation remains active.
+
+### Dedicated runtime-input enrichment crate
+
+Moved authoritative tool-input enrichment, session/lease fields, provenance
+insertion/signing and workspace-relative path normalization into
+`crates/codetether-runtime-input`. Ten modules separate field insertion, paths,
+provenance, session enrichment and native source contracts. Native wrappers
+expose the existing session fields and retain the old public entry points.
+
+Twenty-six static comparisons cover overwrite precedence, optional-field
+preservation, signed provenance, nested path keys, runtime permission ceilings,
+lease identity, original tests and native bindings. Module/dependency graphs,
+file budgets and whitespace checks passed; the largest crate file has 43 code
+lines. Two original authority/workdir tests moved without execution. Evidence
+is in `artifacts/consolidation-runtime-input/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or worker commands ran. Full workspace
+consolidation remains active.

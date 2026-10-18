@@ -142,6 +142,7 @@ members = [
     "crates/codetether-recall-context",
     "crates/codetether-prior-context-policy",
     "crates/codetether-prior-context-access",
+    "crates/codetether-runtime-input",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
     "crates/codetether-codex-discovery",
@@ -450,6 +451,7 @@ codetether-codex-transcript = { path = "crates/codetether-codex-transcript", ver
 codetether-codex-discovery = { path = "crates/codetether-codex-discovery", version = "0.1.0" }
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
+codetether-runtime-input = { path = "crates/codetether-runtime-input", version = "0.1.0" }
 codetether-prior-context-access = { path = "crates/codetether-prior-context-access", version = "0.1.0" }
 codetether-prior-context-policy = { path = "crates/codetether-prior-context-policy", version = "0.1.0" }
 codetether-recall-context = { path = "crates/codetether-recall-context", version = "0.1.0" }

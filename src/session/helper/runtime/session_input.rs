@@ -1,48 +1,23 @@
-//! Authoritative runtime fields derived from a live session.
-
+//! Native session bindings for shared authoritative tool inputs.
 use crate::session::Session;
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::path::Path;
-
-/// Enrich tool input with identity and the live prior-context ceiling.
 pub(crate) fn enrich(input: &Value, cwd: &Path, session: &Session) -> Value {
-    enrich_with_model(input, cwd, session, session.metadata.model.as_deref())
+    codetether_runtime_input::enrich(input, cwd, session)
 }
-
-/// Enrich input and overwrite its prompt-run lease owner.
 pub(crate) fn enrich_for_turn(
     input: &Value,
     cwd: &Path,
     session: &Session,
     lease_owner: &str,
 ) -> Value {
-    let mut enriched = enrich(input, cwd, session);
-    if let Value::Object(fields) = &mut enriched {
-        fields.insert("__ct_lease_owner".into(), json!(lease_owner));
-    }
-    enriched
+    codetether_runtime_input::enrich_for_turn(input, cwd, session, lease_owner)
 }
-
-/// Enrich session input while using a caller-resolved model selector.
 pub(crate) fn enrich_with_model(
     input: &Value,
     cwd: &Path,
     session: &Session,
     model: Option<&str>,
 ) -> Value {
-    let mut enriched = super::context::enrich_tool_input_with_runtime_context(
-        input,
-        cwd,
-        model,
-        &session.id,
-        &session.agent,
-        session.metadata.provenance.as_ref(),
-    );
-    if let Value::Object(fields) = &mut enriched {
-        fields.insert(
-            "__ct_prior_context_allowed".to_string(),
-            json!(super::prior_context::allowed_for_session(session)),
-        );
-    }
-    enriched
+    codetether_runtime_input::enrich_with_model(input, cwd, session, model)
 }
