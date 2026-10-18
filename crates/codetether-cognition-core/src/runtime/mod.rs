@@ -20,3 +20,6 @@ mod status;
 mod create;
 mod start;
 mod stop;
+
+/// One tick of cognition work, governance and publication.
+pub mod tick;

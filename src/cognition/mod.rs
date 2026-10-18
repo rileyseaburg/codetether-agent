@@ -134,8 +134,6 @@ mod tick_compress;
 mod tick_event;
 #[path = "tick_flush.rs"]
 mod tick_flush;
-#[path = "tick_govern.rs"]
-mod tick_govern;
 #[path = "tick_idle_reap.rs"]
 mod tick_idle_reap;
 #[path = "tick_process.rs"]

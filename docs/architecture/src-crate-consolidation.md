@@ -16593,3 +16593,22 @@ Full workspace consolidation remains active.
   dependencies changed. Evidence: `artifacts/consolidation-cognition-lifecycle/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared cognition tick orchestration and publication
+
+- Moved full tick sequencing, proposal insertion, event/snapshot publication,
+  governance sweeps and idle-persona reaping into
+  `codetether-cognition-core::runtime::tick`.
+- Separate sequencing, publication and governance modules own these operations;
+  typed native hooks retain per-thought processing and persistence binding.
+  Removed the native governance module and reduced native tick/flush modules
+  to application adapters.
+- Preserved timestamp/work selection, work order and active count, governance
+  before insertion/publication, idle reaping after flush, bounded-buffer calls
+  and persistence only when the selected work contains a Compress phase.
+- Verification: complete bodies for tick/publication/governance/reaping,
+  processing/persistence hook bindings, unchanged native policy implementations,
+  module/dependency graphs, direct rustfmt, file budgets and whitespace. No
+  dependencies changed. Evidence: `artifacts/consolidation-cognition-tick/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
