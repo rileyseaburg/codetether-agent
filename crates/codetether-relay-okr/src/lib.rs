@@ -32,3 +32,5 @@ pub mod progress;
 
 /// CLI objective approval display and persistence.
 pub mod cli_approval;
+/// Interactive command preparation and objective approval drafting.
+pub mod interactive;

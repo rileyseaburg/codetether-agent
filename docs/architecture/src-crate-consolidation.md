@@ -14606,3 +14606,20 @@ Full workspace consolidation remains active.
   checks passed. Evidence: artifacts/consolidation-access-update/.
 - No dependencies changed. No Cargo, rustc, Rust tests, access-mode changes or
   approval releases ran. Full workspace consolidation remains unfinished.
+
+### Interactive goal preparation ownership
+
+- Moved `/go` model rotation, model-save handling, repository initialization,
+  objective drafting/fallbacks and approval staging into
+  codetether-relay-okr::interactive. Modules separate command flow, provider
+  draft invocation, pending objective construction, repository setup and host
+  contracts.
+- Native code only binds provider lookup, session fields/storage and approval
+  presentation. The former OKR gate module now re-exports shared contracts.
+- Verification: seven static checks passed for both draft fallbacks, provider
+  invocation, repository initialization, expanded command behavior, native
+  bindings and module bounds. Module reachability, dependency DAG, direct
+  rustfmt, file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-go-interactive/.
+- No dependency changes. No Cargo, rustc, Rust tests, provider requests or
+  objective/session mutations ran. Full workspace consolidation is unfinished.

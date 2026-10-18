@@ -7,6 +7,8 @@ mod a2a;
 mod fork_session;
 #[path = "commands/fork_view.rs"]
 mod fork_view;
+#[path = "commands/go_host.rs"]
+mod go_host;
 #[path = "commands/goal/mod.rs"]
 pub(crate) mod goal;
 #[path = "commands/open_editor.rs"]
@@ -447,33 +449,7 @@ async fn handle_go_command(
     _registry: Option<&Arc<ProviderRegistry>>,
     rest: &str,
 ) {
-    use crate::tui::app::okr_gate::{ensure_okr_repository, next_go_model, propose};
-    use crate::tui::constants::AUTOCHAT_DEFAULT_AGENTS as GO_AGENT_COUNT;
-
-    let task = rest.trim();
-    if task.is_empty() {
-        app.state.status = "Usage: /go <task description>".to_string();
-        return;
-    }
-
-    // Rotate model for /go
-    let current_model = session.metadata.model.as_deref();
-    let model = next_go_model(current_model);
-    session.metadata.model = Some(model.clone());
-    if let Err(error) = session.save().await {
-        tracing::warn!(error = %error, "Failed to save session after model swap");
-    }
-
-    // Initialize OKR repository if needed
-    ensure_okr_repository(&mut app.state.okr_repository).await;
-
-    // Draft OKR and present for approval
-    let pending = propose(task.to_string(), GO_AGENT_COUNT, model).await;
-
-    push_system_message(app, pending.approval_prompt());
-
-    app.state.pending_okr_approval = Some(pending);
-    app.state.status = "OKR draft awaiting approval \u{2014} [A]pprove or [D]eny".to_string();
+    go_host::execute(app, session, rest).await;
 }
 
 fn handle_autochat_command(app: &mut App, rest: &str) {
