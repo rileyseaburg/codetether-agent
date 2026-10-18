@@ -7,6 +7,7 @@ license = "MIT"
 description = "Prompt-turn state, normalized calls and pre-execution guard ordering"
 
 [dependencies]
+codetether-tool-approval = { path = "../codetether-tool-approval", version = "0.1.0" }
 codetether-edit-policy = { path = "../codetether-edit-policy", version = "0.1.0" }
 codetether-prompt-policy = { path = "../codetether-prompt-policy", version = "0.1.0" }
 codetether-runtime-policy = { path = "../codetether-runtime-policy", version = "0.1.0" }

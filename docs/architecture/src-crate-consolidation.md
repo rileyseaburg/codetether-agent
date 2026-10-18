@@ -20906,3 +20906,23 @@ whitespace checks passed. Evidence: `artifacts/consolidation-tool-heartbeat/`.
 No Cargo, rustc, or Python commands ran. No tool execution or Rust tests were
 performed. Compilation and runtime behavior remain unverified; consolidation
 remains active.
+
+### Tool invocation sequencing ownership
+
+Moved argument-enrichment ordering, pre-tool persistence, approval-result
+handling, blocked/approved execution choice, warning annotation, and outcome
+render sequencing into `codetether-prompt-loop::tool_driver::invocation`.
+Native hooks retain session enrichment and storage, approval-event delivery,
+approved tool execution, and outcome context. With no event channel the hook
+returns unchanged ready arguments, matching the original branch. Persistence
+failure still returns before approval or execution. The existing approved-tool
+and outcome implementation files are unchanged.
+
+Added a direct tool-approval dependency for its gate result and shared warning
+annotation. Only that owning-package edge is staged in the lockfile. Verification
+compares the complete orchestration body after explicit hook substitutions and
+checks each native binding. Source/dependency graphs, direct rustfmt, native
+file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-tool-invocation/`. No Cargo, rustc, or Python commands
+ran. No approval/tool operations or Rust tests were executed. Compilation and
+runtime behavior remain unverified; the broader consolidation is still active.

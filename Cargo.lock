@@ -8515,6 +8515,7 @@ dependencies = [
 name = "codetether-prompt-loop"
 version = "0.1.0"
 dependencies = [
+ "codetether-tool-approval",
  "codetether-edit-policy",
  "codetether-prompt-policy",
  "codetether-runtime-policy",
