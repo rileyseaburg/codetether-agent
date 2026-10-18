@@ -17,3 +17,6 @@ pub mod recovery;
 mod verification_claim;
 pub mod verification_gate;
 pub mod workflow;
+
+/// Scope-completion status labels.
+pub mod scope;

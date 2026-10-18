@@ -4,7 +4,6 @@ mod assembly;
 mod belief_keywords;
 mod belief_recall;
 mod capabilities;
-mod capability;
 mod claim;
 mod claim_note;
 mod core_memory;

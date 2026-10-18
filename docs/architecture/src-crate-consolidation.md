@@ -10086,3 +10086,20 @@ contain at most 42 code lines. The native module graph records the pre-existing,
 unchanged orphan `evidence/digest.rs` explicitly. Evidence is in
 `artifacts/consolidation-evidence-core/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python or tool execution ran. Full consolidation remains active.
+
+### Dedicated evidence-prompt crate
+
+Moved evidence guardrails, runtime capability instructions, failure attribution,
+permission-sensitive memory guidance, workflow templates, classifier notes and
+section assembly into `crates/codetether-evidence-prompt`. Eleven modules own
+text generation without storage access. Scope status labels moved into
+`codetether-evidence-core`. Native section collection still loads workspace
+context and preserves prompt idempotence and prior-context access gates.
+
+Twenty-eight static comparisons cover exact instruction strings, rendered section
+order, status labels, capability guidance, two moved tests and unchanged native
+prompt/memory integration. Module/dependency graphs, file budgets and whitespace
+checks passed; new prompt modules contain at most 29 code lines. The existing
+native digest orphan remains unchanged and explicitly recorded. Evidence is in
+`artifacts/consolidation-evidence-prompt/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python or tool execution ran. Full consolidation remains active.

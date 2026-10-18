@@ -1,3 +1,4 @@
+//! Individual runtime capability instructions used by the prompt renderer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RuntimeCapability {
     ParallelScheduler,
