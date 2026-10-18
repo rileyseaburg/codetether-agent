@@ -32,3 +32,6 @@ pub mod modified;
 
 /// Mode-specific settings, character and filter input routing.
 pub mod modes;
+
+/// Ordered key-event admission and modal dispatch.
+pub mod events;

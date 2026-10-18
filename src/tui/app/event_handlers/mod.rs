@@ -27,7 +27,6 @@ mod interlude_key;
 mod interrupt_key;
 #[cfg(test)]
 mod interrupt_key_tests;
-mod key_repeat;
 mod keybinds;
 mod keyboard;
 mod mode_keys;

@@ -17453,3 +17453,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-mode-keys/`.
 - No Cargo, rustc, Python, UI effects, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared outer key-event ordering and repeat admission
+
+- Moved key-event admission, modal/review/shortcut sequencing and final key
+  timestamp updates into `codetether-tui-navigation::events`.
+- Moved repeat filtering and both existing tests; native layers retain their
+  existing implementations through focused modal, review and dispatch bindings.
+- Preserved every short-circuit, conditional goal resumption, propagated error
+  and the post-unmodified timestamp update even when that handler returns Err.
+- Verification: complete dispatcher/repeat/test comparisons and all native
+  bindings; unchanged underlying handlers, module/dependency graphs, direct
+  rustfmt, file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-key-events/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
