@@ -24,3 +24,6 @@ pub use lifecycle::start_managed_session;
 pub use start::{start_session, start_target};
 
 mod lifecycle_wait;
+
+/// Stop-waiting and exact-session recreation primitives.
+pub mod restart;

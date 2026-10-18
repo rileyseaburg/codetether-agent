@@ -17393,3 +17393,17 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-mux-read/`.
 - No Cargo, rustc, Python, mux/storage reads, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Shared exact-session restart primitives
+
+- Moved the unreferenced native restart helpers into
+  `codetether-mux-lifecycle::restart`, split between bounded stop-waiting and
+  exact-session startup. The owning crate already contains all lifecycle helpers.
+- Preserved backoff, registry checks, name validation, joining a live workspace
+  server, fresh-token generation, process construction and startup observation.
+- Verification: both full function bodies, unchanged lifecycle dependencies
+  and native callers, module/dependency graphs, direct rustfmt, file limits and
+  whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-mux-restart/`.
+- No Cargo, rustc, Python, process actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.
