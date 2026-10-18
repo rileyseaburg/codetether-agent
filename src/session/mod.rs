@@ -76,7 +76,7 @@ pub use codetether_session_history as history;
 pub mod history_sink;
 pub mod index;
 pub mod index_produce;
-pub mod journal;
+pub use codetether_native_session_runtime::journal;
 pub mod listing;
 mod listing_all;
 pub use codetether_context_policy::pages;

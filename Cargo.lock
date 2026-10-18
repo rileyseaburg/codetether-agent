@@ -1275,6 +1275,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-native-session-runtime",
  "codetether-native-review",
  "codetether-native-goals",
  "codetether-native-registry",
@@ -3883,6 +3884,19 @@ version = "4.7.6-dev.38"
 dependencies = [
  "codetether-telemetry",
  "tokio",
+]
+
+[[package]]
+name = "codetether-native-session-runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-goal-runtime",
+ "codetether-native-goals",
+ "codetether-session-control",
+ "codetether-session-orchestration",
+ "codetether-session-store",
+ "codetether-writeback-journal",
 ]
 
 [[package]]

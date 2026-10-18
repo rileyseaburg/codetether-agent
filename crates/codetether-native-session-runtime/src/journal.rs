@@ -4,6 +4,7 @@ pub use codetether_writeback_journal::{JournalEntry, Op, RejectReason, TxnId, Wr
 /// # Errors
 /// Returns session-path validation, filesystem or serialization errors.
 pub async fn append_entries(session_id: &str, entries: &[JournalEntry]) -> anyhow::Result<()> {
-    let path = crate::session::Session::session_path(session_id)?.with_extension("journal.jsonl");
+    let path = codetether_session_store::lifecycle::session_path(session_id)?
+        .with_extension("journal.jsonl");
     codetether_writeback_journal::append_entries(&path, entries).await
 }

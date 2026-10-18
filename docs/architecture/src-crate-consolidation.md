@@ -25716,3 +25716,23 @@ checks pass. Only the new package and root dependency are staged in Cargo.lock;
 unrelated working files remain unchanged. Evidence:
 artifacts/consolidation-native-review/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Native session runtime ownership and continuation
+
+Added codetether-native-session-runtime and moved execution leases, reentrant
+execution scopes, durable goal gating, final-message continuation, delegated
+work monitoring and writeback-journal appending into it. Continuation and
+monitoring accept the existing shared transcript trait; the root keeps its
+Session trait implementations and integration tests. Root runtime/journal
+paths re-export the native services. Writeback paths call the same underlying
+session-store resolver used by Session::session_path.
+
+All seven moved files pass transformed-source comparison for owning paths,
+public visibility and the transcript abstraction. Four root integration-test
+files are byte-for-byte unchanged. Module/dependency scans cover 718 roots and
+604 crates with no missing modules, cycles or undeclared direct dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass. Only the
+new package/root dependency are staged in Cargo.lock; unrelated working files
+remain unchanged. Evidence: artifacts/consolidation-native-session-runtime/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active.

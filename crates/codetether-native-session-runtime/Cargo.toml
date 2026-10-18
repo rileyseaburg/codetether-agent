@@ -1,0 +1,16 @@
+[package]
+name = "codetether-native-session-runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native session execution ownership, continuation and durable journals"
+
+[dependencies]
+anyhow = "1"
+codetether-goal-runtime = { path = "../codetether-goal-runtime", version = "0.1.0" }
+codetether-native-goals = { path = "../codetether-native-goals", version = "0.1.0" }
+codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
+codetether-session-orchestration = { path = "../codetether-session-orchestration", version = "0.1.0" }
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
+codetether-writeback-journal = { path = "../codetether-writeback-journal", version = "0.1.0" }
