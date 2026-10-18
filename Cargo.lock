@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-policy-eval",
  "codetether-replay-oracle",
  "codetether-workspace-tools",
  "codetether-swarm-monitor",
@@ -7477,6 +7478,10 @@ dependencies = [
  "codetether-context-policy",
  "tracing",
 ]
+
+[[package]]
+name = "codetether-policy-eval"
+version = "0.1.0"
 
 [[package]]
 name = "codetether-tracked-vec"

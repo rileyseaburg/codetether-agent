@@ -465,6 +465,7 @@ members = [
     "crates/codetether-tool-registry",
     "crates/codetether-workspace-tools",
     "crates/codetether-replay-oracle",
+    "crates/codetether-policy-eval",
     "crates/codetether-todo",
     "crates/codetether-mcp-core",
     "crates/codetether-mcp-transport",
@@ -1040,6 +1041,7 @@ codetether-advanced-edit = { path = "crates/codetether-advanced-edit", version =
 codetether-bash-tool = { path = "crates/codetether-bash-tool", version = "0.1.0" }
 codetether-bash-policy = { path = "crates/codetether-bash-policy", version = "0.1.0" }
 codetether-exec-command = { path = "crates/codetether-exec-command", version = "0.1.0" }
+codetether-policy-eval = { path = "crates/codetether-policy-eval", version = "0.1.0" }
 codetether-replay-oracle = { path = "crates/codetether-replay-oracle", version = "0.1.0" }
 codetether-workspace-tools = { path = "crates/codetether-workspace-tools", version = "0.1.0" }
 codetether-tool-registry = { path = "crates/codetether-tool-registry", version = "0.1.0" }

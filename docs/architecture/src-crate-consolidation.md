@@ -15462,3 +15462,20 @@ Full workspace consolidation remains active.
   and diff whitespace. Evidence: `artifacts/consolidation-replay-oracle/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Dedicated policy-evaluation crate
+
+- Moved the active `src/session/eval` implementation into the dependency-free
+  `codetether-policy-eval` crate. Separated sample data, dominance comparison,
+  stable frontier selection and reuse-rate calculation into focused modules.
+- Relocated all five existing tests plus their sample fixture. The old session
+  module re-exports the shared API.
+- Confirmed `src/session/eval_default_flip.rs` is not declared in session module
+  wiring; left that inactive recommendation implementation unchanged rather than
+  accidentally activating it as part of this move.
+- Verification: exact normalized comparisons for the three operations, sample
+  type, test bodies and fixture; unchanged session declarations and inactive
+  file; module/dependency graph; direct rustfmt; file budgets; isolated lockfile
+  entry and diff whitespace. Evidence: `artifacts/consolidation-policy-eval/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
