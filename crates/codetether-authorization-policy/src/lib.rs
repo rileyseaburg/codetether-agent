@@ -16,3 +16,6 @@ pub use check::{check_policy, enforce_policy};
 pub use types::{PolicyResource, PolicyUser};
 #[cfg(test)]
 mod tests;
+
+/// Ordered route mapping and fail-closed permission lookup.
+pub mod routes;

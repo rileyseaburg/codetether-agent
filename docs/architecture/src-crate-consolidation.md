@@ -12980,3 +12980,17 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   conversion execution, HTTP requests, Cargo, rustc or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Route authorization mapping extraction
+
+- Moved all 47 ordered route rules, matching and fail-closed lookup into
+  codetether-authorization-policy::routes. Ordered domain tables preserve
+  first-match precedence; every original rule was compared position by position.
+- Thirteen existing route tests moved with the implementation. Native server
+  middleware calls shared required_permission and retains enforcement behavior.
+- Verification: 159 static comparisons passed for rule order/content, lookup,
+  moved tests and unchanged native server functions/tests. Module/dependency
+  checks, direct rustfmt, file limits and whitespace checks passed; modules have
+  at most 43 code lines. Evidence: artifacts/consolidation-policy-routes/.
+- No dependencies changed. No requests, authorization evaluation, Cargo, rustc
+  or Rust tests ran. Full consolidation remains incomplete.
