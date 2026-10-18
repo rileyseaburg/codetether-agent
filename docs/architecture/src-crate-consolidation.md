@@ -25877,3 +25877,21 @@ Only the two required worker dependencies are staged in Cargo.lock; unrelated
 working files remain unchanged. Evidence: artifacts/consolidation-worker-policy/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
 remains active.
+
+### Native worker tool registry and workspace constructors
+
+Moved empty-registry allocation, insertion and LSP/multi-edit/undo construction
+into codetether-native-worker::tool_registry. Its generic Native host delegates
+MCP/RLM/Ralph/Go construction to the unchanged application workflow factory.
+The root host is now a type selection; its old registry/workspace files are
+removed. Public worker tool-assembly helpers retain their original host alias.
+
+Static comparisons preserve all registry/workspace constructor bodies and all
+four application workflow bodies. Standalone rustfmt caught a missing generic
+call separator during extraction; it was corrected before validation, with the
+diagnostic preserved in execution history. Module/dependency scans cover 719
+roots and 605 crates without missing modules, cycles or undeclared dependencies.
+Declaration, file-limit, direct rustfmt and whitespace checks pass. Only the two
+required worker dependencies are staged in Cargo.lock; unrelated dirty files
+remain unchanged. Evidence: artifacts/consolidation-worker-registry/. No Cargo,
+rustc, Python, compilation or tests ran. Full consolidation remains active.

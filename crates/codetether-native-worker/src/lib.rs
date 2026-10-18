@@ -73,3 +73,6 @@ pub use session_steps::run_session_steps;
 
 /// Standard worker policy using application session bookkeeping and tool assembly.
 pub mod session_policy;
+
+/// Native registry/workspace tool construction with application workflows.
+pub mod tool_registry;

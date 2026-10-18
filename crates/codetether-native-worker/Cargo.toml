@@ -38,3 +38,5 @@ codetether-native-telemetry = { path = "../codetether-native-telemetry", version
 codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
 codetether-worker-tools = { path = "../codetether-worker-tools", version = "0.1.0" }
 codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
+codetether-native-lsp = { path = "../codetether-native-lsp", version = "4.7.6-dev.38" }
+codetether-native-edit = { path = "../codetether-native-edit", version = "0.1.0" }

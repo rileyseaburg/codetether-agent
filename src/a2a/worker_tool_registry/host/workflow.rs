@@ -1,5 +1,5 @@
 //! Application model and background execution tool specializations.
-use super::Native;
+pub(crate) struct Native;
 use crate::provider::Provider;
 use crate::tool::{Tool, go, mcp_bridge, ralph, rlm};
 use std::sync::Arc;
