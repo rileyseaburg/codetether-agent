@@ -18716,3 +18716,24 @@ ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-agent-completion/`. No Cargo, rustc, Python, Rust tests,
 provider calls or native completion execution ran; compilation and runtime
 behavior remain unverified.
+
+### Agent tool input and dispatch
+
+Moved serialized tool input parsing, workspace and image enrichment sequencing,
+permission logging, registry lookup, policy-gated dispatch and invalid-tool
+fallback into `codetether-agent-tools`. Focused registry and session interfaces
+bind the existing native tools, policy evaluator, directory and message history.
+The native execution methods remain compatibility entry points; input and image
+tests use test-only forwarding adapters.
+
+Registry lookup still precedes the invocation-policy check, and unknown names
+still use the invalid-tool path. Permission metadata is logged at the original
+point. Input parsing, current-directory fallback, prior-context enrichment,
+image context and parse-error results retain their original order and behavior.
+
+Validation: full dispatch/input/image and helper-body comparisons, native
+callback mappings, unchanged policy/input/image test sources and registry/replay
+entry points, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-agent-tools/`. No Cargo, rustc, Python, Rust tests or
+live tool execution ran; compilation and runtime behavior remain unverified.

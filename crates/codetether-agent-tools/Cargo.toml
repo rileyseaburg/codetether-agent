@@ -1,0 +1,16 @@
+[package]
+name = "codetether-agent-tools"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Agent tool argument preparation and policy-gated dispatch"
+
+[dependencies]
+async-trait = "0.1"
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+tracing = "0.1"

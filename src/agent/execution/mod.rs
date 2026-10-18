@@ -15,6 +15,7 @@ mod replay_host;
 mod run;
 #[cfg(test)]
 mod tool_calls_policy;
+#[cfg(test)]
 mod tool_image_context;
 mod tool_input;
 #[cfg(test)]

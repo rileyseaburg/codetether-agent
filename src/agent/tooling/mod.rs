@@ -10,7 +10,6 @@
 //! ```
 
 mod dispatch;
-mod invalid;
+mod host;
 mod policy_gate;
-mod registered;
 mod registry_access;
