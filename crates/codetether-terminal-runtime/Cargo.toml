@@ -12,3 +12,5 @@ codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
 crossterm = "0.29.0"
 ratatui = { version = "0.30.2", default-features = false }
 tokio = { version = "1", features = ["rt", "sync", "signal", "macros"] }
+
+tracing = "0.1"

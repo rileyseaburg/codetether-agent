@@ -1,8 +1,21 @@
+//! Reject invalid or excessive terminal dimensions before rendering.
 use ratatui::layout::Size;
 
 const MAX_RENDER_CELLS: u32 = 500_000;
 const MAX_RENDER_DIMENSION: u16 = 1_000;
 
+/// Check terminal dimensions against positive-size and allocation bounds.
+///
+/// # Arguments
+/// * `size` — Reported terminal dimensions.
+///
+/// # Returns
+/// Whether both dimensions and the cell count are within the existing limits.
+///
+/// # Examples
+/// ```
+/// assert!(codetether_terminal_runtime::safe_size(ratatui::layout::Size::new(120, 40)));
+/// ```
 pub fn safe_size(size: Size) -> bool {
     let cells = size.width as u32 * size.height as u32;
     size.width > 0

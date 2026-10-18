@@ -6245,6 +6245,7 @@ dependencies = [
  "crossterm",
  "ratatui",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

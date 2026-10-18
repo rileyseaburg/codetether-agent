@@ -17,16 +17,8 @@ use ratatui::{Terminal, backend::CrosstermBackend};
 
 #[path = "safe_draw_context.rs"]
 mod safe_draw_context;
-#[path = "safe_draw_recover.rs"]
-mod safe_draw_recover;
-#[path = "safe_draw_resync.rs"]
-mod safe_draw_resync;
-#[path = "safe_draw_size.rs"]
-mod safe_draw_size;
 
 use crate::tui::{app::session_runtime::SessionView, app::state::App};
-use safe_draw_recover::draw_or_recover;
-use safe_draw_size::safe_size;
 
 /// Draw one TUI frame, recovering from transient failures.
 ///
@@ -50,20 +42,7 @@ pub fn draw_ui(
     session: &SessionView,
 ) -> anyhow::Result<bool> {
     safe_draw_context::record(app, session);
-    let size = match terminal.size() {
-        Ok(s) => s,
-        Err(err) => {
-            tracing::warn!(%err, "terminal size query failed — skipping frame");
-            return Ok(false);
-        }
-    };
-    if !safe_size(size) {
-        safe_draw_context::log_skipped_size(size);
-        return Ok(false);
-    }
-    let rendered = match draw_or_recover(terminal, app, session) {
-        Ok(()) => true,
-        Err(err) => safe_draw_resync::clear_and_retry(terminal, app, session, err),
-    };
-    Ok(rendered)
+    codetether_terminal_runtime::draw_ui(terminal, |frame| {
+        crate::tui::ui::main::ui(frame, app, session)
+    })
 }

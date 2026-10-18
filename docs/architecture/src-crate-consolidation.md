@@ -12569,3 +12569,21 @@ Full workspace consolidation remains active.
 - Only the shared crate's added dependencies were staged from Cargo.lock.
   No publication functions, Git pushes, PR creation, Cargo, rustc, compilation
   or Rust tests were executed. Full workspace consolidation remains incomplete.
+
+### Guarded terminal rendering extraction
+
+- Moved terminal-size validation, panic-protected drawing, resynchronization
+  retry and skipped-size diagnostics into codetether-terminal-runtime. Five
+  focused modules contain at most 27 code lines; the existing size regression
+  test moved with its implementation.
+- The shared renderer accepts a callback rather than application/session state.
+  The native wrapper still records crash context first, then supplies the same
+  UI render operation. Panic boundaries, error conversion and exactly one
+  recovery draw retain their original sequencing.
+- Verification: nine source comparisons/checks passed for rendering guards,
+  diagnostics, error paths, the native signature and callback placement.
+  Module/dependency checks, direct rustfmt, source limits and whitespace checks
+  passed. Evidence: artifacts/consolidation-guarded-draw/.
+- Added a direct tracing dependency to the existing terminal crate; only its
+  lockfile dependency change was staged. No terminal rendering, Cargo, rustc,
+  compilation or Rust tests ran. Full consolidation remains incomplete.
