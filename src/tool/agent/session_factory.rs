@@ -6,6 +6,8 @@ codetether_agent_session::declare_session_factory!(
     crate::session::helper::runtime::prior_context_allowed_for_session,
 );
 
+codetether_collaboration_history::impl_history_source!(crate::session::Session);
+
 #[cfg(test)]
 use codetether_agent_messages::system_message as build_system_message;
 #[cfg(test)]

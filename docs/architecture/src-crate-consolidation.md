@@ -26973,3 +26973,22 @@ file-limit and whitespace checks pass for 726 roots and 617 crates. No dependenc
 or lock changes were needed; unrelated working files are untouched. Evidence:
 artifacts/consolidation-collaboration-catalog/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### Remove obsolete peer/history compatibility adapters
+
+Reference inspection found no callers of the root remote::list or
+fork_context::inherit wrappers. Removed the unused peer Names/list adapter,
+removed fork_context.rs and its module registration, and placed the existing
+HistorySource declaration beside the managed-session factory. Peer message,
+reply, result and observation exports are unchanged; the live implementations
+remain owned by peer-agent and collaboration-history.
+
+The declaration audit finds exactly one HistorySource implementation; its three
+method bodies match the unchanged owning-crate declaration. Prior reference
+results are retained in evidence, as are unchanged peer-export checks. Test
+sources are untouched. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. The deleted compatibility adapter's explicit scan root was removed
+while the history crate remains covered. No dependencies/lock changes or
+unrelated working edits were made. Evidence: artifacts/consolidation-agent-adapter-cleanup/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
