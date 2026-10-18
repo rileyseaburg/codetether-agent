@@ -1,5 +1,6 @@
 //! Native Kubernetes, audit and error-policy bindings.
-impl codetether_k8s_api::http::HttpState for super::AppState {
+use crate::AppState;
+impl<R: Send + Sync + 'static> codetether_k8s_api::http::HttpState for AppState<R> {
     fn manager(&self) -> &codetether_k8s::K8sManager {
         &self.inner.k8s
     }

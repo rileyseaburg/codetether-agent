@@ -6,8 +6,6 @@ use super::{
 use axum::Router;
 use codetether_server_router::{Extensions, Transports};
 
-impl codetether_server_router::HttpState for AppState {}
-
 pub(super) fn build(state: &AppState, root: Router, nested: Router) -> Router {
     codetether_server_router::build(
         state.clone(),

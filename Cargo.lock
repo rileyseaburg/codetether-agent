@@ -1340,6 +1340,7 @@ dependencies = [
  "codetether-side-question",
  "codetether-turn-undo",
  "codetether-server-runtime",
+ "codetether-server-state",
  "codetether-server-router",
  "codetether-http-error",
  "codetether-server-cors",
@@ -7729,6 +7730,32 @@ dependencies = [
  "tokio",
  "anyhow",
  "codetether-session-metadata",
+]
+
+[[package]]
+name = "codetether-server-state"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "codetether-audit",
+ "codetether-audit-http",
+ "codetether-bus-core",
+ "codetether-bus-sse",
+ "codetether-cognition-api",
+ "codetether-http-error",
+ "codetether-k8s",
+ "codetether-k8s-api",
+ "codetether-plugin-http",
+ "codetether-plugin-verification",
+ "codetether-server-router",
+ "codetether-server-runtime",
+ "codetether-session-recovery",
+ "codetether-task-api",
+ "codetether-task-ingest",
+ "codetether-task-queue",
+ "codetether-tool-discovery",
+ "codetether-voice-api",
 ]
 
 [[package]]

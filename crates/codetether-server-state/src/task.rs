@@ -1,5 +1,6 @@
 //! Native task queue and bus access for shared HTTP routes.
-impl codetether_task_api::http::HttpState for super::AppState {
+use crate::AppState;
+impl<R: Send + Sync + 'static> codetether_task_api::http::HttpState for AppState<R> {
     fn queue(&self) -> &codetether_task_queue::KnativeTaskQueue {
         &self.inner.knative_tasks
     }

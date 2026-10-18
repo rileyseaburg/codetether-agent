@@ -14,6 +14,7 @@ members = [
     "crates/codetether-http-error",
     "crates/codetether-server-router",
     "crates/codetether-server-runtime",
+    "crates/codetether-server-state",
     "crates/codetether-turn-undo",
     "crates/codetether-side-question",
     "crates/codetether-new-session",
@@ -744,6 +745,7 @@ codetether-agent-runtime = { path = "crates/codetether-agent-runtime", version =
 codetether-http-error = { path = "crates/codetether-http-error", version = "0.1.0" }
 codetether-server-router = { path = "crates/codetether-server-router", version = "0.1.0" }
 codetether-server-runtime = { path = "crates/codetether-server-runtime", version = "0.1.0" }
+codetether-server-state = { path = "crates/codetether-server-state", version = "0.1.0" }
 codetether-turn-undo = { path = "crates/codetether-turn-undo", version = "0.1.0" }
 codetether-side-question = { path = "crates/codetether-side-question", version = "0.1.0" }
 codetether-new-session = { path = "crates/codetether-new-session", version = "0.1.0" }

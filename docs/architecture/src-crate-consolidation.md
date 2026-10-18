@@ -22112,3 +22112,23 @@ dependency are staged in the lockfile. Evidence:
 `artifacts/consolidation-benchmark-runner/`. No benchmarks or underlying quality
 commands ran; no Cargo, rustc or Python ran. Compilation and runtime behavior
 remain unverified. Full consolidation stays active.
+
+### Dedicated HTTP request-state owner
+
+Moved the native `AppState` wrapper and eleven HTTP state/marker implementations
+into `codetether-server-state`. Focused modules expose audit, bus, cognition,
+Kubernetes, plugin, task, ingress, discovery, voice and recovery services and
+implement the aggregate router contract. Eight native service-access files
+were removed. The public native `AppState` name is now a specialization for the
+existing cognition runtime; its public `inner` field and struct construction
+remain unchanged.
+
+Static comparisons preserve service references, HTTP error mapping, control-plane
+URL access, startup construction and router composition. Native session recovery
+and cognition operations remain in place. Cloning delegates to the existing
+`Parts` clone without imposing an unnecessary runtime Clone bound. Module and
+dependency checks cover 698 roots and 570 crates without missing modules or
+cycles. Direct rustfmt, native file-size limits and whitespace checks passed.
+Only the new package and root dependency are staged in the lockfile. Evidence:
+`artifacts/consolidation-server-state/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

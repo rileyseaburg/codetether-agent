@@ -2,11 +2,6 @@
 use crate::session::Session;
 use codetether_session_recovery::RecoverySession;
 use std::path::{Path, PathBuf};
-impl codetether_session_recovery::http::HttpState for crate::server::AppState {
-    fn server_url(&self) -> Option<&str> {
-        self.inner.config.a2a.server_url.as_deref()
-    }
-}
 #[async_trait::async_trait]
 impl RecoverySession for Session {
     async fn recorded_workspace(id: &str) -> anyhow::Result<PathBuf> {

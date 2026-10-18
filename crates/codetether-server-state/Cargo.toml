@@ -1,0 +1,29 @@
+[package]
+name = "codetether-server-state"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Shared HTTP request state and service access contracts"
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
+codetether-audit-http = { path = "../codetether-audit-http", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-bus-sse = { path = "../codetether-bus-sse", version = "0.1.0" }
+codetether-cognition-api = { path = "../codetether-cognition-api", version = "0.1.0" }
+codetether-http-error = { path = "../codetether-http-error", version = "0.1.0" }
+codetether-k8s = { path = "../codetether-k8s", version = "0.1.0" }
+codetether-k8s-api = { path = "../codetether-k8s-api", version = "0.1.0" }
+codetether-plugin-http = { path = "../codetether-plugin-http", version = "0.1.0" }
+codetether-plugin-verification = { path = "../codetether-plugin-verification", version = "0.1.0" }
+codetether-server-router = { path = "../codetether-server-router", version = "0.1.0" }
+codetether-server-runtime = { path = "../codetether-server-runtime", version = "0.1.0" }
+codetether-session-recovery = { path = "../codetether-session-recovery", version = "0.1.0" }
+codetether-task-api = { path = "../codetether-task-api", version = "0.1.0" }
+codetether-task-ingest = { path = "../codetether-task-ingest", version = "0.1.0" }
+codetether-task-queue = { path = "../codetether-task-queue", version = "0.1.0" }
+codetether-tool-discovery = { path = "../codetether-tool-discovery", version = "0.1.0" }
+codetether-voice-api = { path = "../codetether-voice-api", version = "0.1.0" }

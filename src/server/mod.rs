@@ -3,29 +3,21 @@
 //! Main API server for the CodeTether Agent
 
 use codetether_approval_http as approval_routes;
-mod audit_http_state;
 pub use codetether_http_auth as auth;
-mod bus_http_state;
 mod cognition_http_state;
 mod config_status;
 mod http_router;
-mod k8s_http_state;
 mod models_catalog;
 mod openai_http_host;
 use codetether_openai_adapter::options as openai_model_options;
 use codetether_openai_wire::stream as openai_stream;
-mod plugin_http_state;
 pub mod policy;
 mod session_realtime;
 mod session_recovery;
 mod session_routes;
 mod startup_host;
-mod task_http_state;
-mod task_ingest_state;
 use codetether_task_queue as task_queue;
 use codetether_tool_discovery::contract as tool_contract;
-mod tool_discovery_host;
-mod voice_http_state;
 mod worker_modules;
 
 use crate::cli::ServeArgs;
@@ -47,12 +39,8 @@ use codetether_openai_wire::{
 pub use codetether_tool_discovery::{RegisterToolRequest, RegisteredTool, ToolRegistry};
 pub use task_queue::{ClaimError, KnativeTask, KnativeTaskQueue};
 
-/// Server state shared across handlers
-#[derive(Clone)]
-pub struct AppState {
-    /// Initialized services owned by the shared server runtime.
-    pub inner: codetether_server_runtime::Parts<CognitionRuntime>,
-}
+/// HTTP request state using the application cognition runtime.
+pub type AppState = codetether_server_state::AppState<CognitionRuntime>;
 /// Start the HTTP server using the native runtime bindings.
 pub async fn serve(args: ServeArgs) -> Result<()> {
     codetether_server_runtime::serve::<startup_host::AppHost>(
