@@ -24015,3 +24015,22 @@ no missing modules or cycles. Direct rustfmt, source file limits and whitespace
 checks passed. Unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-spawn-form-keys/. No Cargo, rustc, Python, compilation,
 form interaction or tests ran. Full consolidation remains active.
+
+### Obsolete native context and steering paths removed
+
+Removed the undeclared index_produce/build_context.rs,
+persistence_history_upload.rs and tui/app/input/chat_steer_queue.rs files.
+They retained earlier summary-context assembly, direct history-upload scheduling
+and next-turn steering behavior. The active code already uses the shared
+summary producer, indexed history archive and active-turn steering pipeline.
+Removed source remains available in Git and the evidence snapshot.
+
+None of the files appears in active module declarations; named symbol/path
+searches found no remaining references. Active summary, archive, persistence
+notification, steering and chat submission files remain byte-identical. Active
+module/dependency reports are unchanged across removal, covering 691 roots and
+572 crates without missing modules or cycles. Source file limits and whitespace
+checks passed. No manifest or lockfile changes; unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-obsolete-context/. No Cargo, rustc,
+Python, compilation, runtime operations or tests ran. Full consolidation remains
+active.
