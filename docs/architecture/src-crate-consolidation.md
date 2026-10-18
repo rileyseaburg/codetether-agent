@@ -9412,3 +9412,19 @@ largest crate file has 20 code lines. Evidence is in
 `artifacts/consolidation-summary-quality/`. Compilation and runtime tests
 were not run. No Cargo, rustc, Python or model calls ran. Full workspace
 consolidation remains active.
+
+### Dedicated proactive-runtime state crate
+
+Moved provider/runtime snapshots, process-wide registration, generation
+queries, coalescing operations, scheduling gates and worker-capacity permits
+into `crates/codetether-proactive-runtime`. Six modules separate these
+responsibilities. Native adapters supply session identity/count and the
+existing worker launcher; provider selection remains native.
+
+Nineteen static comparisons cover runtime types, registry/lock behavior,
+capacity limits, schedule gating and snapshot creation. Module/dependency
+graphs, file budgets and whitespace checks passed; the largest crate file
+has 37 code lines. Evidence is in
+`artifacts/consolidation-proactive-runtime/`. Compilation and runtime tests
+were not run. No Cargo, rustc, Python or worker/model calls ran. Full
+workspace consolidation remains active.
