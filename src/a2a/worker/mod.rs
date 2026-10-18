@@ -93,8 +93,6 @@ mod worker_bootstrap;
 mod worker_context;
 mod worker_env;
 mod worker_init;
-mod worker_init_helpers;
-mod worker_init_runtime;
 mod worker_loop;
 mod worker_security;
 mod worker_server_loop;

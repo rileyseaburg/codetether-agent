@@ -16436,3 +16436,22 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-worker-peer/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker context initialization
+
+- Moved the full worker initialization sequence from native `worker_init.rs`
+  into `codetether-a2a-worker-core::initialization::initialize`.
+- Separate options, host-contract and initialization modules own normalized
+  startup settings, identity export, shared state creation, task-runtime
+  construction and final context assembly. Native adapters retain access-mode
+  application, HTTP client creation, bus/archival setup, announcements and peer
+  startup without adding application dependencies to worker-core.
+- Removed obsolete native initialization helper and processing-set modules.
+  Preserved startup ordering, every runtime/context field, access-policy mapping,
+  archival setup and the announcement handle lifetime through initialization.
+- Verification: complete initialization-body comparison, native option/service
+  bindings, previous helper mappings, unchanged context/runtime constructors and
+  callers, module/dependency graphs, direct rustfmt, file limits and whitespace.
+  No dependencies changed. Evidence: `artifacts/consolidation-worker-init/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

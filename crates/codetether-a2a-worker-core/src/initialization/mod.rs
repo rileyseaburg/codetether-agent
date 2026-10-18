@@ -20,3 +20,6 @@ pub use runtime_config::RuntimeConfig;
 
 /// Startup registration, workspace synchronization and task intake.
 pub mod bootstrap;
+
+/// Construction of worker context and native startup services.
+pub mod initialize;
