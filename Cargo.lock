@@ -4718,6 +4718,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "parking_lot",
 ]
 
 [[package]]

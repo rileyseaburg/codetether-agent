@@ -1,7 +1,7 @@
 //! Rejected submissions release only their own unstarted reservation.
 
 use super::ActiveCancel;
-use crate::session::helper::steering::SteeringInput;
+use codetether_session_steering::SteeringInput;
 use futures::FutureExt;
 use std::sync::Arc;
 use tokio::sync::Notify;

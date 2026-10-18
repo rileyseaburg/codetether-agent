@@ -22,3 +22,6 @@ pub use execution_scope::ExecutionScope;
 pub use gate::{Gate, GateFuture};
 pub use handle::ControlHandle;
 pub use plane::CONTROL;
+
+mod active;
+pub use active::ActiveCancel;

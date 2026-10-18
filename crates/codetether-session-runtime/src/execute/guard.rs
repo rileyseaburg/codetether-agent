@@ -2,14 +2,24 @@
 
 use crate::handle::Control;
 
-pub(super) struct Guard<C: Control>(C);
+/// Clears active ownership explicitly or when execution unwinds.
+/// # Examples
+/// ```no_run
+/// # fn finish<C: codetether_session_runtime::handle::Control>(active: C) {
+/// let guard = codetether_session_runtime::execute::CompletionGuard::new(active);
+/// guard.clear();
+/// # }
+/// ```
+pub struct Guard<C: Control>(C);
 
 impl<C: Control> Guard<C> {
-    pub(super) fn new(active: C) -> Self {
+    /// Retain the controller until explicit completion or drop.
+    pub fn new(active: C) -> Self {
         Self(active)
     }
 
-    pub(super) fn clear(self) {
+    /// Clear ownership once and suppress the drop-time fallback.
+    pub fn clear(self) {
         self.0.clear();
         std::mem::forget(self);
     }

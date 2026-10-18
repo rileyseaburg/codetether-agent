@@ -29,7 +29,7 @@ fn steering_is_scoped_to_prepared_turn() {
 fn dropped_completion_guard_releases_the_active_turn() {
     let active = ActiveCancel::default();
     assert!(active.prepare("first"));
-    let completion = super::super::active_completion::Guard::new(active.clone());
+    let completion = codetether_session_runtime::execute::CompletionGuard::new(active.clone());
 
     drop(completion);
 

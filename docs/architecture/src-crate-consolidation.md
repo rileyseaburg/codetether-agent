@@ -16133,3 +16133,21 @@ Full workspace consolidation remains active.
   No dependencies changed. Evidence: `artifacts/consolidation-session-view/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared active-turn cancellation and steering
+
+- Moved ActiveCancel, executor attachment, reservation release and runtime-handle
+  control implementation into `codetether-session-control::active`, beside the
+  process-wide control plane and steering dependencies. Native code re-exports
+  the controller; obsolete native attach/release modules were removed.
+- Preserved the existing parking_lot mutex, locking scope, generation-aware
+  release, direct cancellation, and active-session steering checks.
+- Moved six existing tests, correcting a stale reference to the native completion
+  guard deleted in the earlier execution extraction. The shared guard is now
+  exported as CompletionGuard; its cleanup behavior is unchanged.
+- Verification: all controller methods/state and control bindings compared,
+  moved tests compared with only path changes, unchanged guard behavior, module
+  and dependency graphs, direct rustfmt, file budgets, isolated lock addition
+  and diff whitespace. Evidence: `artifacts/consolidation-active-control/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

@@ -7,3 +7,6 @@ mod host;
 mod run;
 pub use host::Host;
 pub use run::run;
+
+/// Drop-safe active-ownership cleanup for prompt execution.
+pub use guard::Guard as CompletionGuard;
