@@ -70,3 +70,6 @@ mod session_steps;
 /// Worker tool-call approval, enrichment, execution and result recording.
 pub mod tool_call;
 pub use session_steps::run_session_steps;
+
+/// Standard worker policy using application session bookkeeping and tool assembly.
+pub mod session_policy;

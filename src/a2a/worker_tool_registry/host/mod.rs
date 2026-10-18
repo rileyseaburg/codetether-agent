@@ -2,4 +2,4 @@
 mod registry;
 mod workflow;
 mod workspace;
-pub(super) struct Native;
+pub(crate) struct Native;

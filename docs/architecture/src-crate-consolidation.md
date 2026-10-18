@@ -25857,3 +25857,23 @@ Declaration, file-limit, direct rustfmt and whitespace checks pass. No manifest
 or lockfile changes were needed; unrelated dirty files remain unchanged.
 Evidence: artifacts/consolidation-worker-tool-call/. No Cargo, rustc, Python,
 compilation or tests ran. Full consolidation remains active.
+
+### Standard native worker policy execution
+
+Moved standard-policy execution wiring into codetether-native-worker::session_policy.
+It builds tools through the existing worker-tool assembly host, builds the same
+built-in prompt and calls the native worker step runner. Session bookkeeping
+now implements the shared policy-source contract directly at the application
+boundary; explicit source delegation retains credential lookup, title handling
+and delegated-message provenance. The root selects its existing registry and
+tool-assembly host. The old source/execution host directory is removed.
+
+Static comparisons preserve all seven source-method bodies and four execution
+methods after explicit session-field/native-path substitutions. Tool factory
+selection resolves to the same original host. Module/dependency scans cover
+719 roots and 605 crates without missing modules, cycles or undeclared direct
+dependencies. Declaration, file-limit, direct rustfmt and whitespace checks pass.
+Only the two required worker dependencies are staged in Cargo.lock; unrelated
+working files remain unchanged. Evidence: artifacts/consolidation-worker-policy/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active.

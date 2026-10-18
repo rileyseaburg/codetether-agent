@@ -3997,6 +3997,8 @@ dependencies = [
 name = "codetether-native-worker"
 version = "0.1.0"
 dependencies = [
+ "codetether-worker-tools",
+ "codetether-agent-core",
  "codetether-native-telemetry",
  "codetether-application-registry",
  "codetether-native-session-runtime",

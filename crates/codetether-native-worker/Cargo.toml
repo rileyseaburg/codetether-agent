@@ -36,3 +36,5 @@ codetether-session-steering = { path = "../codetether-session-steering", version
 codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
 codetether-native-telemetry = { path = "../codetether-native-telemetry", version = "4.7.6-dev.38" }
 codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-worker-tools = { path = "../codetether-worker-tools", version = "0.1.0" }
+codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }

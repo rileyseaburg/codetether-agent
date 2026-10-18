@@ -1,5 +1,5 @@
 //! Native binding for standard shared worker-session execution.
-mod host;
+mod source;
 use super::AutoApprove;
 use crate::session::Session;
 pub(super) use codetether_a2a_worker_core::session_protocol::policy::PolicySessionResult;
@@ -12,8 +12,12 @@ pub(super) async fn execute_session_with_policy(
     task_metadata: &serde_json::Map<String, serde_json::Value>,
     output_callback: Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
 ) -> anyhow::Result<PolicySessionResult> {
-    codetether_a2a_worker_core::session_protocol::policy::execute(
-        &mut host::Native { session },
+    codetether_native_worker::session_policy::execute::<
+        _,
+        crate::tool::registry_lifecycle::Native,
+        crate::a2a::worker_tool_registry::Native,
+    >(
+        session,
         prompt,
         auto_approve,
         model_tier,

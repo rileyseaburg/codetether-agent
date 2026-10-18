@@ -13,3 +13,6 @@ pub use build::create_filtered_registry;
 pub use mutating::register_mutating_tools;
 pub use policy::is_tool_allowed;
 pub use safe::register_safe_tools;
+
+/// Application tool assembly selected by the native worker policy.
+pub(crate) use host::Native;
