@@ -8496,3 +8496,29 @@ Crate files contain at most 38 code lines. Evidence is in
 `artifacts/consolidation-session-steering/`. Compilation and runtime tests were
 not run; no Cargo, rustc or Python commands ran. The workspace consolidation
 is still incomplete.
+
+### Dedicated session-control crate
+
+Moved the process-wide control plane, cloneable control handles, task-local
+propagation, delegated input cursors, executor guards and same-session handoff
+into `crates/codetether-session-control`. Fifteen Rust modules separate the
+control binding, handle operations, readiness, task scope, input broadcast,
+executor acquisition/run/cleanup, and borrowed handoff. The application now
+re-exports the same control plane and handle type; thin guard/scope adapters
+supply a callback to the existing durable-goal boundary check.
+
+The callback is stored with an attached handle and inherited with its lease.
+Standalone handles retain their previous behavior without a durable goal check.
+Borrowed execution scopes retain their parent's callback. The same cancellation
+priority, transient-pause polling, steering cleanup order, standalone final-drop
+release, and independent input cursors are preserved. Debug formatting retains
+the previous binding fields without exposing the new callback.
+
+Thirty-seven static comparisons cover moved method bodies, initializers,
+task-local state, callback wiring and tests. Two handle tests moved to the crate;
+four native spawning/handoff tests remain unchanged. Full native runtime module
+references and the workspace path-dependency graph pass lexical checks. File
+budgets and whitespace checks pass; crate modules contain at most 41 code lines.
+Evidence is in `artifacts/consolidation-session-control/`. Compilation and runtime
+tests were not run. No Cargo, rustc or Python commands ran. The broader source
+to crate consolidation remains active.

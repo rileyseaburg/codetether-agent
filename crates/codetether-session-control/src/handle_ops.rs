@@ -1,7 +1,7 @@
 //! Control operations delegate to the one shared ownership table.
 
-use super::ControlHandle;
-use crate::session::runtime::CONTROL;
+use crate::CONTROL;
+use crate::ControlHandle;
 
 impl ControlHandle {
     /// Cancel this run and wake all attached executors and subscribers.

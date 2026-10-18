@@ -19,8 +19,8 @@ pub(crate) mod goals;
 pub mod steering;
 
 /// One process-wide owner for frontend reservations and session executors.
-pub(crate) static CONTROL: std::sync::LazyLock<codetether_session_runtime::ControlPlane> =
-    std::sync::LazyLock::new(codetether_session_runtime::ControlPlane::default);
+pub(crate) use codetether_session_control::CONTROL;
+mod control_gate;
 
 pub(crate) mod boundary;
 pub(crate) mod continuation;

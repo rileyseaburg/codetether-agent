@@ -96,6 +96,7 @@ members = [
     "crates/codetether-search",
     "crates/codetether-secrets",
     "crates/codetether-session-runtime",
+    "crates/codetether-session-control",
     "crates/codetether-session-steering",
     "crates/codetether-telemetry",
     "crates/codetether-theme",
@@ -393,6 +394,7 @@ codetether-provider-zai = { path = "crates/codetether-provider-zai", version = "
 codetether-rlm = { path = "crates/codetether-rlm", version = "0.1.1" }
 codetether-secrets = { path = "crates/codetether-secrets", version = "0.1.0" }
 codetether-session-steering = { path = "crates/codetether-session-steering", version = "0.1.0" }
+codetether-session-control = { path = "crates/codetether-session-control", version = "0.1.0" }
 codetether-session-runtime = { path = "crates/codetether-session-runtime", version = "0.1.0" }
 codetether-telemetry = { path = "crates/codetether-telemetry", version = "0.1.0" }
 codetether-theme = { path = "crates/codetether-theme", version = "0.1.0", features = ["ratatui"] }

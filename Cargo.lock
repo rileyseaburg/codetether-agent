@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-session-control",
  "codetether-session-steering",
  "codetether-agent-communication",
  "anyhow",
@@ -3882,6 +3883,20 @@ dependencies = [
  "tracing",
  "vaultrs",
  "windows",
+]
+
+[[package]]
+name = "codetether-session-control"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-provider-core",
+ "codetether-session-runtime",
+ "codetether-session-steering",
+ "futures",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 //! Ownership and explicit propagation for delegated work.
 
 use super::ControlHandle;
-use crate::session::runtime::{CONTROL, RunGuard};
+use crate::{CONTROL, RunGuard};
 
 #[tokio::test]
 async fn last_standalone_clone_releases_run_and_attached_drop_preserves_owner() {
@@ -13,10 +13,10 @@ async fn last_standalone_clone_releases_run_and_attached_drop_preserves_owner() 
     drop(clone);
     assert!(!CONTROL.is_current(&lease));
     let id = uuid::Uuid::new_v4().to_string();
-    let guard = RunGuard::open(&id).unwrap();
+    let guard = RunGuard::open(&id, crate::gate::unrestricted).unwrap();
     let attached = guard.handle();
     drop(attached.clone());
-    assert!(RunGuard::open(&id).is_err());
+    assert!(RunGuard::open(&id, crate::gate::unrestricted).is_err());
     drop(guard);
     assert!(attached.is_cancelled());
 }
@@ -27,8 +27,8 @@ async fn scope_and_independent_cursors_broadcast_every_input() {
     handle
         .scope(async {
             let child = ControlHandle::current().unwrap();
-            handle.publish_input(crate::provider::Message {
-                role: crate::provider::Role::User,
+            handle.publish_input(codetether_provider_core::Message {
+                role: codetether_provider_core::Role::User,
                 content: vec![],
             });
             let (mut first, mut second) = (0, 0);
