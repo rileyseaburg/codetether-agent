@@ -37,7 +37,6 @@ use crate::tool::{PluginRegistry as AgentPluginRegistry, hash_bytes};
 use anyhow::Result;
 use auth::AuthState;
 use axum::{
-    http::StatusCode,
     middleware,
     response::{IntoResponse, Json, Response},
     routing::post,
@@ -261,21 +260,6 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
-}
-
-// ── Session resume ──────────────────────────────────────────────────────
-
-/// Resume a durable session without replacing its identity on a storage failure.
-
-fn internal_error(error: anyhow::Error) -> (StatusCode, String) {
-    let message = error.to_string();
-    if message.contains("not found") {
-        return (StatusCode::NOT_FOUND, message);
-    }
-    if message.contains("disabled") || message.contains("exceeds") || message.contains("limit") {
-        return (StatusCode::BAD_REQUEST, message);
-    }
-    (StatusCode::INTERNAL_SERVER_ERROR, message)
 }
 use codetether_util::environment::env_bool;
 

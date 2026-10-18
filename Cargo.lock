@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-http-error",
  "codetether-server-cors",
  "codetether-run-cli",
  "codetether-go-cli",
@@ -7208,6 +7209,14 @@ version = "0.1.0"
 dependencies = [
  "http",
  "tower-http 0.7.1",
+]
+
+[[package]]
+name = "codetether-http-error"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "http",
 ]
 
 [[package]]

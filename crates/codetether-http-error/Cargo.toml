@@ -1,0 +1,11 @@
+[package]
+name = "codetether-http-error"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Shared application error to HTTP status mapping"
+
+[dependencies]
+anyhow = "1"
+http = "1"

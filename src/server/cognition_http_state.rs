@@ -10,6 +10,6 @@ impl codetether_cognition_api::http::HttpState for super::AppState {
         &self.cognition
     }
     fn map_error(error: anyhow::Error) -> (axum::http::StatusCode, String) {
-        super::internal_error(error)
+        codetether_http_error::internal_error(error)
     }
 }

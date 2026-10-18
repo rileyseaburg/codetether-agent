@@ -14369,3 +14369,18 @@ Full workspace consolidation remains active.
   ratchet and whitespace checks passed. Evidence: artifacts/consolidation-replay-router/.
 - No dependencies changed. No Cargo, rustc, Rust tests, archive reads or server
   startup ran. Full consolidation remains unfinished.
+
+### Shared HTTP error policy ownership
+
+- Moved the server's message-based error classification into the dedicated
+  codetether-http-error crate. Kubernetes and cognition state bindings call it
+  directly; removed the implementation from src/server/mod.rs.
+- Preserves case-sensitive matching, precedence, status codes and original
+  error text. The crate depends only on anyhow and http, with separate public
+  entry and mapping modules.
+- Verification: exact mapper-body comparison, both binding checks, unchanged
+  startup and isolated lockfile additions passed. Module reachability,
+  dependency DAG, direct rustfmt, file-limit ratchet and whitespace checks passed.
+  Evidence: artifacts/consolidation-http-error/.
+- No Cargo, rustc, Rust tests or server startup ran. Full workspace consolidation
+  remains unfinished; unrelated working edits remain untouched.
