@@ -1,6 +1,7 @@
-use super::super::super::sandbox_runner_select::Runner;
-use super::super::RunnerPlan;
+//! Regression coverage for shared sandbox runner plans.
 use super::policy;
+use crate::Runner;
+use crate::RunnerPlan;
 
 fn shell_args() -> Vec<String> {
     vec!["-c".to_string(), "echo ok".to_string()]

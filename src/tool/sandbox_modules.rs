@@ -7,8 +7,7 @@ use codetether_sandbox_landlock as sandbox_landlock;
 use codetether_sandbox_runtime as sandbox_availability;
 use codetether_sandbox_runtime as sandbox_execute;
 include!("sandbox_process_modules.rs");
-#[path = "sandbox_runner.rs"]
-mod sandbox_runner;
+use codetether_sandbox_runner as sandbox_runner;
 use codetether_sandbox_runner as sandbox_runner_direct;
 use codetether_sandbox_runner as sandbox_runner_select;
 use codetether_sandbox_seatbelt as sandbox_seatbelt;

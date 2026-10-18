@@ -1,5 +1,6 @@
-use super::super::sandbox_runner_select::Runner;
-use super::*;
+//! Regression coverage for shared sandbox runner plans.
+use crate::{Runner, RunnerPlan};
+use codetether_sandbox_policy::SandboxPolicy;
 
 #[path = "sandbox_runner_bwrap_path_tests.rs"]
 mod bwrap_path_tests;
@@ -31,7 +32,7 @@ fn bwrap_runner_records_kernel_fallbacks() {
 }
 
 fn expected_kernel_fallbacks() -> Vec<String> {
-    let landlock = super::super::sandbox_landlock::prepare(&policy(false), "/workspace".as_ref());
+    let landlock = crate::sandbox_landlock::prepare(&policy(false), "/workspace".as_ref());
     let mut expected = Vec::new();
     #[cfg(not(all(target_os = "linux", target_arch = "x86_64")))]
     expected.push("seccomp_inactive:not_configured".to_string());
@@ -40,4 +41,10 @@ fn expected_kernel_fallbacks() -> Vec<String> {
     }
     expected.extend(landlock.fallback);
     expected
+}
+static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+    ENV_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }

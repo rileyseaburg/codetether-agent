@@ -22877,3 +22877,25 @@ No manifest or lockfile changes were needed. Evidence:
 `artifacts/consolidation-sandbox-policy-tests/`.
 No test subprocesses, test suite, Cargo, rustc or Python ran; compilation and
 runtime results remain unverified. Full consolidation is active.
+
+### Runner-plan regression suite owned by the sandbox runner crate
+
+Moved the runner-plan parent module and five focused test files into
+codetether-sandbox-runner. Nine existing tests cover kernel fallback metadata,
+network namespace arguments, protected paths, read-only mounts, writable-root
+handling and configured toolchains. The six native test files and the native
+runner re-export shim were removed; sandbox module wiring now aliases the
+owning crate directly.
+
+Static comparisons preserve test bodies, assertions and command/plan inputs,
+apart from import paths and replacing the native approval-test environment
+lock with a mutex local to the runner test binary. These tests construct plans
+and do not use approval state. The runner implementation is unchanged. Each
+moved file respects the code-line limit. Module/dependency checks cover 699
+roots and 571 crates without missing modules or cycles. Direct rustfmt, native
+file-size limits and whitespace checks passed. Only sandbox-environment and
+tempfile test dependency edges are staged in the lockfile; the unrelated
+working lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-sandbox-runner-tests/`.
+No runner plans, tests, sandbox subprocesses, Cargo, rustc or Python ran;
+compilation and runtime results remain unverified. Full consolidation is active.

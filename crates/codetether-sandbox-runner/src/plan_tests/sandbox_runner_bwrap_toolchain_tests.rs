@@ -1,6 +1,7 @@
-use super::super::super::SandboxPolicy;
-use super::super::super::sandbox_runner_select::Runner;
-use super::super::super::sandbox_toolchain;
+//! Regression coverage for shared sandbox runner plans.
+use crate::Runner;
+use codetether_sandbox_environment as sandbox_toolchain;
+use codetether_sandbox_policy::SandboxPolicy;
 
 fn triplet(args: &[String], op: &str, path: &str) -> bool {
     args.windows(3)
@@ -17,7 +18,7 @@ fn plan_args(policy: &SandboxPolicy) -> Vec<String> {
 
 #[test]
 fn bwrap_exposes_configured_toolchain_roots_readonly() {
-    let _lock = crate::approval::test_env::lock_env();
+    let _lock = super::lock_env();
     let toolchain = tempfile::tempdir().expect("toolchain");
     let root = toolchain.path().display().to_string();
     unsafe { std::env::set_var(sandbox_toolchain::ENV, &root) };
@@ -36,7 +37,7 @@ fn bwrap_exposes_configured_toolchain_roots_readonly() {
 
 #[test]
 fn bwrap_skips_toolchain_roots_already_writable() {
-    let _lock = crate::approval::test_env::lock_env();
+    let _lock = super::lock_env();
     let workspace = tempfile::tempdir().expect("workspace");
     let tools = workspace.path().join("node_modules/.bin");
     std::fs::create_dir_all(&tools).expect("tools dir");

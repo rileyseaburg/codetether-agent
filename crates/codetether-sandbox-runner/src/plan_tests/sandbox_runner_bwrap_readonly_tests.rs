@@ -1,5 +1,6 @@
-use super::super::super::SandboxPolicy;
-use super::super::super::sandbox_runner_select::Runner;
+//! Regression coverage for shared sandbox runner plans.
+use crate::Runner;
+use codetether_sandbox_policy::SandboxPolicy;
 
 fn triplet(args: &[String], op: &str, src: &str, dst: &str) -> bool {
     args.windows(3)

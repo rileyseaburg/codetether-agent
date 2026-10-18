@@ -5245,10 +5245,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-sandbox-bwrap",
+ "codetether-sandbox-environment",
  "codetether-sandbox-landlock",
  "codetether-sandbox-policy",
  "codetether-sandbox-seatbelt",
  "codetether-sandbox-seccomp",
+ "tempfile",
  "tracing",
  "which 8.0.6",
 ]

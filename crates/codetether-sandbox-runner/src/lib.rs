@@ -16,3 +16,5 @@ mod sandbox_runner_select;
 pub use sandbox_runner::{RunnerPlan, plan};
 pub use sandbox_runner_direct::{ENV, enabled};
 pub use sandbox_runner_select::{Runner, selected_runner};
+#[cfg(test)]
+mod plan_tests;
