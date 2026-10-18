@@ -1,9 +1,6 @@
-//! Tests for payload shrinking inside terminal truncation.
-
-use crate::provider::{ContentPart, Message, Role};
-use crate::session::helper::token::estimate_request_tokens;
-
-use super::terminal::terminal_truncate_messages;
+use crate::terminal_truncate_messages;
+use codetether_provider_core::{ContentPart, Message, Role};
+use codetether_request_tokens::estimate_request_tokens;
 
 fn user(text: &str) -> Message {
     Message {

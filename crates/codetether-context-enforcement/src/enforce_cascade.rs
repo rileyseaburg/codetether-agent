@@ -5,14 +5,14 @@ use std::sync::Arc;
 use anyhow::Result;
 use tokio::sync::mpsc;
 
-use crate::provider::{Message, ToolDefinition};
-use crate::session::SessionEvent;
-use crate::session::helper::token::estimate_request_tokens;
+use codetether_provider_core::{Message, ToolDefinition};
+use codetether_request_tokens::estimate_request_tokens;
+use codetether_session_events::SessionEvent;
 
-use super::context::CompressContext;
 use super::enforce_attempt::{CascadeEnv, attempt_fits, log_attempt};
 use super::enforce_events::emit_completed;
-use super::keep_last::compress_messages_keep_last;
+use codetether_context_compression::CompressContext;
+use codetether_context_compression::compress_messages_keep_last;
 use codetether_context_policy::compression::budget::KEEP_LAST_CANDIDATES;
 
 /// Run the keep-last RLM cascade.
@@ -20,14 +20,14 @@ use codetether_context_policy::compression::budget::KEEP_LAST_CANDIDATES;
 /// Returns `Ok(true)` when the request now fits the safety budget (a
 /// completion event has been emitted); `Ok(false)` when every candidate
 /// was exhausted and the caller must apply terminal truncation.
-pub(super) async fn run_cascade(
+pub(super) async fn run_cascade<S>(
     messages: &mut Vec<Message>,
     ctx: &CompressContext,
-    provider: Arc<dyn crate::provider::Provider>,
+    provider: Arc<dyn codetether_provider_core::Provider>,
     model: &str,
     system_prompt: &str,
     tools: &[ToolDefinition],
-    event_tx: Option<&mpsc::Sender<SessionEvent>>,
+    event_tx: Option<&mpsc::Sender<SessionEvent<S>>>,
     env: &CascadeEnv<'_>,
 ) -> Result<bool> {
     for keep_last in KEEP_LAST_CANDIDATES {
@@ -52,11 +52,5 @@ pub(super) async fn run_cascade(
         }
     }
 
-    let last_est = estimate_request_tokens(system_prompt, messages, tools);
-    if last_est <= env.safety_budget {
-        let kept = messages.len();
-        emit_completed(event_tx, env.trace_id, env.initial_est, last_est, kept).await;
-        return Ok(true);
-    }
-    Ok(false)
+    super::cascade_finish::finish(messages, system_prompt, tools, event_tx, env).await
 }

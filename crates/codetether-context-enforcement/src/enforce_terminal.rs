@@ -3,9 +3,9 @@
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
-use crate::provider::{Message, ToolDefinition};
-use crate::session::SessionEvent;
-use crate::session::helper::token::estimate_request_tokens;
+use codetether_provider_core::{Message, ToolDefinition};
+use codetether_request_tokens::estimate_request_tokens;
+use codetether_session_events::SessionEvent;
 
 use super::enforce_terminal_events::emit_terminal_events;
 use super::terminal::terminal_truncate_messages;
@@ -14,11 +14,11 @@ use super::terminal::terminal_truncate_messages;
 const TRUNCATE_KEEP_LAST: usize = 4;
 
 /// Apply terminal truncation and emit the truncation/outcome events.
-pub(super) async fn apply_terminal(
+pub(super) async fn apply_terminal<S>(
     messages: &mut Vec<Message>,
     system_prompt: &str,
     tools: &[ToolDefinition],
-    event_tx: Option<&mpsc::Sender<SessionEvent>>,
+    event_tx: Option<&mpsc::Sender<SessionEvent<S>>>,
     trace_id: Uuid,
     initial_est: usize,
     safety_budget: usize,
@@ -32,7 +32,7 @@ pub(super) async fn apply_terminal(
     );
     let after_tokens = estimate_request_tokens(system_prompt, messages, tools);
 
-    tracing::warn!(
+    tracing::warn!(target: "codetether_agent::session::helper::compression::enforce_terminal",
         before_tokens = initial_est,
         after_tokens,
         dropped_tokens,

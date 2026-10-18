@@ -1,6 +1,6 @@
 //! Per-attempt predicates and logging for the keep-last cascade.
 
-use super::context::CompressContext;
+use codetether_context_compression::CompressContext;
 
 /// Scalar inputs threaded through the cascade loop.
 pub(super) struct CascadeEnv<'a> {
@@ -31,7 +31,7 @@ pub(super) fn attempt_fits(
 
 /// Structured log line for one compression attempt.
 pub(super) fn log_attempt(est: usize, keep_last: usize, env: &CascadeEnv<'_>) {
-    tracing::info!(
+    tracing::info!(target: "codetether_agent::session::helper::compression::enforce_attempt",
         est_tokens = est,
         ctx_window = env.ctx_window,
         safety_budget = env.safety_budget,

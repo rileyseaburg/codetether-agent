@@ -9270,3 +9270,20 @@ budgets and whitespace checks passed; the largest crate file has 44 code
 lines. Evidence is in `artifacts/consolidation-context-compression/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or model
 calls ran. Full workspace consolidation remains active.
+
+### Dedicated context-budget enforcement crate
+
+Moved adaptive budget checking, keep-last cascade orchestration, terminal
+truncation and compaction-event delivery into
+`crates/codetether-context-enforcement`. Twenty-four modules separate
+trace startup, budget/state calculations, attempts, final fit checks,
+terminal handling and the four existing fallback regressions. Shared event
+parameters preserve the native Session payload at the application boundary.
+
+Twenty-two static comparisons cover moved operations, trace/cascade/terminal
+order, event payloads and unchanged regression bodies. Module/dependency
+graphs, file budgets and whitespace checks passed; the largest crate file
+has 44 code lines. Evidence is in
+`artifacts/consolidation-context-enforcement/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python or model calls ran. Full
+workspace consolidation remains active.

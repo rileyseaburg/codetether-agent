@@ -3,16 +3,16 @@
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
-use crate::session::SessionEvent;
-use crate::session::event_compaction::{CompactionOutcome, ContextTruncation, FallbackStrategy};
+use codetether_session_events::SessionEvent;
+use codetether_session_events::{CompactionOutcome, ContextTruncation, FallbackStrategy};
 
 use super::enforce_events::emit;
 use super::enforce_terminal_overrun::emit_overrun_if_needed;
 
 /// Emit `ContextTruncated`, `CompactionCompleted(Truncate)`, and — when
 /// the request is still over budget — `CompactionFailed`.
-pub(super) async fn emit_terminal_events(
-    event_tx: Option<&mpsc::Sender<SessionEvent>>,
+pub(super) async fn emit_terminal_events<S>(
+    event_tx: Option<&mpsc::Sender<SessionEvent<S>>>,
     trace_id: Uuid,
     before_tokens: usize,
     after_tokens: usize,

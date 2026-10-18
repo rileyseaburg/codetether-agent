@@ -1,9 +1,6 @@
-//! Regression: a long agent loop after the last user turn must still fit.
-
-use crate::provider::{ContentPart, Message, Role};
-use crate::session::helper::token::estimate_request_tokens;
-
-use super::terminal::terminal_truncate_messages;
+use crate::terminal_truncate_messages;
+use codetether_provider_core::{ContentPart, Message, Role};
+use codetether_request_tokens::estimate_request_tokens;
 
 fn text(role: Role, body: String) -> Message {
     Message {

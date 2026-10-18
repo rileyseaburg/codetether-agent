@@ -1,8 +1,5 @@
-//! Tests for the compression module split.
-
-use crate::provider::{ContentPart, Message, Role};
-
-use super::terminal::terminal_truncate_messages;
+use crate::terminal_truncate_messages;
+use codetether_provider_core::{ContentPart, Message, Role};
 
 fn user(text: &str) -> Message {
     Message {
@@ -11,15 +8,6 @@ fn user(text: &str) -> Message {
             text: text.to_string(),
         }],
     }
-}
-
-#[test]
-fn terminal_truncate_noop_when_short_enough() {
-    let mut messages = vec![user("a"), user("b")];
-    let before_len = messages.len();
-    let dropped = terminal_truncate_messages(&mut messages, "", &[], 4, usize::MAX);
-    assert_eq!(dropped, 0);
-    assert_eq!(messages.len(), before_len);
 }
 
 #[test]

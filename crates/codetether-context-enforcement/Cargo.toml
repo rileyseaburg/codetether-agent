@@ -1,0 +1,18 @@
+[package]
+name = "codetether-context-enforcement"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Adaptive context-budget compression and terminal fallback"
+
+[dependencies]
+anyhow = "1"
+codetether-context-compression = { path = "../codetether-context-compression", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-request-tokens = { path = "../codetether-request-tokens", version = "0.1.0" }
+codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
+tokio = { version = "1", features = ["sync"] }
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }

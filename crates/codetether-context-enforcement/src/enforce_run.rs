@@ -2,36 +2,30 @@
 
 use std::sync::Arc;
 
-use crate::provider::{Message, ToolDefinition};
-use crate::session::SessionEvent;
+use codetether_provider_core::{Message, ToolDefinition};
+use codetether_session_events::SessionEvent;
 
-use super::context::CompressContext;
 use super::enforce_attempt::CascadeEnv;
 use super::enforce_budget::BudgetCheck;
 use super::enforce_cascade::run_cascade;
 use super::enforce_run_tail::terminal_when_needed;
+use codetether_context_compression::CompressContext;
 
 /// Run the keep-last cascade; when it cannot satisfy the budget, apply
 /// terminal truncation as the last resort.
-pub(super) async fn cascade_or_truncate(
+pub(super) async fn cascade_or_truncate<S>(
     messages: &mut Vec<Message>,
     ctx: &CompressContext,
-    provider: Arc<dyn crate::provider::Provider>,
+    provider: Arc<dyn codetether_provider_core::Provider>,
     model: &str,
     system_prompt: &str,
     tools: &[ToolDefinition],
-    event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
+    event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent<S>>>,
     trace_id: uuid::Uuid,
     trigger_reason: &str,
     check: &BudgetCheck,
 ) -> anyhow::Result<()> {
-    let env = CascadeEnv {
-        trace_id,
-        trigger_reason,
-        initial_est: check.initial_est,
-        safety_budget: check.safety_budget,
-        ctx_window: check.ctx_window,
-    };
+    let env = CascadeEnv::from_check(trace_id, trigger_reason, check);
     let fits = run_cascade(
         messages,
         ctx,

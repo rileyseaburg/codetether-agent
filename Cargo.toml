@@ -123,6 +123,7 @@ members = [
     "crates/codetether-rlm-background",
     "crates/codetether-rlm-foreground",
     "crates/codetether-context-compression",
+    "crates/codetether-context-enforcement",
     "crates/codetether-workspace-index",
     "crates/codetether-codex-records",
     "crates/codetether-codex-discovery",
@@ -431,6 +432,7 @@ codetether-codex-transcript = { path = "crates/codetether-codex-transcript", ver
 codetether-codex-discovery = { path = "crates/codetether-codex-discovery", version = "0.1.0" }
 codetether-codex-records = { path = "crates/codetether-codex-records", version = "0.1.0" }
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
+codetether-context-enforcement = { path = "crates/codetether-context-enforcement", version = "0.1.0" }
 codetether-context-compression = { path = "crates/codetether-context-compression", version = "0.1.0" }
 codetether-rlm-foreground = { path = "crates/codetether-rlm-foreground", version = "0.1.0" }
 codetether-rlm-background = { path = "crates/codetether-rlm-background", version = "0.1.0" }

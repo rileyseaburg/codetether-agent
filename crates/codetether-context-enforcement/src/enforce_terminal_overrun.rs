@@ -3,15 +3,15 @@
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
-use crate::session::SessionEvent;
-use crate::session::event_compaction::{CompactionFailure, FallbackStrategy};
+use codetether_session_events::SessionEvent;
+use codetether_session_events::{CompactionFailure, FallbackStrategy};
 
 use super::enforce_events::emit;
 
 /// Emit `CompactionFailed` when terminal truncation still leaves the
 /// request over the safety budget; no-op otherwise.
-pub(super) async fn emit_overrun_if_needed(
-    event_tx: Option<&mpsc::Sender<SessionEvent>>,
+pub(super) async fn emit_overrun_if_needed<S>(
+    event_tx: Option<&mpsc::Sender<SessionEvent<S>>>,
     trace_id: Uuid,
     after_tokens: usize,
     safety_budget: usize,
@@ -19,7 +19,7 @@ pub(super) async fn emit_overrun_if_needed(
     if after_tokens <= safety_budget {
         return;
     }
-    tracing::error!(
+    tracing::error!(target: "codetether_agent::session::helper::compression::enforce_terminal_overrun",
         after_tokens,
         safety_budget,
         "Terminal truncation still over budget; request will likely fail at the provider"
