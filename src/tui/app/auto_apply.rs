@@ -9,15 +9,13 @@ pub use codetether_settings_policy::auto_apply_status_message;
 
 /// Set the auto-apply-edits flag and persist it onto the session.
 pub async fn set_auto_apply_edits(app: &mut App, session: &mut Session, next: bool) {
-    app.state.auto_apply_edits = next;
-    session.metadata.auto_apply_edits = next;
-    app.state.status = match session.save().await {
-        Ok(()) => auto_apply_status_message(next),
-        Err(error) => format!(
-            "{} (not persisted: {error})",
-            auto_apply_status_message(next)
-        ),
-    };
+    crate::tui::app::settings::host::set(
+        app,
+        session,
+        crate::tui::app::settings::host::Preference::AutoApply,
+        next,
+    )
+    .await;
 }
 
 /// Flip the current auto-apply-edits flag.

@@ -14558,3 +14558,21 @@ Full workspace consolidation remains active.
   whitespace checks passed. Evidence: artifacts/consolidation-settings-command/.
 - No dependency or lockfile changes. No Cargo, rustc, Rust tests, preference
   mutation or TUI session ran. Full workspace consolidation remains unfinished.
+
+### Preference persistence ownership
+
+- Moved boolean preference update ordering, network-environment synchronization
+  and save-result formatting into codetether-settings-policy::persistence.
+  Modules separate preference identity, host contracts, updates and saving.
+- Autoapply, autocomplete, worktree and network setters delegate to shared
+  policy. Native bindings map existing view/session fields and storage only;
+  other setting cycles share the extracted save-result behavior.
+- Placed native bindings beneath settings rather than growing the oversized
+  TUI root module. No preference or environment state was changed at runtime.
+- Verification: ten static checks passed for field mapping, effect ordering,
+  status formatting, setter forwarding, module bounds and isolated lock addition.
+  Module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-settings-persistence/.
+- Added only anyhow to the settings-policy crate. No Cargo, rustc, Rust tests,
+  environment mutation or session persistence ran. Full consolidation remains
+  unfinished.

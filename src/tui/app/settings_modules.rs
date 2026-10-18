@@ -1,6 +1,9 @@
 // Settings submodule wiring and re-exports, split out so `settings.rs`
 // stays within the per-file line budget.
 
+#[path = "settings_host.rs"]
+pub(super) mod host;
+
 #[path = "settings_access_mode.rs"]
 pub mod access_mode;
 #[path = "settings_bedrock.rs"]

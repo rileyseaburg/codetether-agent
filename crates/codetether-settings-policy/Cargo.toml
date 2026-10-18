@@ -7,4 +7,5 @@ license = "MIT"
 description = "Pure preference labels and provider-specific setting cycle policies"
 
 [dependencies]
+anyhow = "1"
 codetether-config = { path = "../codetether-config", version = "0.1.0" }

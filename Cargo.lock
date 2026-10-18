@@ -6416,6 +6416,7 @@ name = "codetether-settings-policy"
 version = "0.1.0"
 dependencies = [
  "codetether-config",
+ "anyhow",
 ]
 
 [[package]]
