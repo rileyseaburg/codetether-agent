@@ -21765,3 +21765,20 @@ native file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-mcp-server-state/`. No Cargo, rustc, or Python commands
 ran; compilation and runtime tests remain unverified. Full consolidation remains
 active.
+
+### Shared MCP bus attachment lifecycle
+
+Moved bridge startup, server-slot storage, and ordered bus tool/resource
+registration into `codetether-mcp-bus::attach`. The native server passes its
+existing bus slot and catalog, then returns itself as before. Removed the
+native bus registration wrapper module and its now-redundant forwarding methods.
+
+Static body comparison preserves bridge construction, Arc cloning, slot update
+before registration, tool-before-resource ordering, and unchanged registry and
+agent-bus builders. The old wrappers called the same shared registration
+functions directly. Source/dependency graphs across 692 roots and 564 crates,
+direct rustfmt, native file-size limits, and whitespace checks passed. No
+dependency or lockfile changes. Evidence:
+`artifacts/consolidation-mcp-bus-attachment/`. No Cargo, rustc, or Python commands
+ran; compilation and live bus behavior remain unverified. Full consolidation
+remains active.

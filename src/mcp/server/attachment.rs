@@ -28,20 +28,13 @@ impl McpServer {
 
     /// Attach a bus bridge with optional authentication.
     pub async fn with_bus_auth(mut self, bus_url: String, auth_token: Option<String>) -> Self {
-        let bridge = BusBridge::with_auth(bus_url, auth_token).spawn();
-        self.inner.bus = Some(Arc::clone(&bridge));
-        self.register_bus_tools(Arc::clone(&bridge)).await;
-        self.register_bus_resources(Arc::clone(&bridge)).await;
+        codetether_mcp_bus::attach(
+            &mut self.inner.bus,
+            &self.inner.catalog,
+            bus_url,
+            auth_token,
+        )
+        .await;
         self
-    }
-
-    /// Register bus-specific MCP tools.
-    pub(super) async fn register_bus_tools(&self, bridge: Arc<BusBridge>) {
-        bus::register_tools(self, bridge).await;
-    }
-
-    /// Register bus-specific MCP resources.
-    pub(super) async fn register_bus_resources(&self, bridge: Arc<BusBridge>) {
-        bus::register_resources(self, bridge).await;
     }
 }

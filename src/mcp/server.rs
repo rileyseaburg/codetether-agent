@@ -31,7 +31,6 @@ pub struct McpServer {
 }
 
 mod attachment;
-mod bus;
 mod construction;
 mod fallback;
 mod invocation;

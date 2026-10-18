@@ -11,6 +11,7 @@ use codetether_mcp_core::{
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
+mod attachment;
 mod events;
 mod events_handler;
 mod prd_resource;
@@ -20,6 +21,7 @@ mod ralph_status_handler;
 mod recent_resource;
 mod status;
 mod status_handler;
+pub use attachment::attach;
 /// Register bus-event, bridge-status and Ralph-status tools.
 /// # Arguments
 /// * `server` - Catalog receiving handlers and schemas.
