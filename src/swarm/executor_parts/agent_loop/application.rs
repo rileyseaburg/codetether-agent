@@ -2,7 +2,7 @@
 use crate::tool::{Tool, ToolRegistry};
 use serde_json::Value;
 use std::sync::Arc;
-pub(in crate::swarm::executor) struct Native;
+pub(in crate::swarm) struct Native;
 impl codetether_swarm_agent::Host for Native {
     type Registry = ToolRegistry;
     fn get(registry: &ToolRegistry, name: &str) -> Option<Arc<dyn Tool>> {
@@ -28,5 +28,11 @@ impl codetether_swarm_agent::job::JobHost for Native {
     type Workspace = crate::swarm::executor::workspace_registry::RegistryHost;
     fn system_prompt(input: codetether_swarm_core::prompt_policy::SystemPromptInput<'_>) -> String {
         crate::swarm::tool_policy::system_prompt(input)
+    }
+}
+impl codetether_swarm_agent::remote::RemoteHost for Native {
+    type Providers = crate::swarm::orchestrator::NativeProvider;
+    fn append_session_instructions(prompt: String) -> String {
+        crate::session::tasks::turn_instructions::append(prompt)
     }
 }

@@ -32,4 +32,4 @@ mod image_test_tool;
 #[cfg(test)]
 mod image_tests;
 
-pub(super) use application::Native as LoopHost;
+pub(in crate::swarm) use application::Native as LoopHost;

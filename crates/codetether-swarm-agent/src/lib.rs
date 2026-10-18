@@ -30,3 +30,5 @@ pub use host::Host;
 
 /// Prepared local jobs executed through the shared sub-agent loop.
 pub mod job;
+/// Remote worker resources and invocation through the shared sub-agent loop.
+pub mod remote;

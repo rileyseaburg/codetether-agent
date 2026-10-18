@@ -33,6 +33,7 @@ pub use super::SwarmMessage;
 
 use super::subtask::SubTaskResult;
 pub(super) use super::{kubernetes_executor, tool_policy};
+pub(super) use agent_loop::LoopHost;
 pub use agent_loop::run_agent_loop;
 /// Fluent builder using the application swarm executor.
 pub type SwarmExecutorBuilder = codetether_swarm_core::builder::SwarmExecutorBuilder<SwarmExecutor>;

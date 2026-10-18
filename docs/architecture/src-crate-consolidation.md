@@ -22328,3 +22328,29 @@ Direct rustfmt, native file-size limits and whitespace checks passed. Evidence:
 syntax/expected-source errors retained alongside the successful final run).
 No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
 Full consolidation is active.
+
+### Remote worker integration in the shared swarm agent crate
+
+Moved remote provider/tool resource preparation, payload-to-loop argument
+mapping and the remote process Host implementation into
+`codetether-swarm-agent::remote`. Five focused modules own the public entry
+point, application contract, runtime adapter, resource resolution and loop
+invocation. Three native remote-subtask implementation files were removed.
+The CLI wrapper keeps its original signature and payload arguments.
+
+The shared adapter uses the existing native sub-agent policy and workspace
+factory. Its RemoteHost binding selects the original Vault-backed orchestrator
+provider loader and native session-instruction function. The loop host is now
+visible within the swarm module so both local and remote entry points name
+the same policy implementation. Static source comparisons preserve all twelve
+agent-loop arguments, capability selection via `from_flags`, provider error
+text, retained registry ownership and runtime Host forwarding. No remote
+worker, provider request or subprocess was executed.
+
+Module/dependency checks cover 699 roots and 571 crates without missing modules
+or dependency cycles. Direct rustfmt, native file-size limits and whitespace
+checks passed. Only the swarm-agent crate's orchestrator and remote-runtime
+dependency edges are staged in the lockfile; the unrelated working lockfile
+remains byte-identical. Evidence: `artifacts/consolidation-remote-agent/`.
+No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
+Full consolidation is active.
