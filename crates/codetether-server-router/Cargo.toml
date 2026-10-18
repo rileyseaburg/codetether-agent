@@ -23,3 +23,4 @@ codetether-task-ingest = { path = "../codetether-task-ingest", version = "0.1.0"
 codetether-tool-discovery = { path = "../codetether-tool-discovery", version = "0.1.0" }
 codetether-voice-api = { path = "../codetether-voice-api", version = "0.1.0" }
 tower-http = { version = "0.7.0", features = ["trace"] }
+codetether-mux-http = { path = "../codetether-mux-http", version = "0.1.0" }

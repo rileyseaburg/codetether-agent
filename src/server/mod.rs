@@ -4,7 +4,6 @@
 
 use codetether_approval_http as approval_routes;
 pub use codetether_http_auth as auth;
-mod config_status;
 mod http_router;
 pub use codetether_authorization_policy as policy;
 use codetether_openai_adapter::options as openai_model_options;
@@ -15,7 +14,6 @@ mod session_routes;
 mod startup_host;
 use codetether_task_queue as task_queue;
 use codetether_tool_discovery::contract as tool_contract;
-mod worker_modules;
 
 use crate::cli::ServeArgs;
 use crate::cognition::CognitionRuntime;

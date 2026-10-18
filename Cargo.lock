@@ -9101,6 +9101,7 @@ dependencies = [
 name = "codetether-server-router"
 version = "0.1.0"
 dependencies = [
+ "codetether-mux-http",
  "axum",
  "codetether-audit-http",
  "codetether-authorization-policy",

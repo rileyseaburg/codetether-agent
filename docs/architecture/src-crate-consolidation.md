@@ -26018,3 +26018,19 @@ rustfmt and whitespace checks pass. Only the new package/root dependency are
 staged in Cargo.lock; unrelated dirty files remain unchanged. Evidence:
 artifacts/consolidation-native-cognition/. No Cargo, rustc, Python, compilation
 or runtime tests ran. Full consolidation remains active.
+
+### Worker HTTP route composition moved to the server router crate
+
+Moved the worker status/task/mux route group from src/server/worker_modules.rs
+into codetether-server-router::worker_routes over the existing request-state
+traits. The root router supplies AppState directly and retains the same
+Extensions/middleware composition. Removed the config-status forwarding file;
+its call site passes the same root package name/version and shared config.
+
+Static comparison preserves all route paths, methods and merge order. Module
+and dependency scans cover 721 roots and 607 crates without missing modules,
+cycles or undeclared dependencies. Declaration, file-limit, direct rustfmt and
+whitespace checks pass. Only the router's required mux dependency is staged in
+Cargo.lock; unrelated dirty files remain unchanged. Evidence:
+artifacts/consolidation-server-worker-routes/. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active.

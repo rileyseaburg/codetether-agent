@@ -1,5 +1,5 @@
 //! Native runtime adapter routes supplied to the shared application router.
-use super::{AppState, approval_routes, config_status, session_realtime, worker_modules};
+use super::{AppState, approval_routes, session_realtime};
 use axum::Router;
 use codetether_server_router::{Extensions, Transports};
 
@@ -13,7 +13,11 @@ pub(super) fn build(state: &AppState, root: Router, nested: Router) -> Router {
                 session_realtime::AppHost,
                 AppState,
             >(),
-            status: config_status::router(state.inner.config.clone()),
+            status: codetether_server_status::router(
+                state.inner.config.clone(),
+                env!("CARGO_PKG_VERSION"),
+                env!("CARGO_PKG_NAME"),
+            ),
             models: codetether_model_catalog::http::router::<
                 crate::provider::ProviderRegistry,
                 AppState,
@@ -24,7 +28,7 @@ pub(super) fn build(state: &AppState, root: Router, nested: Router) -> Router {
                 >,
                 AppState,
             >(),
-            workers: worker_modules::router(),
+            workers: codetether_server_router::worker_routes::<AppState>(),
             resume: codetether_session_recovery::http::router::<crate::session::Session, AppState>(
             ),
         },

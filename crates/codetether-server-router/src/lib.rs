@@ -12,3 +12,6 @@ pub use extensions::Extensions;
 pub use routes::build;
 pub use state::HttpState;
 pub use transports::Transports;
+
+mod workers;
+pub use workers::worker_routes;
