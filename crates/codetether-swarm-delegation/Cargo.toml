@@ -1,0 +1,11 @@
+[package]
+name = "codetether-swarm-delegation"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Swarm provider delegation and specialty feedback policy"
+
+[dependencies]
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+tracing = "0.1"

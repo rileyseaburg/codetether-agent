@@ -18309,3 +18309,20 @@ Validation: complete moved-source comparisons, stage callback replacement
 checks, module/dependency graphs, source-size limits and whitespace. Evidence:
 `artifacts/consolidation-swarm-git/`. The Git probe functions and Rust tests were
 not executed. No Cargo, rustc or Python ran; compilation remains unverified.
+
+### Swarm provider delegation and feedback
+
+Moved provider ranking and outcome updates from native swarm modules into
+`codetether-swarm-delegation`. A shared specialty-to-bucket function now feeds
+both selection and feedback, eliminating the duplicated classification rules.
+Native selection only supplies a lazy registry-list callback; native outcome
+paths are compatibility reexports of the shared implementation.
+
+Preserved disabled-delegation behavior, provider fallback, default-model reuse,
+lazy registry enumeration, shared calibration state and poisoned-lock handling.
+Validation: full selection/outcome comparisons and equivalence of both prior
+specialty classifiers to the shared bucket, unchanged native caller checks,
+module/dependency graphs, file limits and whitespace. Evidence:
+`artifacts/consolidation-swarm-delegation/`. No provider selection/runtime update
+was executed. No Cargo, rustc or Python ran; Rust compilation/tests remain
+unverified.

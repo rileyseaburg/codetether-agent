@@ -1726,6 +1726,7 @@ dependencies = [
  "codetether-session-runtime",
  "codetether-skill-tool",
  "codetether-swarm-core",
+ "codetether-swarm-delegation",
  "codetether-swarm-git",
  "codetether-swarm-k8s",
  "codetether-swarm-local-job",
@@ -7672,6 +7673,14 @@ dependencies = [
  "codetether-tool-core",
  "codetether-provider-core",
  "codetether-plugin-verification",
+]
+
+[[package]]
+name = "codetether-swarm-delegation"
+version = "0.1.0"
+dependencies = [
+ "codetether-context-policy",
+ "tracing",
 ]
 
 [[package]]
