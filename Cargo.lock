@@ -8713,15 +8713,16 @@ dependencies = [
 name = "codetether-swarm-runtime"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "codetether-bus-core",
  "codetether-context-policy",
  "codetether-forage-execution",
  "codetether-provider-core",
- "anyhow",
- "async-trait",
  "codetether-session-control",
  "codetether-swarm-bus",
  "codetether-swarm-cache",
+ "codetether-swarm-cli",
  "codetether-swarm-core",
  "codetether-swarm-delegation",
  "codetether-swarm-k8s",

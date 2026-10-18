@@ -23673,3 +23673,21 @@ are staged; the unrelated working lockfile and A2A edits are preserved.
 Evidence: artifacts/consolidation-ralph-cli/. No Cargo, rustc, Python,
 compilation, Ralph execution or runtime tests ran. Full consolidation remains
 active.
+
+### Swarm CLI execution moved onto the shared executor
+
+Moved the swarm command Host implementation from src/swarm_cli.rs into
+codetether-swarm-runtime's application_executor::cli module. SwarmExecutor now
+owns command bus creation/global installation, executor construction with the
+bus, and task execution. Main selects the same native SwarmExecutor alias for
+the shared CLI executor; the native adapter file is removed. Added the direct
+swarm-runtime -> swarm-cli dependency.
+
+Static comparisons preserve all three method bodies after explicit import/type
+substitution, including global bus installation before executor construction.
+Module/dependency scans cover 691 roots and 571 crates with no missing modules
+or cycles. Direct rustfmt, source file limits and whitespace checks passed.
+Only the required dependency entry is staged in Cargo.lock; the unrelated
+working lockfile and A2A edits remain untouched. Evidence:
+artifacts/consolidation-swarm-cli/. No Cargo, rustc, Python, compilation, swarm
+execution or runtime tests ran. Full consolidation remains active.

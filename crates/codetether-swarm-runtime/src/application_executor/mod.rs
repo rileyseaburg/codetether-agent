@@ -7,6 +7,7 @@ use codetether_swarm_core::SwarmConfig;
 use std::marker::PhantomData;
 mod accessors;
 mod cache_api;
+mod cli;
 mod configure;
 mod configure_events;
 mod execute_api;
