@@ -17177,3 +17177,19 @@ Full workspace consolidation remains active.
   staged only that dependency from the committed lockfile baseline.
 - Evidence: `artifacts/consolidation-compaction-gate/`. No Cargo, rustc, Python,
   Rust compilation or Rust tests ran. Full consolidation remains incomplete.
+
+### Shared failed-completion recovery sequence
+
+- Moved failed-session completion ordering from
+  `src/tui/app/background_notice_failed.rs` into
+  `codetether-session-events::completion::failure`.
+- Core restores the session, stops processing, completes timing, schedules
+  same-model reconnect before smart-switch, then publishes the error/status
+  and scrolls. Native bindings retain session, scheduler and transcript access.
+- Verification: full sequence-body comparison and every native handler/state
+  binding; unchanged notice dispatcher, retry policies, successful completion
+  and worker bridge; module/dependency graphs, direct rustfmt, file limits and
+  whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-completion-failure/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

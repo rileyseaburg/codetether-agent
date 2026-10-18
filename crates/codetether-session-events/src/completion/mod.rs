@@ -5,3 +5,6 @@ mod notice;
 mod result;
 pub use notice::SessionNotice;
 pub use result::{PromptRunResult, notice};
+
+/// Failed-completion recovery and presentation sequence.
+pub mod failure;
