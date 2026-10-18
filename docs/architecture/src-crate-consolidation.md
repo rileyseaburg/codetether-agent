@@ -13171,3 +13171,19 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   ingestion, task mutations, Cargo, rustc or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Task HTTP and dispatch extraction
+
+- Moved task list/create/get and legacy status-update API operations into
+  codetether-task-api, together with local dispatch and four existing dispatch
+  tests. Fourteen modules contain at most 41 code lines.
+- Native handlers supply the shared queue. Legacy status updates preserve their
+  previous behavior; dispatch preserves configuration, enqueues before sending
+  a bus notification and reports process-local acceptance exactly as before.
+- Verification: 89 static comparisons passed for operations, request shapes,
+  dispatch/receipts, moved tests and remaining native server items. Module and
+  dependency checks, direct rustfmt, file limits and whitespace checks passed.
+  Evidence: artifacts/consolidation-task-api/.
+- Only new package/root dependency entries were staged from Cargo.lock. No task
+  API calls, dispatches, Cargo, rustc or Rust tests ran. Full consolidation remains
+  incomplete.

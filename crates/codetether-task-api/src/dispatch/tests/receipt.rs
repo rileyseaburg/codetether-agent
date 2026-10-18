@@ -1,8 +1,9 @@
 //! HTTP receipts acknowledge local acceptance even without a connected worker.
 
 use super::super::{contract::DispatchTaskRequest, service::enqueue};
-use crate::{bus::AgentBus, server::KnativeTaskQueue};
 use axum::{Json, body::to_bytes, http::StatusCode, response::IntoResponse};
+use codetether_bus_core::AgentBus;
+use codetether_task_queue::KnativeTaskQueue;
 
 #[tokio::test]
 async fn receipt_does_not_claim_execution_without_subscribers() {

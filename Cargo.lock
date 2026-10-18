@@ -1282,6 +1282,7 @@ dependencies = [
  "codetether-openai-serving",
  "codetether-task-queue",
  "codetether-task-ingest",
+ "codetether-task-api",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6572,6 +6573,21 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+]
+
+[[package]]
+name = "codetether-task-api"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "chrono",
+ "codetether-a2a-core",
+ "codetether-bus-core",
+ "codetether-task-queue",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

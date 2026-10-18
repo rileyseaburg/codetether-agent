@@ -1,7 +1,8 @@
 //! Regression coverage for the process-local dispatch contract.
 
 use super::{contract::DispatchTaskRequest, service::enqueue};
-use crate::{bus::AgentBus, server::KnativeTaskQueue};
+use codetether_bus_core::AgentBus;
+use codetether_task_queue::KnativeTaskQueue;
 
 #[tokio::test]
 async fn dispatch_preserves_execution_configuration_before_notifying() {
@@ -31,8 +32,8 @@ async fn dispatch_preserves_execution_configuration_before_notifying() {
     let notification = receiver.try_recv().unwrap();
     assert_eq!(notification.topic, format!("task.{}", receipt.task_id));
     assert!(matches!(notification.message,
-        crate::bus::BusMessage::TaskUpdate {
-            task_id, state: crate::a2a::types::TaskState::Submitted, ..
+        codetether_bus_core::BusMessage::TaskUpdate {
+            task_id, state: codetether_a2a_core::TaskState::Submitted, ..
         } if task_id == receipt.task_id));
     assert!(queue.get(&receipt.task_id).await.is_some());
 }

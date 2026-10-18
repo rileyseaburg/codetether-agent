@@ -2,8 +2,6 @@
 
 mod contract;
 mod service;
-#[cfg(test)]
-mod tests;
 
 use super::AppState;
 use axum::{Json, extract::State};

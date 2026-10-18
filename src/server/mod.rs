@@ -78,6 +78,7 @@ use codetether_openai_wire::{
     OpenAiRequestToolCallFunction, OpenAiRequestToolDefinition, OpenAiResponseToolCall,
     OpenAiResponseToolCallFunction, OpenAiStop, OpenAiUsage, openai_stream_chunk,
 };
+use codetether_task_api::{CreateAgentTaskRequest, ListAgentTasksQuery};
 use codetether_tool_discovery::RegisterToolResponse;
 use codetether_tool_discovery::RegisteredToolView;
 pub use codetether_tool_discovery::{RegisterToolRequest, RegisteredTool, ToolRegistry};
@@ -466,7 +467,7 @@ async fn health() -> &'static str {
 
 /// List all Knative tasks in queue
 async fn list_knative_tasks(State(state): State<AppState>) -> Json<Vec<KnativeTask>> {
-    Json(state.knative_tasks.list().await)
+    codetether_task_api::list_knative_tasks(&state.knative_tasks).await
 }
 
 /// Get a specific Knative task by ID
@@ -474,12 +475,7 @@ async fn get_knative_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<Json<KnativeTask>, (StatusCode, String)> {
-    state
-        .knative_tasks
-        .get(&task_id)
-        .await
-        .map(Json)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
+    codetether_task_api::get_knative_task(&state.knative_tasks, task_id).await
 }
 
 /// Claim/start processing a Knative task
@@ -487,21 +483,7 @@ async fn claim_knative_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<Json<KnativeTask>, (StatusCode, String)> {
-    // Update status to processing
-    let updated = state
-        .knative_tasks
-        .update_status(&task_id, "processing")
-        .await;
-    if !updated {
-        return Err((StatusCode::NOT_FOUND, format!("Task {} not found", task_id)));
-    }
-
-    state
-        .knative_tasks
-        .get(&task_id)
-        .await
-        .map(Json)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
+    codetether_task_api::claim_knative_task(&state.knative_tasks, task_id).await
 }
 
 /// Complete a Knative task
@@ -509,21 +491,7 @@ async fn complete_knative_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<Json<KnativeTask>, (StatusCode, String)> {
-    // Update status to completed
-    let updated = state
-        .knative_tasks
-        .update_status(&task_id, "completed")
-        .await;
-    if !updated {
-        return Err((StatusCode::NOT_FOUND, format!("Task {} not found", task_id)));
-    }
-
-    state
-        .knative_tasks
-        .get(&task_id)
-        .await
-        .map(Json)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
+    codetether_task_api::complete_knative_task(&state.knative_tasks, task_id).await
 }
 async fn receive_task_event(
     State(state): State<AppState>,
@@ -936,24 +904,7 @@ async fn list_agent_tasks(
     State(state): State<AppState>,
     Query(params): Query<ListAgentTasksQuery>,
 ) -> Json<serde_json::Value> {
-    let tasks = state.knative_tasks.list().await;
-    let filtered: Vec<_> = tasks
-        .into_iter()
-        .filter(|t| params.status.as_ref().is_none_or(|s| t.status == *s))
-        .filter(|t| {
-            params
-                .agent_type
-                .as_ref()
-                .is_none_or(|a| t.agent_type == *a)
-        })
-        .collect();
-    Json(serde_json::json!({ "tasks": filtered, "total": filtered.len() }))
-}
-
-#[derive(Deserialize)]
-struct ListAgentTasksQuery {
-    status: Option<String>,
-    agent_type: Option<String>,
+    codetether_task_api::list_agent_tasks(&state.knative_tasks, params).await
 }
 
 /// Create a new agent task
@@ -961,34 +912,7 @@ async fn create_agent_task(
     State(state): State<AppState>,
     Json(req): Json<CreateAgentTaskRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let task_id = uuid::Uuid::new_v4().to_string();
-    let task = KnativeTask {
-        task_id: task_id.clone(),
-        title: req.title,
-        description: req.description,
-        agent_type: req.agent_type.unwrap_or_else(|| "build".to_string()),
-        model: req.model,
-        metadata: None,
-        priority: req.priority.unwrap_or(0),
-        received_at: chrono::Utc::now(),
-        status: "pending".to_string(),
-        completion: Default::default(),
-    };
-    state.knative_tasks.push(task).await;
-    Ok(Json(serde_json::json!({
-        "task_id": task_id,
-        "status": "pending",
-    })))
-}
-
-#[derive(Deserialize)]
-#[allow(dead_code)]
-struct CreateAgentTaskRequest {
-    title: String,
-    description: String,
-    agent_type: Option<String>,
-    model: Option<String>,
-    priority: Option<i32>,
+    codetether_task_api::create_agent_task(&state.knative_tasks, req).await
 }
 
 /// Get a single agent task by ID
@@ -996,12 +920,7 @@ async fn get_agent_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<Json<KnativeTask>, (StatusCode, String)> {
-    state
-        .knative_tasks
-        .get(&task_id)
-        .await
-        .map(Json)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, format!("Task {} not found", task_id)))
+    codetether_task_api::get_agent_task(&state.knative_tasks, task_id).await
 }
 
 /// Stream task output as SSE events
