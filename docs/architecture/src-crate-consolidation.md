@@ -27778,3 +27778,18 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 617 crates. Unrelated files are unchanged; no manifest or lock changes were
 needed. Evidence: artifacts/consolidation-answer-bindings/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Goal-editor frontend state and user-journal bindings
+
+Moved goal-editor journal, read/write state, session restart and open/paste/key
+entry bindings into codetether-goal-editor::frontend modules. Removed eight root
+implementation files. The root selects existing state/buffer types and the same
+user-journal read/update and restart callbacks, retaining the editor API exports.
+
+All twenty-three expanded function bodies and editor/runtime layouts match after
+journal callback qualification. Eight editor test sources are byte-for-byte
+unchanged. Declaration, module/dependency, native production-scope, standalone
+formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
+Unrelated files are unchanged; no manifest or lock changes were needed. Evidence:
+artifacts/consolidation-goal-editor/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.

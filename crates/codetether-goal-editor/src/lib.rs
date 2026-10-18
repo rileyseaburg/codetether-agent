@@ -4,6 +4,7 @@
 //! editor engine; [close] discards without touching the journal. [Draft] guards
 //! semantic goal fields while allowing live usage accounting to advance.
 mod draft;
+mod frontend;
 mod host;
 mod keys;
 mod open;
