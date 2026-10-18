@@ -10034,3 +10034,21 @@ code lines. Three original promotion tests moved without execution. Evidence is
 in `artifacts/consolidation-tool-catalog/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python or tool execution ran. Full workspace
 consolidation remains active.
+
+### Dedicated tool-outcome crate
+
+Moved pending-confirmation handling, automatic confirmation result mapping,
+rendered outcome construction, touched-file tracking and code-search classification
+into `crates/codetether-tool-outcome`. Six modules separate borrowed context,
+result data, rendering, auto-apply handling and classification. The native adapter
+passes the original normalized call separately from enriched execution arguments.
+Session/environment auto-apply policy now lives in `codetether-edit-confirmation`;
+its native API delegates while retaining session metadata access.
+
+Eleven static comparisons cover confirmation branches, auto-apply errors,
+metadata, lazy environment policy, touched-file gating, duration/search results,
+native context and unchanged consumers. Module/dependency graphs, file budgets
+and whitespace checks passed; new modules contain at most 41 code lines.
+Evidence is in `artifacts/consolidation-tool-outcome/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python or tool execution ran. Full workspace
+consolidation remains active.

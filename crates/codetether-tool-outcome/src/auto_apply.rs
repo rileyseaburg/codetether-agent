@@ -1,19 +1,17 @@
-//! Automatic application of tool results requiring confirmation.
-
-use super::call::Call;
+//! Preserve pending status and attach errors when automatic confirmation fails.
 use serde_json::Value;
 use std::collections::HashMap;
 
 /// Resolves a pending confirmation through the configured auto-apply policy.
 pub(super) async fn apply(
-    call: &Call,
+    tool: &str,
     input: &Value,
     content: String,
     success: bool,
     metadata: Option<HashMap<String, Value>>,
 ) -> (String, bool, Option<HashMap<String, Value>>, bool) {
-    match super::super::super::confirmation::auto_apply_pending_confirmation(
-        &call.name,
+    match codetether_edit_confirmation::auto_apply_pending_confirmation(
+        tool,
         input,
         metadata.as_ref(),
     )

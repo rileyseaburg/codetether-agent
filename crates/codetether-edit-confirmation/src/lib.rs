@@ -12,3 +12,6 @@ pub use metadata::tool_result_requires_confirmation;
 pub use render::{
     auto_apply_pending_confirmation_result_content, pending_confirmation_tool_result_content,
 };
+
+mod policy;
+pub use policy::auto_apply_enabled;

@@ -1,7 +1,6 @@
 //! Tool-call batch dispatch for the shared prompt loop.
 
 mod archive;
-mod auto_apply;
 mod bus;
 mod call;
 mod call_guard;
@@ -12,7 +11,6 @@ mod dispatch;
 mod image_recording_tests;
 mod invoke;
 mod outcome;
-mod outcome_detail;
 mod parallel;
 mod publish;
 mod refresh;

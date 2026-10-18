@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-tool-outcome",
  "codetether-tool-catalog",
  "codetether-tool-parallel",
  "codetether-tool-execution",
@@ -4993,6 +4994,17 @@ name = "codetether-tool-catalog"
 version = "0.1.0"
 dependencies = [
  "codetether-provider-core",
+ "serde_json",
+]
+
+[[package]]
+name = "codetether-tool-outcome"
+version = "0.1.0"
+dependencies = [
+ "codetether-edit-confirmation",
+ "codetether-prompt-policy",
+ "codetether-tool-reporting",
+ "codetether-validation",
  "serde_json",
 ]
 
