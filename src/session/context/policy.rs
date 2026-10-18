@@ -22,14 +22,7 @@ use crate::session::derive_policy::DerivePolicy;
 /// `model` scales the Reset threshold to the model's context window so a
 /// 1M-context model is not compressed at 3% utilisation.
 pub fn effective_policy(session: &Session, model: &str) -> DerivePolicy {
-    codetether_context_policy::derivation::effective::effective_policy(
-        session.metadata.context_policy,
-        &session.messages,
-        model,
-        |raw| {
-            tracing::warn!(raw = %raw, "Unknown CODETETHER_CONTEXT_POLICY override; using proactive default");
-        },
-    )
+    codetether_context_dispatch::effective_policy(session, model)
 }
 
 pub use super::dispatch::derive_with_policy;

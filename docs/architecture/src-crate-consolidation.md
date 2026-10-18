@@ -9353,3 +9353,18 @@ crate file has 42 code lines. Evidence is in
 `artifacts/consolidation-incremental-derivation/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python or model calls ran. Full workspace
 consolidation remains active.
+
+### Dedicated context-policy dispatcher crate
+
+Moved strategy execution, effective-policy resolution and final state-header
+attachment into `crates/codetether-context-dispatch`. Ten modules connect
+the shared legacy/reset/incremental derivations. Native session adapters
+supply saved policy, persisted constraints and the loaded message offset.
+
+Fourteen static comparisons cover execution branches, forced-policy selection,
+incremental budget resolution, policy logging, header ordering, native
+bindings and unchanged header/policy regression sources. Module/dependency
+graphs, file budgets and whitespace checks passed; the largest crate file has
+35 code lines. Evidence is in `artifacts/consolidation-context-dispatch/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or model
+calls ran. Full workspace consolidation remains active.

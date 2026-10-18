@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-context-dispatch",
  "codetether-incremental-derivation",
  "codetether-reset-derivation",
  "codetether-context-request",
@@ -2176,6 +2177,21 @@ dependencies = [
  "codetether-rlm",
  "codetether-rlm-background",
  "codetether-rlm-foreground",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-context-dispatch"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-context-legacy",
+ "codetether-context-policy",
+ "codetether-incremental-derivation",
+ "codetether-provider-core",
+ "codetether-reset-derivation",
+ "codetether-session-events",
+ "tokio",
  "tracing",
 ]
 
