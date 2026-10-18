@@ -5,14 +5,20 @@ use ratatui::text::Line;
 /// Render one child agent row.
 pub fn line(agent: &SpawnedAgent, selected: bool) -> Line<'static> {
     codetether_agent_dashboard::managed::line(
-        &Agent {
-            name: &agent.name,
-            parent: agent.parent.as_deref(),
-            depth: agent.depth,
-            instructions: &agent.instructions,
-            model_id: agent.model_id.as_deref(),
-            is_processing: agent.is_processing,
-        },
+        &codetether_agent_dashboard::Child::display(agent),
         selected,
     )
+}
+
+impl codetether_agent_dashboard::Child for SpawnedAgent {
+    fn display(&self) -> Agent<'_> {
+        Agent {
+            name: &self.name,
+            parent: self.parent.as_deref(),
+            depth: self.depth,
+            instructions: &self.instructions,
+            model_id: self.model_id.as_deref(),
+            is_processing: self.is_processing,
+        }
+    }
 }

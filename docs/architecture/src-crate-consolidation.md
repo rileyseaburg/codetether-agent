@@ -17647,3 +17647,21 @@ Full workspace consolidation remains active.
   preserved. Evidence: `artifacts/consolidation-agent-dashboard/`.
 - No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Agent dashboard composition and panels
+
+- Moved unified dashboard composition, managed/tool-child sorting and
+  deduplication, managed-child transcript assembly, and both bordered panel
+  renderers into `codetether-agent-dashboard` modules.
+- A shared Child projection borrows identity/status fields from native managed
+  agents. Dashboard inputs retain the original HashMap keys for deduplication;
+  no sessions are cloned or transferred. Native code supplies registry snapshots,
+  active-task count, selected name, messages and scroll position.
+- Verified full composition/section/detail/rendering function bodies with
+  explicit field substitutions, projection fields, sorting keys and native
+  bindings. Existing dashboard/detail integration tests and registry lookup
+  remain unchanged. Module/dependency graphs, direct rustfmt, file limits and
+  whitespace checks passed; no manifest or lock changes.
+  Evidence: `artifacts/consolidation-agent-dashboard-compose/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

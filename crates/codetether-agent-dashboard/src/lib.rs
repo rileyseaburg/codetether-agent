@@ -11,3 +11,13 @@ pub mod metadata;
 pub mod swarm;
 pub mod swarm_row;
 pub mod tool_row;
+
+mod child;
+pub use child::Child;
+/// Unified dashboard row composition.
+pub mod dashboard;
+/// Managed child transcript composition.
+pub mod managed_detail;
+mod managed_section;
+/// Dashboard and detail panel widgets.
+pub mod render;
