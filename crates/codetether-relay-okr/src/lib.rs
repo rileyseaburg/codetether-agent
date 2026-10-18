@@ -29,3 +29,6 @@ pub const GO_SWAP_MODEL_MINIMAX: &str = "minimax/MiniMax-M3";
 
 /// CLI relay progress persistence and final outcome recording.
 pub mod progress;
+
+/// CLI objective approval display and persistence.
+pub mod cli_approval;

@@ -12,7 +12,7 @@ use relay_host::run_protocol_first_relay;
 use super::RunArgs;
 use crate::autochat::model_rotation::resolve_provider_for_model_autochat;
 use crate::bus::AgentBus;
-use crate::okr::{ApprovalDecision, Okr, OkrRepository, OkrRun};
+use crate::okr::{Okr, OkrRepository};
 use crate::session::{Session, import_codex_session_by_id};
 use anyhow::Result;
 use codetether_autochat_core::AUTOCHAT_MAX_AGENTS;
@@ -24,7 +24,6 @@ use codetether_run_command::{
     command_with_optional_args, is_easy_go_command, normalize_cli_go_command,
     normalize_go_task_input, resolve_autochat_model, validate_easy_go_task,
 };
-use std::io::Write;
 use uuid::Uuid;
 const AUTOCHAT_DEFAULT_AGENTS: usize = crate::autochat::AUTOCHAT_DEFAULT_AGENTS;
 const AUTOCHAT_QUICK_DEMO_TASK: &str = crate::autochat::AUTOCHAT_QUICK_DEMO_TASK;
@@ -148,59 +147,26 @@ pub(super) async fn execute_inner(args: RunArgs) -> Result<()> {
             };
 
             // Create run
-            let mut run = OkrRun::new(
-                okr_id,
-                format!("Run {}", chrono::Local::now().format("%Y-%m-%d %H:%M")),
-            );
-            let _ = run.submit_for_approval();
+            let mut run = codetether_relay_okr::cli_approval::new_run(okr_id);
 
             // Show OKR draft
-            let command_label = if easy_go_requested {
-                "/go"
-            } else {
-                "/autochat"
-            };
-            println!("\n⚠️  {command_label} OKR Draft\n");
-            println!("Task: {}", truncate_with_ellipsis(&task, 80));
-            println!("Agents: {} | Model: {}", agent_count, model);
-            if let Some(note) = draft_note {
-                println!("{}", note);
-            }
-            println!("\nObjective: {}", okr.title);
-            println!("\nKey Results:");
-            for kr in &okr.key_results {
-                println!("  • {} (target: {} {})", kr.title, kr.target_value, kr.unit);
-            }
-            println!("\n");
-
-            // Prompt for approval
-            print!("Approve OKR and start relay? [y/n]: ");
-            std::io::stdout().flush()?;
-            let mut input = String::new();
-            std::io::stdin().read_line(&mut input)?;
-
-            let input = input.trim().to_lowercase();
-            if input != "y" && input != "yes" {
-                run.record_decision(ApprovalDecision::deny(run.id, "User denied via CLI"));
-                println!("❌ OKR denied. Relay not started.");
-                println!("Use /autochat --no-prd for tactical execution without OKR/PRD tracking.");
+            if !codetether_relay_okr::cli_approval::ask(
+                &mut run,
+                codetether_relay_okr::cli_approval::Prompt {
+                    easy_go_requested,
+                    task_preview: &truncate_with_ellipsis(&task, 80),
+                    agent_count,
+                    model: &model,
+                    draft_note: draft_note.as_deref(),
+                    okr: &okr,
+                },
+            )? {
                 return Ok(());
             }
 
-            println!("✅ OKR approved! Starting Ralph PRD execution...\n");
-
             // Save OKR and run
             let mut approved_run = run;
-            if let Ok(repo) = OkrRepository::from_config().await {
-                let _ = repo.create_okr(okr.clone()).await;
-                approved_run.record_decision(ApprovalDecision::approve(
-                    approved_run.id,
-                    "User approved via CLI",
-                ));
-                approved_run.correlation_id = Some(format!("ralph-{}", Uuid::new_v4()));
-                let _ = repo.create_run(approved_run.clone()).await;
-                tracing::info!(okr_id = %okr_id, okr_run_id = %approved_run.id, "OKR run approved and saved");
-            }
+            codetether_relay_okr::cli_approval::persist(okr_id, &okr, &mut approved_run).await;
 
             // Load provider for Ralph execution
             let registry = if let Some(registry) = registry_for_draft {

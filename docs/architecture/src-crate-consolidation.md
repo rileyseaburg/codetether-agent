@@ -14021,3 +14021,19 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or configuration execution ran. Full workspace
   consolidation remains unfinished.
+
+### CLI objective approval extraction
+
+- Moved objective display, standard-input confirmation, run creation and
+  approved-run persistence into codetether-relay-okr::cli_approval. Modules
+  separate display data, rendering, confirmation and persistence.
+- Native command prepares the display preview, returns immediately on denial,
+  and keeps provider loading/Ralph execution after approval. Output strings,
+  decision metadata, UUID correlation and best-effort write order are preserved.
+- Verification: six static creation/display/confirmation/persistence/expanded-
+  native-body/size checks passed, plus module reachability, dependency DAG,
+  direct rustfmt, file-limit ratchet and whitespace checks. Evidence:
+  artifacts/consolidation-cli-approval/.
+- No dependencies or lockfile entries changed. No Cargo, rustc, Rust tests,
+  interactive prompt or approval persistence ran. Full workspace consolidation
+  remains unfinished.
