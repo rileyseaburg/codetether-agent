@@ -19,3 +19,6 @@ impl<T: Intercept + Routing + Submission> Host for T {}
 
 /// Attachment capture, goal adoption and dispatch finalization.
 pub mod finish;
+
+/// Held-goal gating and provider dispatch preparation.
+pub mod dispatch;

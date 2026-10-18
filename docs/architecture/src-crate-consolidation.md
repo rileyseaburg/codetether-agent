@@ -16748,3 +16748,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-chat-finish/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared chat dispatch preparation
+
+- Moved held-goal gating, new-request reset/status updates and configured-
+  provider branching into `codetether-chat-submit::dispatch`.
+- A disjoint borrowed state view owns watchdog count, in-flight prompt and UI
+  status assignments. Native hooks retain timing, worker-bridge notification,
+  input clearing, scrolling and provider task submission/error display.
+- Preserved the original borrowed registry handle without additional Arc
+  cloning, early-return behavior, status strings and side-effect order.
+- Verification: full sequence and field-mapping comparison, every native hook,
+  unchanged handoff/error and queue/steering code, module/dependency graphs,
+  direct rustfmt, file limits and whitespace. The comparison caught and fixed
+  one unconverted status reference before commit. No dependencies changed.
+  Evidence: `artifacts/consolidation-chat-dispatch/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
