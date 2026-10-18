@@ -34,153 +34,92 @@ pub mod tool_router;
 pub mod tool_router;
 
 // ── Contracts ───────────────────────────────────────────────────────────
-#[path = "attention.rs"]
-mod attention;
-#[path = "control_request.rs"]
-mod control_request;
-#[path = "governance.rs"]
-mod governance;
-#[path = "persona.rs"]
-mod persona;
-#[path = "persona_policy.rs"]
-mod persona_policy;
-#[path = "persona_request.rs"]
-mod persona_request;
-#[path = "persona_state.rs"]
-mod persona_state;
-#[path = "proposal.rs"]
-mod proposal;
-#[path = "proposal_kind.rs"]
-mod proposal_kind;
+use codetether_cognition_core::control as control_request;
+use codetether_cognition_core::persona;
+use codetether_cognition_core::persona as persona_policy;
+use codetether_cognition_core::persona as persona_request;
+use codetether_cognition_core::persona as persona_state;
+use codetether_cognition_core::proposal as governance;
+use codetether_cognition_core::proposal;
+use codetether_cognition_core::proposal as proposal_kind;
+use codetether_cognition_core::workspace as attention;
 mod runtime_host;
-#[path = "runtime_options.rs"]
-mod runtime_options;
+use codetether_cognition_core::configuration as runtime_options;
 #[path = "runtime_state.rs"]
 mod runtime_state;
-#[path = "status.rs"]
-mod status;
-#[path = "thought_event.rs"]
-mod thought_event;
-#[path = "thought_event_type.rs"]
-mod thought_event_type;
-#[path = "thought_phase.rs"]
-mod thought_phase;
-#[path = "thought_work.rs"]
-mod thought_work;
-#[path = "workspace.rs"]
-mod workspace;
+use codetether_cognition_core::status;
+use codetether_cognition_core::thought as thought_event;
+use codetether_cognition_core::thought as thought_event_type;
+use codetether_cognition_core::thought as thought_phase;
+use codetether_cognition_core::thought as thought_work;
+use codetether_cognition_core::workspace;
 
 // ── Runtime API ─────────────────────────────────────────────────────────
-#[path = "persona_build.rs"]
-mod persona_build;
-#[path = "persona_depth.rs"]
-mod persona_depth;
-#[path = "persona_lineage.rs"]
-mod persona_lineage;
-#[path = "persona_reap_targets.rs"]
-mod persona_reap_targets;
+use codetether_cognition_core::persona::depth as persona_depth;
+use codetether_cognition_core::persona::lifecycle as persona_build;
+use codetether_cognition_core::persona::lineage as persona_lineage;
+use codetether_cognition_core::persona::reap_targets as persona_reap_targets;
 
 // ── Construction ────────────────────────────────────────────────────────
-#[path = "env.rs"]
-mod env;
+use codetether_cognition_core::configuration::env;
 #[path = "initial_state.rs"]
 mod initial_state;
-#[path = "options_env.rs"]
-mod options_env;
-#[path = "thinker_env.rs"]
-mod thinker_env;
-#[path = "thinker_env_candle.rs"]
-mod thinker_env_candle;
+use codetether_cognition_core::configuration as options_env;
+use codetether_cognition_core::thinker as thinker_env;
+use codetether_cognition_core::thinker::candle_env as thinker_env_candle;
 #[path = "thinker_init.rs"]
 mod thinker_init;
 
 // ── Cognition loop ──────────────────────────────────────────────────────
-#[path = "buffers.rs"]
-mod buffers;
-#[path = "idle_detect.rs"]
-mod idle_detect;
+use codetether_cognition_core::persona::scheduling as idle_detect;
+use codetether_cognition_core::thought::buffers;
 #[path = "loop_ctx.rs"]
 mod loop_ctx;
-#[path = "tick_budget.rs"]
-mod tick_budget;
-#[path = "tick_charge.rs"]
-mod tick_charge;
-#[path = "tick_event.rs"]
-mod tick_event;
-#[path = "tick_idle_reap.rs"]
-mod tick_idle_reap;
-#[path = "tick_progress.rs"]
-mod tick_progress;
+use codetether_cognition_core::persona::accounting as tick_charge;
+use codetether_cognition_core::persona::progress as tick_progress;
+use codetether_cognition_core::persona::scheduling as tick_budget;
+use codetether_cognition_core::persona::scheduling as tick_idle_reap;
+use codetether_cognition_core::thought::build as tick_event;
 #[path = "tick_run.rs"]
 mod tick_run;
-#[path = "tick_snapshot.rs"]
-mod tick_snapshot;
-#[path = "tick_snapshot_meta.rs"]
-mod tick_snapshot_meta;
-#[path = "tick_window.rs"]
-mod tick_window;
+use codetether_cognition_core::persona::scheduling as tick_window;
+use codetether_cognition_core::thought::build as tick_snapshot;
+use codetether_cognition_core::thought::build as tick_snapshot_meta;
 
 // ── Beliefs, proposals, governance ──────────────────────────────────────
-#[path = "belief_confirm.rs"]
-mod belief_confirm;
-#[path = "belief_contest.rs"]
-mod belief_contest;
-#[path = "belief_decay.rs"]
-mod belief_decay;
-#[path = "belief_merge.rs"]
-mod belief_merge;
-#[path = "proposal_create.rs"]
-mod proposal_create;
-#[path = "proposal_event.rs"]
-mod proposal_event;
-#[path = "proposal_execute.rs"]
-mod proposal_execute;
-#[path = "proposal_receipt.rs"]
-mod proposal_receipt;
-#[path = "vote_attention.rs"]
-mod vote_attention;
-#[path = "vote_deadline.rs"]
-mod vote_deadline;
-#[path = "vote_resolve.rs"]
-mod vote_resolve;
-#[path = "vote_sweep.rs"]
-mod vote_sweep;
-#[path = "vote_tally.rs"]
-mod vote_tally;
-#[path = "workspace_attention.rs"]
-mod workspace_attention;
-#[path = "workspace_rank.rs"]
-mod workspace_rank;
-#[path = "workspace_refresh.rs"]
-mod workspace_refresh;
-#[path = "workspace_uncertain.rs"]
-mod workspace_uncertain;
+use codetether_cognition_core::beliefs::update as belief_confirm;
+use codetether_cognition_core::beliefs::update as belief_contest;
+use codetether_cognition_core::beliefs::update as belief_decay;
+use codetether_cognition_core::beliefs::update as belief_merge;
+use codetether_cognition_core::proposal::build as proposal_create;
+use codetether_cognition_core::proposal::build as proposal_event;
+use codetether_cognition_core::proposal::dispatch as proposal_execute;
+use codetether_cognition_core::proposal::dispatch as proposal_receipt;
+use codetether_cognition_core::proposal::voting as vote_attention;
+use codetether_cognition_core::proposal::voting as vote_deadline;
+use codetether_cognition_core::proposal::voting as vote_resolve;
+use codetether_cognition_core::proposal::voting as vote_sweep;
+use codetether_cognition_core::proposal::voting as vote_tally;
+use codetether_cognition_core::workspace::ranking as workspace_attention;
+use codetether_cognition_core::workspace::ranking as workspace_rank;
+use codetether_cognition_core::workspace::ranking as workspace_uncertain;
+use codetether_cognition_core::workspace::refresh as workspace_refresh;
 
 // ── Thought text ────────────────────────────────────────────────────────
-#[path = "context_select.rs"]
-mod context_select;
-#[path = "context_signals.rs"]
-mod context_signals;
-#[path = "context_summary.rs"]
-mod context_summary;
+use codetether_cognition_core::thought::context as context_select;
+use codetether_cognition_core::thought::presentation as context_signals;
+use codetether_cognition_core::thought::presentation as context_summary;
 #[path = "defaults.rs"]
 mod defaults;
-#[path = "normalize.rs"]
-mod normalize;
-#[path = "normalize_shape.rs"]
-mod normalize_shape;
-#[path = "phase_default.rs"]
-mod phase_default;
-#[path = "placeholder.rs"]
-mod placeholder;
-#[path = "prompt_build.rs"]
-mod prompt_build;
-#[path = "prompt_phase.rs"]
-mod prompt_phase;
+use codetether_cognition_core::thought::presentation as normalize;
+use codetether_cognition_core::thought::presentation as normalize_shape;
+use codetether_cognition_core::thought::presentation as phase_default;
+use codetether_cognition_core::thought::presentation as placeholder;
+use codetether_cognition_core::thought::presentation as prompt_build;
+use codetether_cognition_core::thought::presentation as prompt_phase;
 #[path = "text_util.rs"]
 pub mod text_util;
-#[path = "thought_result.rs"]
-mod thought_result;
+use codetether_cognition_core::thought::result as thought_result;
 
 // ── Tests ───────────────────────────────────────────────────────────────
 #[cfg(test)]

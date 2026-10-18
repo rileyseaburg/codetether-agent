@@ -21224,3 +21224,24 @@ native file-size limits, and whitespace checks passed. Evidence lives in
 package and root dependency, preserving unrelated working lockfile edits.
 No Cargo, rustc, or Python commands ran. Compilation and runtime tests remain
 unverified. Full migration of implementation into dedicated crates is ongoing.
+
+### Remove completed cognition migration forwarding files
+
+Removed 68 private file-backed cognition modules whose entire contents only
+re-exported existing crate items. The cognition and thinker indexes now alias
+the owning modules in `codetether-cognition-core` and
+`codetether-cognition-native` directly. Public module boundaries, native service
+adapters, runtime specializations, and tests remain unchanged. This completes
+physical cleanup of these already-migrated contracts and policies rather than
+leaving their forwarding files under `src/`.
+
+Each removed file was checked to contain exactly one import declaration and no
+implementation. Alias targets match the original owning module, and cfg/allow
+attributes are preserved. The two indexes were compared in full against only
+the planned substitutions plus formatting; all other 34 native cognition files
+were checked byte-for-byte unchanged. Source and dependency graphs across 695
+roots and 561 crates, direct rustfmt, native file-size limits, and whitespace
+checks passed. No dependency or lockfile edits. Evidence:
+`artifacts/consolidation-cognition-aliases/`. No Cargo, rustc, or Python commands
+ran. Compilation/runtime tests remain unverified. The complete workspace
+consolidation goal remains active.

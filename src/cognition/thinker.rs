@@ -22,14 +22,10 @@
 //! Candle runtime compiles only with the `candle` feature; without it,
 //! `candle_disabled` fails construction with a rebuild hint.
 
-#[path = "thinker/backend.rs"]
-mod backend;
-#[path = "thinker/config.rs"]
-mod config;
-#[path = "thinker/device_pref.rs"]
-mod device_pref;
-#[path = "thinker/output.rs"]
-mod output;
+use codetether_cognition_core::thinker as backend;
+use codetether_cognition_core::thinker as config;
+use codetether_cognition_core::thinker as device_pref;
+use codetether_cognition_core::thinker as output;
 
 #[path = "thinker/client.rs"]
 mod client;
@@ -37,16 +33,13 @@ mod client;
 #[path = "thinker/provider.rs"]
 mod provider;
 
-#[path = "thinker/candle_dispatch.rs"]
-mod candle_dispatch;
+use codetether_cognition_native::dispatch as candle_dispatch;
 
 #[cfg(not(feature = "candle"))]
-#[path = "thinker/candle_disabled.rs"]
-mod candle_disabled;
+use codetether_cognition_native as candle_disabled;
 
 #[cfg(feature = "candle")]
-#[path = "thinker/candle.rs"]
-mod candle;
+use codetether_cognition_native as candle;
 
 pub use backend::ThinkerBackend;
 pub use client::ThinkerClient;
