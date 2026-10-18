@@ -14,3 +14,6 @@ pub use absence::is_expected_absence;
 pub use load_status::load_status_with_original;
 pub use outcome::SessionLoadOutcome;
 pub use window::session_resume_window;
+
+/// Interactive session selection and workspace import orchestration.
+pub mod interactive;

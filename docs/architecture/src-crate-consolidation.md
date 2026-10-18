@@ -14845,3 +14845,21 @@ Full workspace consolidation remains active.
   artifacts/consolidation-autochat-interactive/.
 - Enabled rt/sync on the existing Tokio dependency; no lockfile packages changed.
   No Cargo, rustc or Rust tests ran. Full src consolidation remains unfinished.
+
+### Interactive session selection ownership
+
+- Moved selected-session restoration and workspace archive import orchestration
+  into codetether-session-resume::interactive. Host handles loading, child-agent
+  hydration and import counts; Session projects saved preferences and status
+  metadata; View handles transcript and picker presentation.
+- Preserved replacement before continuation, continuation-error early return,
+  bus attachment/hydration order, preference updates, source identity and
+  truncated-history flag, picker refresh, filter clearing and final load status.
+  Import failures still skip picker refresh. Removed the now-unused native
+  fork_for_app error wrapper; continuation policy remains shared.
+- Verification: six static checks covered selection and import branches,
+  continuation-error handling, storage calls, metadata and view bindings.
+  Module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-session-selection/.
+- No dependency changes. No Cargo, rustc or Rust tests ran. Full workspace
+  consolidation remains unfinished.
