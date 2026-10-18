@@ -11876,3 +11876,22 @@ Full workspace consolidation remains active.
   direct formatting, source file limits and git diff --check passed.
 - Evidence: artifacts/consolidation-message-cache/. No Cargo, rustc, compilation
   or tests ran. Full workspace consolidation remains incomplete.
+
+### Chat layout, viewport and status packing extraction
+
+- Moved chat panel rectangles, responsive layout computation, status-height
+  threshold, grouped-span packing, visible-line slicing and scrollbar geometry
+  and drawing into codetether-chat-layout. Ten modules contain at most 36 code
+  lines. The two original viewport tests moved with their implementation.
+- Native layout computation supplies input text, suggestion visibility and agent
+  visibility. Application history anchoring and scroll-state mutation remain in
+  the native controller. Existing visibility and compact-hint integration tests
+  are unchanged. The status renderer uses the shared 180-column threshold.
+- Preserved panel constraints, input-height clamping, status stacking, unbreakable
+  key/label groups, empty-line packing, viewport bounds and scrollbar placement.
+- Verification: 17 static comparisons passed, including moved calculations,
+  native projection, shared constants and unchanged integration tests. Module
+  reachability, path dependency cycles, direct formatting, source limits and
+  git diff --check passed. Evidence: artifacts/consolidation-chat-layout/.
+- No Cargo, rustc, compilation, tests or terminal rendering ran. Full workspace
+  consolidation remains incomplete.

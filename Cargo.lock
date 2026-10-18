@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-chat-layout",
  "codetether-message-cache",
  "codetether-answer-review-view",
  "codetether-tui-style",
@@ -6117,6 +6118,15 @@ dependencies = [
  "codetether-chat-model",
  "codetether-message-formatter",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-chat-layout"
+version = "0.1.0"
+dependencies = [
+ "codetether-theme",
+ "ratatui",
+ "unicode-width",
 ]
 
 [[package]]

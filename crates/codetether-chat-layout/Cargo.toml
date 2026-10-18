@@ -1,0 +1,12 @@
+[package]
+name = "codetether-chat-layout"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Chat panel geometry, status packing, viewports and scrollbars"
+
+[dependencies]
+codetether-theme = { path = "../codetether-theme", version = "0.1.0", features = ["ratatui"] }
+ratatui = { version = "0.30.2", default-features = false }
+unicode-width = "0.2"

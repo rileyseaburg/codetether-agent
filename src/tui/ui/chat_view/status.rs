@@ -14,7 +14,7 @@ use super::status_metrics::metric_spans;
 use crate::tui::app::state::App;
 
 /// Width below which the status bar stacks across multiple rows.
-pub const STACK_WIDTH_THRESHOLD: u16 = 180;
+pub use codetether_chat_layout::STACK_WIDTH_THRESHOLD;
 
 /// Assemble the status bar as one or more lines.
 ///
