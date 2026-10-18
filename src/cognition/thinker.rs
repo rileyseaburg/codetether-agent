@@ -42,6 +42,7 @@ use codetether_cognition_native as candle_disabled;
 use codetether_cognition_native as candle;
 
 pub use backend::ThinkerBackend;
+pub(super) use client::Services;
 pub use client::ThinkerClient;
 pub use config::ThinkerConfig;
 pub use device_pref::CandleDevicePreference;

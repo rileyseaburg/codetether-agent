@@ -61,28 +61,20 @@ use codetether_cognition_core::persona::lineage as persona_lineage;
 use codetether_cognition_core::persona::reap_targets as persona_reap_targets;
 
 // ── Construction ────────────────────────────────────────────────────────
-use codetether_cognition_core::configuration::env;
-#[path = "initial_state.rs"]
-mod initial_state;
 use codetether_cognition_core::configuration as options_env;
+use codetether_cognition_core::configuration::env;
 use codetether_cognition_core::thinker as thinker_env;
 use codetether_cognition_core::thinker::candle_env as thinker_env_candle;
-#[path = "thinker_init.rs"]
-mod thinker_init;
 
 // ── Cognition loop ──────────────────────────────────────────────────────
-use codetether_cognition_core::persona::scheduling as idle_detect;
-use codetether_cognition_core::thought::buffers;
-#[path = "loop_ctx.rs"]
-mod loop_ctx;
 use codetether_cognition_core::persona::accounting as tick_charge;
 use codetether_cognition_core::persona::progress as tick_progress;
+use codetether_cognition_core::persona::scheduling as idle_detect;
 use codetether_cognition_core::persona::scheduling as tick_budget;
 use codetether_cognition_core::persona::scheduling as tick_idle_reap;
-use codetether_cognition_core::thought::build as tick_event;
-#[path = "tick_run.rs"]
-mod tick_run;
 use codetether_cognition_core::persona::scheduling as tick_window;
+use codetether_cognition_core::thought::buffers;
+use codetether_cognition_core::thought::build as tick_event;
 use codetether_cognition_core::thought::build as tick_snapshot;
 use codetether_cognition_core::thought::build as tick_snapshot_meta;
 

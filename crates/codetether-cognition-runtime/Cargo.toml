@@ -7,6 +7,8 @@ license = "MIT"
 description = "Cognition runtime facade, lifecycle and application service ownership"
 
 [dependencies]
+chrono = "0.4"
+codetether-cognition-storage = { path = "../codetether-cognition-storage", version = "0.1.0" }
 anyhow = "1"
 codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
 tokio = { version = "1", features = ["sync"] }

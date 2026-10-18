@@ -22999,3 +22999,29 @@ lockfile and unrelated native A2A changes remain unchanged.
 Evidence: artifacts/consolidation-background-application/.
 No background jobs, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Cognition runtime application composition owned by its runtime crate
+
+Moved environment-backed runtime construction, best-effort thinker startup,
+shared thought processing and tick persistence into
+codetether-cognition-runtime::application. ApplicationHost<H, R, EMPTY_STATE>
+selects thinker services and the executable registry. TickServices invokes the
+same ClientServices processing and cognition-storage persistence. The native
+runtime host is now a type alias; five native helper files were removed.
+
+The native alias supplies cfg!(test), preserving empty initial state in native
+unit tests and persisted-state restoration in production. This flag controls
+initialization only; tick persistence retains its existing behavior. Thinker
+client and runtime aliases share the same native service type. Seven method
+body comparisons preserve operation arguments/order, and the initial-state
+branch comparison preserves both prior cfg cases. Native cognition tests and
+the underlying driver, processor and storage source are unchanged.
+
+Module/dependency scans cover 699 roots and 571 crates with no missing modules
+or cycles. Direct rustfmt, file-size limits and whitespace checks passed.
+Only chrono and cognition-storage edges were staged for the runtime package
+in Cargo.lock; unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-cognition-application/.
+No cognition loops, model initialization, storage operations, tests, Cargo,
+rustc or Python ran. Compilation and runtime behavior remain unverified.
+Full consolidation remains active.

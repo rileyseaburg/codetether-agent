@@ -31,4 +31,6 @@ pub use runtime_state::CognitionRuntime;
 mod drive;
 pub use drive::{drive, run_tick};
 
+/// Standard thinker, storage and tick composition for application runtimes.
+pub mod application;
 mod http;
