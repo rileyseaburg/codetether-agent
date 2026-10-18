@@ -10254,3 +10254,18 @@ contain at most 43 code lines. Evidence is in
 `artifacts/consolidation-mux-protocol/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, network or mux operations ran. Full workspace
 consolidation remains active.
+
+### Dedicated mux discovery registry
+
+Moved discovery records, session targets, workspace keys, registry paths,
+owner-only permissions, atomic record I/O, legacy decoding and tolerant lookup
+into `crates/codetether-mux-registry`. Nine modules preserve the private storage
+contract and stable key algorithm. The native registry module now re-exports
+these services; connection and server consumers remain unchanged.
+
+Twelve static comparisons/checks cover entire moved modules, the original key
+regression, serialization, permissions and unchanged consumers. Module/dependency
+graphs, file budgets and whitespace checks passed; new files contain at most 35
+code lines. Evidence is in `artifacts/consolidation-mux-registry/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python, live registry
+reads or persistence operations ran. Full workspace consolidation remains active.

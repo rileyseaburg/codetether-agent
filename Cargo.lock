@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-mux-registry",
  "codetether-mux-protocol",
  "codetether-mux-model",
  "codetether-workspace-coordination",
@@ -5127,6 +5128,21 @@ dependencies = [
  "codetether-worktree-lease",
  "serde",
  "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-mux-registry"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-mux-model",
+ "directories",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
  "tokio",
 ]
 

@@ -4,7 +4,20 @@ use anyhow::{Context, Result};
 
 use super::MuxRecord;
 
-pub(in crate::mux) async fn store(record: &MuxRecord) -> Result<()> {
+/// Atomically publish a server record with owner-only permissions.
+/// # Arguments
+/// `record` supplies the registry key and connection/state data.
+/// # Returns
+/// Unit after the temporary file has been renamed into place.
+/// # Errors
+/// Reports directory, permissions, encoding, write or rename failures.
+/// # Examples
+/// ```no_run
+/// # async fn example(record: &codetether_mux_registry::MuxRecord) -> anyhow::Result<()> {
+/// codetether_mux_registry::store(record).await?;
+/// # Ok(()) }
+/// ```
+pub async fn store(record: &MuxRecord) -> Result<()> {
     let root = super::path::root()?;
     std::fs::create_dir_all(&root).context("create mux registry")?;
     super::permissions::owner_only_dir(&root)?;
@@ -17,7 +30,20 @@ pub(in crate::mux) async fn store(record: &MuxRecord) -> Result<()> {
 }
 
 /// Load the server record stored under `key`.
-pub(in crate::mux) async fn load_key(key: &str) -> Result<MuxRecord> {
+/// Load the discovery record for an exact server key.
+/// # Arguments
+/// `key` must be a valid registry name.
+/// # Returns
+/// The decoded current or legacy record.
+/// # Errors
+/// Reports invalid names, read failures or invalid record JSON.
+/// # Examples
+/// ```no_run
+/// # async fn example() -> anyhow::Result<()> {
+/// let _record = codetether_mux_registry::load_key("ws-example").await?;
+/// # Ok(()) }
+/// ```
+pub async fn load_key(key: &str) -> Result<MuxRecord> {
     let bytes = std::fs::read(super::path::record(key)?).context("read mux record")?;
     decode(&bytes)
 }
@@ -35,7 +61,20 @@ pub(super) fn decode(bytes: &[u8]) -> Result<MuxRecord> {
     serde_json::from_value(value).context("decode legacy mux record")
 }
 
-pub(in crate::mux) async fn remove_key(key: &str) -> Result<()> {
+/// Remove a discovery record, treating an absent file as success.
+/// # Arguments
+/// `key` is the validated server record name.
+/// # Returns
+/// Unit after removal or when the record was already absent.
+/// # Errors
+/// Reports invalid names and filesystem failures other than not-found.
+/// # Examples
+/// ```no_run
+/// # async fn example() -> anyhow::Result<()> {
+/// codetether_mux_registry::remove_key("ws-example").await?;
+/// # Ok(()) }
+/// ```
+pub async fn remove_key(key: &str) -> Result<()> {
     match std::fs::remove_file(super::path::record(key)?) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),

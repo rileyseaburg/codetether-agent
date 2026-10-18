@@ -5,7 +5,19 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, bail};
 use directories::ProjectDirs;
 
-pub(in crate::mux) fn validate_name(name: &str) -> Result<()> {
+/// Validate a bounded ASCII mux registry or session name.
+/// # Arguments
+/// `name` is the proposed name.
+/// # Returns
+/// Unit when it uses one to 64 permitted letters, digits, hyphens or underscores.
+/// # Errors
+/// Returns an error for empty, oversized or unsupported names.
+/// # Examples
+/// ```rust
+/// assert!(codetether_mux_registry::validate_name("work_1").is_ok());
+/// assert!(codetether_mux_registry::validate_name("../work").is_err());
+/// ```
+pub fn validate_name(name: &str) -> Result<()> {
     let valid = !name.is_empty()
         && name.len() <= 64
         && name

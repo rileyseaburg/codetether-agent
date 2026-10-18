@@ -10,7 +10,16 @@ use sha2::{Digest, Sha256};
 /// collide with user-chosen session names, which cannot start with `ws-` and
 /// contain a hash they did not choose in practice; collisions are checked at
 /// session creation regardless.
-pub(in crate::mux) fn for_workspace(workspace: &Path) -> String {
+/// # Arguments
+/// `workspace` is the path whose encoded OS bytes identify the server.
+/// # Returns
+/// A `ws-` prefix followed by twelve hexadecimal SHA-256 characters.
+/// # Examples
+/// ```
+/// let key = codetether_mux_registry::for_workspace(std::path::Path::new("/repo"));
+/// assert_eq!(key.len(), 15);
+/// ```
+pub fn for_workspace(workspace: &Path) -> String {
     let digest = Sha256::digest(workspace.as_os_str().as_encoded_bytes());
     format!("ws-{}", &hex::encode(digest)[..12])
 }
