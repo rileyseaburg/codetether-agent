@@ -1,5 +1,7 @@
-use crate::config::{ApprovalPolicy, Config, TrustPolicyStatus};
+//! Render effective execution policy alongside configuration.
+
 use anyhow::Result;
+use codetether_config::{ApprovalPolicy, Config, TrustPolicyStatus};
 
 pub(super) fn print_effective(config: &Config) -> Result<()> {
     let status = TrustPolicyStatus::from_config(config);

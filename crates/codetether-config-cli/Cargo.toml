@@ -1,0 +1,13 @@
+[package]
+name = "codetether-config-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Configuration and project trust CLI commands"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6.6", features = ["derive"] }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+toml = "1.1.4+spec-1.1.0"

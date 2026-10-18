@@ -1,5 +1,7 @@
-use crate::config::Config;
+//! Update configuration values and explain telemetry settings.
+
 use anyhow::Result;
+use codetether_config::Config;
 
 pub async fn execute(kv: &str) -> Result<()> {
     let parts: Vec<&str> = kv.splitn(2, '=').collect();

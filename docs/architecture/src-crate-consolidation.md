@@ -10660,3 +10660,17 @@ have at most 42 code lines. Evidence is in
 `artifacts/consolidation-vault-cli/`. Compilation and runtime tests were not run.
 No Cargo, rustc, Python, credential lookup, login, browser, subprocess or network
 operation ran. Full workspace consolidation remains active.
+
+### Configuration CLI extracted
+
+Moved configuration argument schemas, command dispatch, value updates,
+effective-policy formatting and project-trust command handling into
+`crates/codetether-config-cli`. Five modules use the existing config/trust
+implementation; native command and argument paths now re-export the shared API.
+
+Eight static comparisons/checks cover complete schemas and handler bodies,
+operation precedence, output text and native exports. Module/dependency graphs,
+file budgets and whitespace checks passed; modules have at most 30 code lines.
+Evidence is in `artifacts/consolidation-config-cli/`. Compilation and runtime
+tests were not run. No Cargo, rustc, Python, configuration mutation or trust
+operation ran. Full workspace consolidation remains active.

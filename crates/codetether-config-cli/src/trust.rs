@@ -1,6 +1,8 @@
-use crate::cli::ProjectCommand;
-use crate::config::ProjectTrustStore;
+//! Execute project-trust operations and render their status.
+
+use crate::ProjectCommand;
 use anyhow::Result;
+use codetether_config::ProjectTrustStore;
 
 pub fn execute(command: ProjectCommand) -> Result<()> {
     let store = ProjectTrustStore::for_current_workspace()?;

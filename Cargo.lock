@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-config-cli",
  "codetether-vault-cli",
  "codetether-approval-cli",
  "codetether-indexer-cli",
@@ -5426,6 +5427,16 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-config-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "codetether-config",
+ "toml 1.1.5+spec-1.1.0",
 ]
 
 [[package]]
