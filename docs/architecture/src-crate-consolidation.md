@@ -8696,3 +8696,25 @@ passed. The store crate has 48 Rust modules, all below 45 code lines. Evidence
 is in `artifacts/consolidation-store-restore/`. Compilation and runtime tests
 were not run. No Cargo, rustc or Python commands ran. Legacy import and other
 native source ownership still require consolidation.
+
+### Session-store legacy and external import workflows
+
+Moved protected legacy-file migration and revision-aware external imports into
+`codetether-session-store::legacy`. Five modules separate the native import
+contract, bounded digesting, migration, external persistence and exports.
+Native adapters retain legacy-header encoding, summary-index access, timestamp
+comparison and replacement of the per-instance checkpoint lock.
+
+Legacy migration retains the same original-file backup, 512 MiB digest cap,
+changed-file detection, delta encoding, identity validation, transaction,
+summary import and final locator publication sequence. External import still
+keeps an existing snapshot that is at least as recent, and transfers its
+current optimistic revision into a fresh incoming state lock before saving.
+
+Twenty-three static checks compare complete workflows, digesting, native
+bindings, unchanged header encoding and all sixteen unchanged persistence
+tests. Module references, dependencies, file budgets and whitespace checks
+passed; all 53 store crate modules remain below 45 code lines. Evidence is in
+`artifacts/consolidation-store-import/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. Native header/listing, working-set
+management and other source areas remain in the consolidation goal.

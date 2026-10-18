@@ -47,3 +47,5 @@ pub use snapshot::Snapshot;
 
 mod restoration;
 pub use restoration::{Restore, TailLoad, load, load_sync, restore_consumer};
+
+pub mod legacy;

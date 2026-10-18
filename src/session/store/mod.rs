@@ -16,6 +16,7 @@ pub(crate) mod header_read;
 pub(crate) mod id;
 mod identity;
 pub(crate) mod imported;
+mod legacy;
 pub(crate) mod listing;
 mod load;
 mod marker;
