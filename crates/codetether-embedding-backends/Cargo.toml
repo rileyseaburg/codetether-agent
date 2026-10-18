@@ -1,0 +1,29 @@
+[package]
+name = "codetether-embedding-backends"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Local BERT and remote provider embeddings with resource-aware selection"
+
+[features]
+candle = ["dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:tokenizers"]
+candle-cuda = ["candle", "candle-core/cuda", "candle-transformers/cuda"]
+candle-cudnn = ["candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
+candle-accelerate = ["candle", "candle-core/accelerate", "candle-transformers/accelerate"]
+candle-mkl = ["candle", "candle-core/mkl", "candle-transformers/mkl"]
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-vectordb = { path = "../codetether-vectordb", version = "0.1.0" }
+hf-hub = { version = "1.0.0", default-features = false, features = ["socks", "blocking", "rustls-tls"] }
+sysinfo = "0.39.6"
+serde_json = "1"
+tokio = { version = "1", features = ["rt"] }
+tracing = "0.1"
+candle-core = { version = "0.11.0", optional = true }
+candle-nn = { version = "0.11.0", optional = true }
+candle-transformers = { version = "0.11.0", optional = true }
+tokenizers = { version = "0.23.1", optional = true }

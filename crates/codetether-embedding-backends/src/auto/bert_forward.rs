@@ -1,10 +1,10 @@
 //! Forward pass, mean pooling, and [`TextEmbedder`] impl for [`BertEmbedder`].
 
 use super::bert_embedder::{BertEmbedder, encode};
-use crate::vectordb::{EmbeddingVector, TextEmbedder};
 use anyhow::Result;
 use async_trait::async_trait;
 use candle_core::Tensor;
+use codetether_vectordb::{EmbeddingVector, TextEmbedder};
 
 /// Run the model on `text` and mean-pool token states into one vector.
 fn embed_one(embedder: &BertEmbedder, text: &str) -> Result<Vec<f32>> {
@@ -28,7 +28,7 @@ impl TextEmbedder for BertEmbedder {
         match embed_one(self, input) {
             Ok(values) => EmbeddingVector::new(values),
             Err(e) => {
-                tracing::warn!(error = %e, "bert embed failed; returning empty vector");
+                tracing::warn!(target: "codetether_agent::vectordb::auto::bert_forward", error = %e, "bert embed failed; returning empty vector");
                 EmbeddingVector::new(Vec::new())
             }
         }

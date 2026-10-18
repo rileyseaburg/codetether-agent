@@ -1614,6 +1614,7 @@ dependencies = [
  "codetether-context-summarize",
  "codetether-crash",
  "codetether-distill",
+ "codetether-embedding-backends",
  "codetether-edit",
  "codetether-event-stream",
  "codetether-exec-command",
@@ -2857,6 +2858,25 @@ dependencies = [
  "codetether-tool-core",
  "serde_json",
  "similar 3.2.0",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "codetether-embedding-backends"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
+ "codetether-provider-core",
+ "codetether-vectordb",
+ "hf-hub",
+ "serde_json",
+ "sysinfo 0.39.6",
+ "tokenizers 0.23.2",
  "tokio",
  "tracing",
 ]

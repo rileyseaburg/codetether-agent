@@ -97,6 +97,7 @@ members = [
     "crates/codetether-forage-runtime",
     "crates/codetether-forage-clarify",
     "crates/codetether-forage-scoring",
+    "crates/codetether-embedding-backends",
     "crates/codetether-paths",
     "crates/codetether-platform",
     "crates/codetether-plan",
@@ -625,6 +626,7 @@ tetherscript = ["codetether-forage-scoring/tetherscript", "codetether-tool-const
 # Local in-process inference via Candle. Off by default: the agent leads with
 # remote/HTTP providers unless a local model backend is explicitly requested.
 candle = [
+    "codetether-embedding-backends/candle",
     "codetether-cognition-native/candle",
     "codetether-provider-bonsai/candle",
     "dep:candle-core",
@@ -632,10 +634,10 @@ candle = [
     "dep:candle-transformers",
     "dep:tokenizers",
 ]
-candle-cuda = ["codetether-provider-local-cuda/candle-cuda", "codetether-cognition-native/candle-cuda", "candle", "codetether-provider-bonsai/candle-cuda", "candle-core/cuda", "candle-transformers/cuda"]
-candle-cudnn = ["codetether-cognition-native/candle-cudnn", "candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
-candle-accelerate = ["codetether-cognition-native/candle-accelerate", "candle", "candle-core/accelerate", "candle-transformers/accelerate"]
-candle-mkl = ["codetether-cognition-native/candle-mkl", "candle", "candle-core/mkl", "candle-transformers/mkl"]
+candle-cuda = ["codetether-embedding-backends/candle-cuda", "codetether-provider-local-cuda/candle-cuda", "codetether-cognition-native/candle-cuda", "candle", "codetether-provider-bonsai/candle-cuda", "candle-core/cuda", "candle-transformers/cuda"]
+candle-cudnn = ["codetether-embedding-backends/candle-cudnn", "codetether-cognition-native/candle-cudnn", "candle-cuda", "candle-core/cudnn", "candle-transformers/cudnn"]
+candle-accelerate = ["codetether-embedding-backends/candle-accelerate", "codetether-cognition-native/candle-accelerate", "candle", "candle-core/accelerate", "candle-transformers/accelerate"]
+candle-mkl = ["codetether-embedding-backends/candle-mkl", "codetether-cognition-native/candle-mkl", "candle", "candle-core/mkl", "candle-transformers/mkl"]
 functiongemma = ["codetether-cognition-native/functiongemma", "candle"]
 # Opt-in QUIC worker transport (server listener + worker dial path). The QUIC
 # primitive stack always compiles; this gates the live wiring.
@@ -1066,6 +1068,7 @@ codetether-forage-reporting = { path = "crates/codetether-forage-reporting", ver
 codetether-forage-runtime = { path = "crates/codetether-forage-runtime", version = "0.1.0" }
 codetether-forage-clarify = { path = "crates/codetether-forage-clarify", version = "0.1.0" }
 codetether-forage-scoring = { path = "crates/codetether-forage-scoring", version = "0.1.0" }
+codetether-embedding-backends = { path = "crates/codetether-embedding-backends", version = "0.1.0" }
 codetether-github-auth = { path = "crates/codetether-github-auth", version = "0.1.0" }
 codetether-webfetch = { path = "crates/codetether-webfetch", version = "0.1.0" }
 codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0" }

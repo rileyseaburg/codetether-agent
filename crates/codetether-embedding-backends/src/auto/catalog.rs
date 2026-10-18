@@ -32,7 +32,7 @@ pub const COMPACT: ModelSpec = ModelSpec {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::vectordb::auto::catalog::{best_fitting, BEST, COMPACT};
+/// use codetether_embedding_backends::auto::catalog::{best_fitting, BEST, COMPACT};
 ///
 /// assert_eq!(best_fitting(64 * 1024 * 1024 * 1024).repo, BEST.repo);
 /// assert_eq!(best_fitting(5 * 1024 * 1024 * 1024).repo, COMPACT.repo);

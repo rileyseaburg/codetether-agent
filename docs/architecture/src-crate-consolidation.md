@@ -19086,3 +19086,28 @@ assertion contained an extra closing parenthesis; corrected the verifier and
 retained its failed log. Evidence: `artifacts/consolidation-forage-scoring/`.
 No Cargo, rustc, Python, Rust tests or score-plugin execution ran; compilation
 and runtime behavior remain unverified.
+
+### Embedding backend ownership
+
+Moved automatic embedding selection and the provider-backed embedder into
+`codetether-embedding-backends`. The crate owns resource probing, model catalog,
+HuggingFace downloads, local BERT loading/inference, cloud provider preference
+and synchronous hashing fallback. Modules retain those separate responsibilities.
+Native vectordb modules re-export the implementations and adapt the existing
+provider registry through a read-only lookup trait. The four automatic-selection
+tests move unchanged; native provider regression tests still exercise the alias.
+
+Preserved model memory thresholds, download filenames, local/cloud/fallback
+order, BERT tensor operations and normalization, sync/async provider behavior,
+and original diagnostic targets. Candle, CUDA, cuDNN, Accelerate and MKL features
+are forwarded. The minimal lock delta reuses the root's qualified sysinfo and
+tokenizers resolutions without changing existing versions.
+
+Validation: 18 complete function-body comparisons, unchanged provider order,
+native forwarding, moved and retained tests, feature wiring, isolated lockfile
+delta, lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. The verifier explicitly accounts for rustfmt
+adding braces around the lengthened warning match arm. Evidence:
+`artifacts/consolidation-embedding-backends/`. No Cargo, rustc, Python, Rust tests,
+model downloads, inference or provider requests ran; compilation and runtime
+behavior remain unverified.
