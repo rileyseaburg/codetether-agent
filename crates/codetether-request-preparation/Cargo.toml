@@ -18,3 +18,5 @@ codetether-tool-catalog = { path = "../codetether-tool-catalog", version = "0.1.
 
 anyhow = "1"
 tracing = "0.1"
+
+codetether-rate-gate = { path = "../codetether-rate-gate", version = "0.1.0" }

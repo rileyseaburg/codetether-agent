@@ -15869,3 +15869,20 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-step-model/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared rate-gate preparation and active model state
+
+- Moved original-model restoration followed by optional rate-gate substitution
+  into `codetether-request-preparation::step_model::begin_step`. Disabled gating
+  and no-substitute paths retain proactive preparation of the current model.
+- Moved ModelState fields and construction into the crate's model module, generic
+  over the executable tool registry. Native ModelState is now a concrete alias.
+- Removed superseded native restore/failover forwarding functions and the native
+  done helper. The existing provider and session service adapter remains intact.
+- Verification: complete begin-step and preparation comparisons, exact model
+  fields and constructor body, native specialization, unchanged restore/failover
+  implementations and services, module/dependency graphs, direct rustfmt, file
+  budgets, isolated lock addition and diff whitespace. Evidence:
+  `artifacts/consolidation-model-preparation/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

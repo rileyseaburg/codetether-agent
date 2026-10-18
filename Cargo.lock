@@ -5283,6 +5283,7 @@ dependencies = [
  "codetether-tool-catalog",
  "anyhow",
  "tracing",
+ "codetether-rate-gate",
 ]
 
 [[package]]

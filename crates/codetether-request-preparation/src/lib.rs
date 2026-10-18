@@ -17,3 +17,6 @@ pub use state::ProviderStepState;
 
 /// Active model restoration and failover state transitions.
 pub mod step_model;
+
+/// Active model and derived tool configuration.
+pub mod model;

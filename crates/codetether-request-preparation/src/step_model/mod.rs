@@ -12,3 +12,6 @@ pub use apply::apply_failover;
 pub use host::Host;
 pub use restore::restore_step_model;
 pub use vars::StepVars;
+
+mod begin;
+pub use begin::begin_step;
