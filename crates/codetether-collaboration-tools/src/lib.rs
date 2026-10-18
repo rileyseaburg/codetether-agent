@@ -57,3 +57,5 @@ pub mod __private {
     pub use serde_json::{Value, json};
     pub use tokio::{sync::watch, time::Instant};
 }
+
+mod catalog_binding;

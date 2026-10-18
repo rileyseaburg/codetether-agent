@@ -26955,3 +26955,21 @@ native production-scope, standalone formatting, file-limit and whitespace checks
 pass for 726 roots and 617 crates. No dependency/lock changes were needed;
 unrelated working files are untouched. Evidence: artifacts/consolidation-collaboration-binding/.
 No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Collaboration catalog ownership
+
+Moved the ten-branch collaboration constructor match into
+codetether-collaboration-tools::declare_catalog. Root selection retains the exact
+capability enum, legacy agent type and application host. Shared collaboration
+tools are constructed directly with their existing new() calls. Removed the
+catalog adapter and five alias-only modules; the four adapters used by integration
+tests are now explicitly test-gated. Remaining adapter/test sources are unchanged.
+
+Static comparison checks every branch against the original alias type and
+constructor, normalizing only expression-only match-arm blocks and optional
+separators introduced by formatting. Unrelated kinds still return None.
+Declaration, module/dependency, native production-scope, standalone formatting,
+file-limit and whitespace checks pass for 726 roots and 617 crates. No dependency
+or lock changes were needed; unrelated working files are untouched. Evidence:
+artifacts/consolidation-collaboration-catalog/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.
