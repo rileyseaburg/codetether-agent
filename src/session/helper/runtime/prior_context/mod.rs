@@ -1,9 +1,7 @@
 //! User-directed access policy for prior session context.
 
 mod blocking;
-mod call;
 mod delegated;
-mod delegation;
 mod directive;
 mod directive_message;
 mod human;

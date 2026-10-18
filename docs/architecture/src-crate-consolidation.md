@@ -9568,3 +9568,20 @@ crate file has 44 code lines. Twenty-five existing tests moved without execution
 Evidence is in `artifacts/consolidation-prior-context-policy/`. Compilation and
 runtime tests were not run. No Cargo, rustc, Python or worker commands ran.
 Full workspace consolidation remains active.
+
+### Dedicated prior-context access crate
+
+Moved effective permission precedence, trusted/delegated metadata transitions,
+tool availability, nested batch/delegation detection and structured rejection
+into `crates/codetether-prior-context-access`. Eight modules separate state,
+updates, initialization, tool detection, rejection and registry policy. Native
+wrappers supply existing shared metadata and transcript fields; registry removal
+uses a callback to the native registry.
+
+Thirty-three static comparisons cover inherited denial ceilings, persistent and
+one-turn state, delegated restrictions, nested call detection, rejection payloads,
+native bindings and unchanged authority/persistence tests. Module/dependency
+graphs, file budgets and whitespace checks passed; the largest crate file has
+32 code lines. Evidence is in `artifacts/consolidation-prior-context-access/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or worker
+commands ran. Full workspace consolidation remains active.

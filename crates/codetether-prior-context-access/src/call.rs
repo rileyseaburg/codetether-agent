@@ -3,11 +3,18 @@
 use serde_json::Value;
 
 /// Tool IDs capable of consulting data outside the active conversation.
-pub(super) const PRIOR_CONTEXT_TOOLS: [&str; 4] =
-    ["session_recall", "context_browse", "memory", "search"];
+pub const PRIOR_CONTEXT_TOOLS: [&str; 4] = ["session_recall", "context_browse", "memory", "search"];
 
 /// Detect direct or batched calls that can consult prior context.
-pub(super) fn requests_prior_context(name: &str, args: &Value) -> bool {
+/// # Arguments
+/// Receives a tool name and decoded arguments, including nested batch calls.
+/// # Returns
+/// The effective permission or detection decision.
+/// # Examples
+/// ```
+/// assert!(codetether_prior_context_access::requests_prior_context("session_recall", &serde_json::json!({})));
+/// ```
+pub fn requests_prior_context(name: &str, args: &Value) -> bool {
     if PRIOR_CONTEXT_TOOLS.contains(&name)
         || super::delegation::crosses_unenforced_boundary(name, args)
     {
