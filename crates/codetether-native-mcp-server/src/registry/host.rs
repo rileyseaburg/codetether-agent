@@ -1,10 +1,11 @@
 //! Keep policy wrapping on native executable tools.
-use crate::tool::{Tool, ToolRegistry};
+use codetether_application_registry::{Application, ToolRegistry};
 use codetether_mcp_core::server_catalog::McpToolHandler;
+use codetether_tool_core::Tool;
 use serde_json::Value;
 use std::sync::Arc;
-pub(super) struct Registry<'a>(pub &'a ToolRegistry);
-impl codetether_mcp_server::registry::Host for Registry<'_> {
+pub(super) struct Registry<'a, T: Application>(pub &'a ToolRegistry<T>);
+impl<T: Application> codetether_mcp_server::registry::Host for Registry<'_, T> {
     fn list(&self) -> Vec<&str> {
         self.0.list()
     }
@@ -13,7 +14,7 @@ impl codetether_mcp_server::registry::Host for Registry<'_> {
     }
     fn handler(tool_name: String, tool_clone: Arc<dyn Tool>) -> McpToolHandler {
         Arc::new(move |args: Value| {
-            crate::mcp::tool_policy::call_registered(
+            codetether_native_mcp_client::tool_policy::call_registered(
                 tool_name.clone(),
                 Arc::clone(&tool_clone),
                 args,

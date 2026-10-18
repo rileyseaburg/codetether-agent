@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/codetether-native-mcp-server",
     "crates/codetether-native-goal-tools",
     "crates/codetether-native-validation",
     "crates/codetether-native-session-store",
@@ -728,6 +729,7 @@ fips = [
 
 [dependencies]
 codetether-native-a2a = { path = "crates/codetether-native-a2a", version = "4.7.6-dev.38" }
+codetether-native-mcp-server = { path = "crates/codetether-native-mcp-server", version = "0.1.0" }
 codetether-native-goal-tools = { path = "crates/codetether-native-goal-tools", version = "0.1.0" }
 codetether-native-validation = { path = "crates/codetether-native-validation", version = "0.1.0" }
 codetether-native-session-store = { path = "crates/codetether-native-session-store", version = "0.1.0" }

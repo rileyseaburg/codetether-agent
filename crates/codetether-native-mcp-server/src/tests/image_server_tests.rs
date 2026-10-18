@@ -1,8 +1,8 @@
 //! In-process MCP boundary: an actual image tool returns image blocks, not prose.
 
-use crate::mcp::McpServer;
-use crate::tool::{ToolRegistry, image::ImageTool};
+use super::{McpServer, ToolRegistry};
 use base64::Engine;
+use codetether_image_tool::ImageTool;
 use serde_json::json;
 use std::sync::Arc;
 

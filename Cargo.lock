@@ -1282,6 +1282,7 @@ dependencies = [
  "codetether-native-session-store",
  "codetether-native-validation",
  "codetether-native-goal-tools",
+ "codetether-native-mcp-server",
  "codetether-native-agent",
  "codetether-native-server",
  "codetether-native-cognition",
@@ -3891,6 +3892,27 @@ dependencies = [
  "tempfile",
  "tokio",
  "codetether-mcp-connections",
+]
+
+[[package]]
+name = "codetether-native-mcp-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.23.1",
+ "codetether-application-registry",
+ "codetether-image-tool",
+ "codetether-mcp-core",
+ "codetether-mcp-fallback",
+ "codetether-mcp-server",
+ "codetether-native-mcp-client",
+ "codetether-native-registry",
+ "codetether-provider-core",
+ "codetether-tool-core",
+ "image",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

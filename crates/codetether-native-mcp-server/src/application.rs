@@ -1,19 +1,19 @@
 //! Canonical application identity, registration, and approval bindings.
+use crate::{Native, PackageVersion};
+use codetether_application_registry::{Application, ToolRegistry};
 use codetether_mcp_core::{server_catalog::ServerCatalog, types::JsonRpcError};
 use serde_json::Value;
 use std::sync::Arc;
-/// Application policy bound to the public MCP server alias.
-pub struct Native;
-impl codetether_mcp_server::Application for Native {
-    type Registry = crate::tool::ToolRegistry;
+impl<T: Application, V: PackageVersion> codetether_mcp_server::Application for Native<T, V> {
+    type Registry = ToolRegistry<T>;
     fn version() -> &'static str {
-        env!("CARGO_PKG_VERSION")
+        V::version()
     }
     fn approval_capability() -> Option<Value> {
-        crate::mcp::approval::capability()
+        codetether_native_mcp_client::approval::capability()
     }
     async fn approval(method: &str, params: Option<Value>) -> Result<Value, JsonRpcError> {
-        crate::mcp::approval::handle(method, params).await
+        codetether_native_mcp_client::approval::handle(method, params).await
     }
     async fn register_registry(catalog: &ServerCatalog, registry: &Arc<Self::Registry>) {
         super::registry::register(catalog, registry).await;

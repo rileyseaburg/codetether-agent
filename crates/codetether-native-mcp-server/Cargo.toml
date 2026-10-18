@@ -1,0 +1,26 @@
+[package]
+name = "codetether-native-mcp-server"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native MCP server registry, approvals and fallback execution"
+
+[dependencies]
+anyhow = "1"
+serde_json = "1"
+codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
+codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
+codetether-mcp-server = { path = "../codetether-mcp-server", version = "0.1.0" }
+codetether-mcp-fallback = { path = "../codetether-mcp-fallback", version = "0.1.0" }
+codetether-native-mcp-client = { path = "../codetether-native-mcp-client", version = "4.7.6-dev.38" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+
+[dev-dependencies]
+base64 = "0.23.1"
+image = { version = "0.25", default-features = false, features = ["png"] }
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+codetether-native-registry = { path = "../codetether-native-registry", version = "0.1.0" }
+codetether-image-tool = { path = "../codetether-image-tool", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

@@ -22,11 +22,8 @@
 pub use codetether_bus_http as bus_bridge;
 use codetether_mcp_server::payload as bus_payload;
 use codetether_native_mcp_client as client;
-pub(crate) use codetether_native_mcp_client::approval;
-pub(crate) use codetether_native_mcp_client::fallback_run_command;
 mod server;
 use codetether_mcp_core::types;
-pub(crate) use codetether_native_mcp_client::tool_policy;
 use codetether_native_mcp_client::transport;
 
 pub use bus_bridge::BusBridge;
@@ -34,6 +31,3 @@ pub use client::{McpClient, McpRegistry};
 pub use server::McpServer;
 pub use transport::{NullTransport, SseTransport, StdioTransport, Transport};
 pub use types::*;
-
-#[cfg(test)]
-mod image_server_tests;

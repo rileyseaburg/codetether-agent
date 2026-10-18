@@ -26484,3 +26484,23 @@ or undeclared dependencies. No manifest or lockfile changes are needed.
 Evidence: artifacts/consolidation-native-startup-routing/. Unrelated working
 files remain unchanged. No Cargo, rustc, Python, compilation or runtime tests
 ran. Full consolidation remains active and incomplete.
+
+### Native MCP server ownership
+
+Moved application MCP registration, approval dispatch, executable-tool policy
+wrapping and fallback registration into codetether-native-mcp-server. The root
+server now selects the existing tool catalog and supplies its executable version
+through PackageVersion, keeping library and application versions independent.
+Five root server adapters are removed. The image-wire regression moves into the
+owning crate with the same tool, PNG data and response assertions; its empty
+native test registry rejects accidental default population.
+
+Static comparisons preserve approval, catalog and fallback calls, tool-handler
+closures, root version identity and the image test body. Module/dependency
+scans cover 730 roots and 617 crates without missing modules, cycles or undeclared
+dependencies; production dependency-scope checks cover the new crate as well.
+Declaration, standalone formatting, file-limit and whitespace checks pass.
+Only the new package/root dependency are staged in Cargo.lock; unrelated files
+remain unchanged. Evidence: artifacts/consolidation-native-mcp-server/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active and incomplete.
