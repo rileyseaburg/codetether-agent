@@ -16066,3 +16066,21 @@ Full workspace consolidation remains active.
   No dependencies changed. Evidence: `artifacts/consolidation-runtime-request/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared runtime command handle
+
+- Moved command submission, asynchronous/nonblocking cancellation, shutdown and
+  steering forwarding into `codetether-session-runtime::handle`. Native code
+  supplies the existing ActiveCancel controller through a four-method contract.
+- Preserved direct cancellation before queue fallback, owned unsent-request
+  recovery, best-effort shutdown, steering reservation and clearing semantics.
+  Clone copies the sender/controller without requiring request cloning.
+- Removed native handle_steering.rs; the handle is now a concrete shared alias.
+  ActiveCancel's type visibility is crate-wide for that alias; its policy and
+  method bodies are unchanged.
+- Verification: all eight moved method bodies, clone bounds, native controller
+  bindings, unchanged runtime/cancellation tests and execution, module/dependency
+  graphs, direct rustfmt, file budgets and diff whitespace. No dependencies
+  changed. Evidence: `artifacts/consolidation-runtime-handle/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

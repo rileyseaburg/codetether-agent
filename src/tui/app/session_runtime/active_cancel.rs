@@ -19,7 +19,7 @@ mod release;
 
 /// Synchronized control plane for cancellation and active-turn steering.
 #[derive(Clone, Default)]
-pub(super) struct ActiveCancel(Arc<Mutex<Option<Lease>>>);
+pub(crate) struct ActiveCancel(Arc<Mutex<Option<Lease>>>);
 
 impl ActiveCancel {
     /// Reserve `session_id` and open its steering inbox before handoff.

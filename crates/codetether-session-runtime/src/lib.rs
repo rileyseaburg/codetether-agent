@@ -54,3 +54,6 @@ pub mod slot;
 
 /// Owned execution requests and runtime command transport data.
 pub mod request;
+
+/// Owned command submission, cancellation and active-turn steering handles.
+pub mod handle;

@@ -7,7 +7,6 @@ mod active_turn;
 mod command;
 mod execute;
 mod handle;
-mod handle_steering;
 mod loop_step;
 mod loop_submit;
 mod notice;
