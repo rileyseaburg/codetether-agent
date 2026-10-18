@@ -1,7 +1,7 @@
 #[path = "proposed_diagnostics_ready.rs"]
 mod ready;
 
-use super::{LspActionResult, client::LspClient, path_to_uri};
+use super::{LspActionResult, LspClient, path_to_uri};
 
 #[tokio::test]
 async fn proposed_content_uses_real_rust_analyzer() {

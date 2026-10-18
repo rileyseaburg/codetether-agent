@@ -22408,3 +22408,29 @@ lockfile remains byte-identical. Evidence:
 `artifacts/consolidation-review-application/`.
 No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
 Full consolidation is active.
+
+### LSP diagnostics regressions colocated with the client crate
+
+Moved repeated TypeScript diagnostics, JSX disk/proposed-content diagnostics,
+real rust-analyzer proposed-content diagnostics and TetherScript linter smoke
+coverage from native `src/lsp` into `codetether-lsp-client::real_server_tests`.
+Six native test/helper files were removed. The broken TetherScript fixture
+moved byte-for-byte from examples into the owning crate's test fixtures.
+A crate-local identity binds the same shared client/manager implementations;
+it advertises a test version and omits the native initialization log callback.
+The native client aliases, application version and initialization log remain
+unchanged. The relocated tests exercise shared diagnostics behavior rather
+than the native identity binding.
+
+Static source comparisons preserve test assertions, timeout values, skip
+conditions, server selection, proposed content and on-disk preservation checks.
+Only imports, fixture location and test identity selection changed. Each moved
+Rust file stays within the 50-code-line budget. Module/dependency checks cover
+699 roots and 571 crates without missing modules or cycles. Direct rustfmt,
+native file-size limits and whitespace checks passed. Only the LSP client
+crate's tempfile, tokio and which test dependency edges are staged in the
+lockfile, using the existing root dependency versions. The unrelated working
+lockfile remains byte-identical. Evidence:
+`artifacts/consolidation-lsp-regressions/`.
+No tests, language servers, Cargo, rustc or Python ran; compilation and runtime
+behavior remain unverified. Full consolidation is active.

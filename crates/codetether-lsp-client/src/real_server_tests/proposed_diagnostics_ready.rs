@@ -1,6 +1,6 @@
 //! Wait for a cold real rust-analyzer to analyze the proposed test document.
 
-use crate::lsp::{DiagnosticInfo, LspActionResult, client::LspClient, path_to_uri};
+use super::super::{DiagnosticInfo, LspActionResult, LspClient, path_to_uri};
 use std::path::Path;
 use tokio::time::{Duration, sleep, timeout};
 

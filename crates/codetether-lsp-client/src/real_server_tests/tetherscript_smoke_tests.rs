@@ -8,12 +8,12 @@
 //! Skips when the `tetherscript` binary is absent so CI without the toolchain
 //! stays green.
 
-use crate::lsp::LspManager;
+use super::LspManager;
 use std::path::PathBuf;
 
-/// Returns the repo-relative smoke fixture with a deliberate parse error.
+/// Returns the crate-local smoke fixture with a deliberate parse error.
 fn broken_fixture() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/tetherscript/_lsp_smoke_broken.tether")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/real_server_tests/fixtures/broken.tether")
 }
 
 #[tokio::test]

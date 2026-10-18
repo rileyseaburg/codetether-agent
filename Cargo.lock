@@ -3496,6 +3496,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-lsp-core",
+ "tempfile",
+ "tokio",
+ "which 8.0.6",
 ]
 
 [[package]]

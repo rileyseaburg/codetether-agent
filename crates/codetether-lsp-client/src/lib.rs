@@ -31,3 +31,6 @@ pub struct LspClient<H: Host> {
 
 /// Shared server and linter manager accepting an identified client type.
 pub use codetether_lsp_core::manager::LspManager;
+
+#[cfg(test)]
+mod real_server_tests;
