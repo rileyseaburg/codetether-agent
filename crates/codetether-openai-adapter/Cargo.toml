@@ -1,0 +1,13 @@
+[package]
+name = "codetether-openai-adapter"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "OpenAI chat request validation and provider message conversion"
+
+[dependencies]
+axum = "0.8"
+codetether-openai-wire = { path = "../codetether-openai-wire", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+serde_json = "1"

@@ -12964,3 +12964,19 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   serialization, HTTP requests, Cargo, rustc or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### OpenAI API conversion extraction
+
+- Moved OpenAI content/message/tool conversion, response projection, model-name
+  normalization and API errors into codetether-openai-adapter. Twelve modules
+  contain at most 43 code lines, with message validation split by role.
+- Native HTTP/provider execution calls the shared adapter. Conversion order,
+  text/image behavior, tool-call validation, error text/status and finish labels
+  are unchanged. The native server tests remain intact.
+- Verification: 116 static comparisons passed for moved functions, each role
+  branch, dispatch and all remaining named server items. Module/dependency
+  checks, direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-openai-adapter/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  conversion execution, HTTP requests, Cargo, rustc or Rust tests ran.
+  Full workspace consolidation remains incomplete.

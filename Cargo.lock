@@ -1272,6 +1272,7 @@ dependencies = [
  "codetether-relay-okr",
  "codetether-authorization-policy",
  "codetether-openai-wire",
+ "codetether-openai-adapter",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6440,6 +6441,16 @@ name = "codetether-openai-wire"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "codetether-openai-adapter"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "codetether-openai-wire",
+ "codetether-provider-core",
  "serde_json",
 ]
 
