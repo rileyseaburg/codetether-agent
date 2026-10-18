@@ -1436,6 +1436,7 @@ dependencies = [
  "codetether-actor",
  "codetether-mux-cli",
  "codetether-mux-lifecycle",
+ "codetether-mux-command",
  "codetether-mux-control",
  "codetether-mux-server",
  "codetether-mux-workspace",
@@ -5631,6 +5632,16 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "codetether-mux-command"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-mux-control",
+ "codetether-mux-lifecycle",
+ "codetether-mux-workspace",
 ]
 
 [[package]]

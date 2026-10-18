@@ -1,6 +1,6 @@
 //! Human-readable mux state for TUI system messages.
 
-use crate::mux::control::MuxSessionSummary;
+use codetether_mux_control::MuxSessionSummary;
 
 pub(super) const HELP: &str = "Mux commands:\n/mux ls\n/mux new NAME [DIRECTORY] [--no-worktree]\n/mux window NAME [DIRECTORY]\n/mux select NAME WINDOW_ID\n/mux close NAME WINDOW_ID\n/mux kill NAME";
 

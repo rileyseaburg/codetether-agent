@@ -1,0 +1,13 @@
+[package]
+name = "codetether-mux-command"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Mux slash-command parsing, control-plane dispatch and result formatting"
+
+[dependencies]
+anyhow = "1"
+codetether-mux-control = { path = "../codetether-mux-control", version = "0.1.0" }
+codetether-mux-lifecycle = { path = "../codetether-mux-lifecycle", version = "0.1.0" }
+codetether-mux-workspace = { path = "../codetether-mux-workspace", version = "0.1.0" }

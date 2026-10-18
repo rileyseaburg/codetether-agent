@@ -18028,3 +18028,22 @@ test/policy/loop source; module resolution and workspace dependency-cycle scans;
 changed-source file limits and whitespace checks. Evidence is in
 `artifacts/consolidation-approval-review/`. No Cargo, rustc, Python, reviewer
 execution or Rust tests were run; compilation and test status remain unverified.
+
+### Mux slash-command pipeline
+
+Moved `src/tui/app/input/mux_command/{action,action_helpers,action_parse,execute,format,tests}.rs`
+into the dedicated `crates/codetether-mux-command` crate. It owns command-prefix
+recognition, argument parsing, action dispatch and human-readable results. The
+existing five parser tests moved with that implementation. Control operations
+now import the existing mux-control, mux-lifecycle and mux-workspace crates
+directly instead of accessing their equivalent native reexports.
+
+The native `mux_command/mod.rs` now only awaits the shared pipeline, presents
+its result with the unchanged `output.rs`, and clears input. Non-mux prompts
+still return without altering the TUI. No mux server/control behavior changed.
+
+Validation: token comparisons of every moved module, command recognition,
+parse-result mapping and native presentation order; unchanged control sources;
+module/dependency graph checks, file-limit ratchet and whitespace checks.
+Evidence: `artifacts/consolidation-mux-command/`. No Cargo, rustc or Python was
+executed. The moved Rust tests were not run; compilation remains unverified.
