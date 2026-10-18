@@ -24851,3 +24851,24 @@ whitespace checks passed. Dependencies, native tests and unrelated working
 changes are unchanged. Evidence: artifacts/consolidation-app-composer/.
 No Cargo, rustc, Python, compiler expansion, UI interaction or tests ran. Full
 consolidation remains active.
+
+### AppState scrolling, timing and streaming adapters moved into owning crates
+
+Moved twenty-six methods into chat-layout (scrolling/paging), tool-panel
+(tool-preview scrolling), telemetry (request/watchdog/tool timing), and
+chat-model (streaming/cache coordination). Native declarations preserve paging
+accessor visibility and the existing paging test module. Removed
+state/scroll_tool_preview.rs and pending_tool.rs; the public pending_tool module
+path remains as a re-export. No dependencies changed.
+
+Expanded comparisons preserve all method implementations, including history
+page requests, timestamp sharing with the watchdog, and conditional cache
+invalidation. Optional formatting commas and top-level macro separators are
+normalized; the initial comparison mismatch is recorded. The declaration audit
+now covers 38 calls, 46 Session methods and 54 AppState methods without unbound
+variables or duplicate methods. Module/dependency scans cover 693 roots and
+574 crates without missing modules or cycles. Direct dependency audit, direct
+rustfmt, file limits and whitespace checks passed. Unrelated working changes
+remain untouched. Evidence: artifacts/consolidation-app-view-state/.
+No Cargo, rustc, Python, compiler expansion, UI interaction or tests ran. Full
+consolidation remains active.

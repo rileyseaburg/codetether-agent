@@ -33,3 +33,6 @@ pub mod webview;
 
 /// History-aware message-panel drawing and hit tracking.
 pub mod messages;
+
+/// Application-local UI state adapters.
+pub mod state_binding;

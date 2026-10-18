@@ -38,3 +38,6 @@ pub use scroll_state::ToolPreviewScrollState;
 pub mod error;
 /// Bounded tool-argument and output-preview settings.
 pub mod limits;
+
+/// Application-local UI state adapters.
+pub mod state_binding;

@@ -134,3 +134,6 @@ pub use tool_timing_state::ToolTimingState;
 
 #[cfg(test)]
 mod request_timing_tests;
+
+/// Application-local UI state adapters.
+pub mod state_binding;

@@ -18,3 +18,6 @@ mod streaming_text;
 pub use streaming_state::StreamingState;
 /// Frontend streaming-text bounds.
 pub mod limits;
+
+/// Application-local UI state adapters.
+pub mod state_binding;
