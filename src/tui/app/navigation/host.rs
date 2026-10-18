@@ -42,7 +42,7 @@ impl Host for Navigation<'_> {
         unreachable!("unmapped navigation action: {action:?}");
     }
     fn file_picker_escape(&mut self) -> bool {
-        crate::tui::app::file_picker::file_picker_escape(self.0)
+        crate::tui::app::file_picker::file_picker_escape(&mut self.0.state.file_picker)
     }
 }
 

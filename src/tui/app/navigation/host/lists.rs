@@ -34,16 +34,16 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.composer.select_next_slash_suggestion();
         }
         Action::FilePrevious => {
-            crate::tui::app::file_picker::file_picker_select_prev(app);
+            crate::tui::app::file_picker::file_picker_select_prev(&mut app.state.file_picker);
         }
         Action::FileNext => {
-            crate::tui::app::file_picker::file_picker_select_next(app);
+            crate::tui::app::file_picker::file_picker_select_next(&mut app.state.file_picker);
         }
         Action::FileFirst => {
-            crate::tui::app::file_picker::file_picker_select_first(app);
+            crate::tui::app::file_picker::file_picker_select_first(&mut app.state.file_picker);
         }
         Action::FileLast => {
-            crate::tui::app::file_picker::file_picker_select_last(app);
+            crate::tui::app::file_picker::file_picker_select_last(&mut app.state.file_picker);
         }
         _ => return false,
     }

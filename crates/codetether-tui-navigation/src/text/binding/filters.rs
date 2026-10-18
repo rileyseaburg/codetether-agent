@@ -21,10 +21,10 @@ macro_rules! __frontend_text_filters {
                         app.state.model_picker.model_filter_backspace();
                     }
                     Action::FilePush(c) => {
-                        $push(app, *c);
+                        $push(&mut app.state.file_picker, *c);
                     }
                     Action::FileBackspace => {
-                        $backspace(app);
+                        $backspace(&mut app.state.file_picker);
                     }
                     _ => return false,
                 }

@@ -16,10 +16,10 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.chat_viewport.scroll_down(*value);
         }
         Action::FilePageUp => {
-            crate::tui::app::file_picker::file_picker_page_up(app);
+            crate::tui::app::file_picker::file_picker_page_up(&mut app.state.file_picker);
         }
         Action::FilePageDown => {
-            crate::tui::app::file_picker::file_picker_page_down(app);
+            crate::tui::app::file_picker::file_picker_page_down(&mut app.state.file_picker);
         }
         Action::ChatPageUp => {
             crate::tui::app::state::scroll::view(&mut app.state).page_up();

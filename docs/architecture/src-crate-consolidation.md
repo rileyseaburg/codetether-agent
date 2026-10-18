@@ -28498,3 +28498,22 @@ checks pass (724 roots, 617 crates). Evidence:
 artifacts/consolidation-state-tests/. No dependencies or unrelated working files
 changed. No Cargo, rustc, Python, compilation or runtime tests ran; the moved
 tests were not executed. Full consolidation remains active and incomplete.
+
+### Direct file-picker navigation and crate-owned tests
+
+Removed ten root file-picker navigation wrappers across nav, nav_filter,
+nav_jump and nav_select. Their exports now resolve to the existing crate
+functions over FilePickerState. Navigation, Enter and text-filter bindings pass
+the picker state directly. The root attachment workflow and its tests remain
+because they coordinate the application composer.
+
+Moved six pure navigation/filter tests and their local selection helper into
+codetether-file-picker::tests::navigation. They construct the same picker data
+with the crate's existing open_file_picker function. Static source comparisons
+cover caller arguments, callback signatures, exports and all test transformations.
+An initial verifier mismatch from module ordering was corrected and retained.
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks pass (724 roots, 617 crates). Evidence:
+artifacts/consolidation-file-picker-methods/. No dependencies or unrelated
+working files changed. No Cargo, rustc, Python, compilation or runtime tests ran;
+the moved tests were not executed. Full consolidation remains active and incomplete.

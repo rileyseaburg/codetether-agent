@@ -15,7 +15,7 @@ macro_rules! __frontend_enter_synchronous {
                     self.app.state.bus_log.filter_input_mode
                 }
                 fn file_picker(&mut self) {
-                    $file(self.app, self.cwd);
+                    $file(&mut self.app.state.file_picker, self.cwd);
                 }
                 fn ralph(&mut self) {
                     self.app.state.ralph.enter_detail();
