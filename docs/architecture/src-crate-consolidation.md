@@ -21315,3 +21315,20 @@ rustfmt, file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-session-runtime-spawn/`. No Cargo, rustc, or Python
 commands ran. Compilation and runtime tests remain unverified, and full
 workspace consolidation remains active.
+
+### Shared MCP catalog setup sequencing
+
+Moved configured-registry versus fallback selection and the post-registration
+count logs from the native MCP server into `codetether-mcp-server::setup`.
+The shared setup host borrows the same registry Arc and catalog. Native methods
+supply registration effects and keep the existing public setup entrypoint.
+The obsolete private fallback wrapper is replaced by the equivalent host hook.
+
+Static body comparison preserves both branches, registration awaits, count reads,
+log text/target, and the registry branch's early return. Native forwarding and
+registry/catalog identity were checked separately. Source/dependency graphs
+across 697 roots and 563 crates, direct rustfmt, native file-size limits, and
+whitespace checks passed. No dependency or lockfile changes. Evidence:
+`artifacts/consolidation-mcp-setup/`. No Cargo, rustc, or Python commands ran;
+compilation and runtime tests remain unverified. Complete consolidation is
+still ongoing.

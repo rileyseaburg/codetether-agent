@@ -18,3 +18,6 @@ pub use invocation::invoke;
 pub mod payload;
 /// Application tool registration and filtering.
 pub mod registry;
+
+/// Registry selection and tool-registration sequencing.
+pub mod setup;
