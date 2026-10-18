@@ -1,7 +1,8 @@
-use crate::tool::ToolResult;
+//! Structured validation failures for direct swarm task input.
+use codetether_tool_core::ToolResult;
 use serde_json::json;
 
-pub(super) fn task_error(code: &str, message: &str) -> ToolResult {
+pub fn task_error(code: &str, message: &str) -> ToolResult {
     ToolResult::structured_error(
         code,
         "swarm_execute",

@@ -1,24 +1,9 @@
+//! Normalize a single string or object task entry.
 use super::{input_error::task_error, task_input::TaskInput};
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 
-pub(super) fn parse_tasks(params: &Value) -> Result<Vec<TaskInput>, ToolResult> {
-    let Some(values) = params.get("tasks").and_then(Value::as_array) else {
-        return Err(task_error(
-            "MISSING_FIELD",
-            "tasks must be a non-empty array",
-        ));
-    };
-    if values.is_empty() {
-        return Err(task_error(
-            "INVALID_FIELD",
-            "tasks must contain at least one task",
-        ));
-    }
-    values.iter().enumerate().map(parse_task).collect()
-}
-
-fn parse_task((index, value): (usize, &Value)) -> Result<TaskInput, ToolResult> {
+pub(super) fn parse_task((index, value): (usize, &Value)) -> Result<TaskInput, ToolResult> {
     let default_name = format!("Task {}", index + 1);
     if let Some(instruction) = value.as_str() {
         return Ok(TaskInput {

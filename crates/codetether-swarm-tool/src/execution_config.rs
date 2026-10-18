@@ -3,16 +3,28 @@
 use super::model_request;
 use serde_json::Value;
 
-pub(super) struct ExecutionConfig {
-    pub(super) concurrency: usize,
-    pub(super) aggregation_strategy: String,
-    pub(super) model: Option<String>,
-    pub(super) max_steps: usize,
-    pub(super) timeout_secs: u64,
+/// Effective execution settings with invocation defaults applied.
+/// # Examples
+/// ```
+/// let config = codetether_swarm_tool::execution_config::ExecutionConfig::from_params(&serde_json::json!({}));
+/// assert_eq!(config.concurrency, 5);
+/// ```
+pub struct ExecutionConfig {
+    /// Concurrent worker limit, clamped to 1 through 20.
+    pub concurrency: usize,
+    /// Requested failure aggregation strategy.
+    pub aggregation_strategy: String,
+    /// Explicit or inherited model reference.
+    pub model: Option<String>,
+    /// Per-worker step budget.
+    pub max_steps: usize,
+    /// Per-worker timeout in seconds.
+    pub timeout_secs: u64,
 }
 
 impl ExecutionConfig {
-    pub(super) fn from_params(params: &Value) -> Self {
+    /// Apply defaults and clamp concurrency while preserving requested budgets.
+    pub fn from_params(params: &Value) -> Self {
         Self {
             concurrency: usize_value(params, "concurrency_limit", 5).clamp(1, 20),
             aggregation_strategy: params

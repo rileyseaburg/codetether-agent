@@ -1,6 +1,16 @@
+//! JSON schema exposed to providers for direct swarm execution.
 use serde_json::{Value, json};
 
-pub(super) fn parameters() -> Value {
+/// Describe accepted task inputs and optional execution settings.
+/// # Arguments
+/// * No arguments.
+/// # Returns
+/// The provider-facing tool parameter schema.
+/// # Examples
+/// ```
+/// assert_eq!(codetether_swarm_tool::schema::parameters()["type"], "object");
+/// ```
+pub fn parameters() -> Value {
     json!({
         "type": "object",
         "properties": {

@@ -1,29 +1,10 @@
-//! Provider and model resolution for swarm workers.
-
-use crate::provider::parse_model_string;
-use crate::swarm::orchestrator::{choose_default_provider, default_model_for_provider};
+//! Provider availability checks and swarm-specific fallback selection.
+use super::model_defaults::default_model_for_provider;
 use anyhow::{Result, anyhow};
+use codetether_provider_core::routing::parse_model_string;
+use codetether_provider_policy::choose_default_provider;
 
-#[derive(Clone, Debug, serde::Serialize)]
-pub(super) struct ModelSelection {
-    pub(super) requested_model: Option<String>,
-    pub(super) resolved_provider: String,
-    pub(super) resolved_model: String,
-}
-
-pub(super) fn resolve(requested: Option<&str>, providers: &[&str]) -> Result<ModelSelection> {
-    let (provider, model) = match requested {
-        Some(model_ref) => resolve_requested(model_ref, providers)?,
-        None => resolve_default(providers)?,
-    };
-    Ok(ModelSelection {
-        requested_model: requested.map(str::to_string),
-        resolved_provider: provider,
-        resolved_model: model,
-    })
-}
-
-fn resolve_requested(model_ref: &str, providers: &[&str]) -> Result<(String, String)> {
+pub(super) fn resolve_requested(model_ref: &str, providers: &[&str]) -> Result<(String, String)> {
     let (provider, model) = parse_model_string(model_ref);
     let provider = provider.map(|name| if name == "zhipuai" { "zai" } else { name });
     let provider = match provider {
@@ -42,7 +23,7 @@ fn resolve_requested(model_ref: &str, providers: &[&str]) -> Result<(String, Str
     Ok((provider, model))
 }
 
-fn resolve_default(providers: &[&str]) -> Result<(String, String)> {
+pub(super) fn resolve_default(providers: &[&str]) -> Result<(String, String)> {
     let provider = default_provider(providers)?;
     let model = default_model_for_provider(&provider);
     Ok((provider, model))

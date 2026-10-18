@@ -108,6 +108,7 @@ members = [
     "crates/codetether-relay-tool",
     "crates/codetether-ralph-core",
     "crates/codetether-swarm-core",
+    "crates/codetether-swarm-tool",
     "crates/codetether-swarm-share",
     "crates/codetether-search",
     "crates/codetether-secrets",
@@ -596,6 +597,7 @@ codetether-a2a-core = { path = "crates/codetether-a2a-core", version = "0.1.0" }
 codetether-a2a-grpc = { path = "crates/codetether-a2a-grpc", version = "0.1.0" }
 codetether-a2a-discovery = { path = "crates/codetether-a2a-discovery", version = "0.1.0" }
 codetether-a2a-stream = { path = "crates/codetether-a2a-stream", version = "0.1.0" }
+codetether-swarm-tool = { path = "crates/codetether-swarm-tool", version = "0.1.0" }
 codetether-swarm-core = { path = "crates/codetether-swarm-core", version = "0.1.0" }
 codetether-swarm-share = { path = "crates/codetether-swarm-share", version = "0.1.0" }
 codetether-ralph-core = { path = "crates/codetether-ralph-core", version = "0.1.0" }

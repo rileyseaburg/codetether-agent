@@ -1286,6 +1286,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-swarm-tool",
  "codetether-tool-registry",
  "codetether-tui-navigation",
  "codetether-provider-registry",
@@ -7406,6 +7407,19 @@ dependencies = [
  "codetether-tool-core",
  "codetether-provider-core",
  "codetether-plugin-verification",
+]
+
+[[package]]
+name = "codetether-swarm-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "codetether-provider-core",
+ "codetether-provider-policy",
+ "codetether-swarm-core",
+ "codetether-tool-core",
 ]
 
 [[package]]

@@ -1,9 +1,19 @@
 //! Map the structured swarm aggregate into a truthful tool outcome.
 
-use crate::tool::ToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 
-pub(super) fn result(response: Value, failures: usize) -> ToolResult {
+/// Wrap a serialized swarm report with truthful tool success.
+/// # Arguments
+/// * `response` — Structured worker report.
+/// * `failures` — Number of failed workers.
+/// # Returns
+/// Success only when no workers failed.
+/// # Examples
+/// ```
+/// assert!(!codetether_swarm_tool::aggregate::result(serde_json::json!({}), 1).success);
+/// ```
+pub fn result(response: Value, failures: usize) -> ToolResult {
     let output = response.to_string();
     if failures == 0 {
         ToolResult::success(output)

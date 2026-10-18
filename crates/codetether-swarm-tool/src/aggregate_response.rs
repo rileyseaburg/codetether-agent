@@ -3,7 +3,19 @@
 use super::task_result::TaskResult;
 use serde_json::{Value, json};
 
-pub(super) fn build(results: Vec<TaskResult>, failures: usize, strategy: &str) -> Value {
+/// Serialize worker outcomes and aggregate failure status.
+/// # Arguments
+/// * `results` — Worker outcomes in task order.
+/// * `failures` — Number of failed workers.
+/// * `strategy` — Requested aggregation strategy.
+/// # Returns
+/// JSON containing status, worker results, and summary counts.
+/// # Examples
+/// ```
+/// let report = codetether_swarm_tool::aggregate_response::build(vec![], 0, "all");
+/// assert_eq!(report["status"], "success");
+/// ```
+pub fn build(results: Vec<TaskResult>, failures: usize, strategy: &str) -> Value {
     let total = results.len();
     let successes = results.iter().filter(|result| result.success).count();
     let status = status(failures, strategy);

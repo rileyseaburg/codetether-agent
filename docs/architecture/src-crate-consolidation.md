@@ -15211,3 +15211,29 @@ Full workspace consolidation remains active.
 - No Cargo, rustc, Python, compilation, or Rust tests were executed. The broader
   consolidation remains incomplete, including swarm execution, native session
   adapters, UI command effects, and application bootstrap implementation.
+
+### Direct swarm invocation crate
+
+- Added `crates/codetether-swarm-tool` as the owner of direct swarm task input,
+  invocation settings, JSON schema, model selection, worktree specifications,
+  worker result contracts, completion classification, and aggregate reporting.
+  Removed their implementation files from `src/tool/swarm_execute/`; the native
+  executor now imports the crate. Runtime execution and native bindings remain
+  to be consolidated.
+- Moved the historical swarm model defaults out of
+  `src/swarm/orchestrator/model_policy.rs`, which now re-exports them. Preserved
+  its defaults (including `zai -> glm-5.3` and unknown provider -> `MiniMax-M3`)
+  instead of replacing them with the different general provider defaults.
+- Split array validation from single-task parsing and model selection from
+  provider availability resolution. Added public API documentation and kept
+  all new crate files within 50 non-comment/nonblank lines.
+- Relocated the existing input, model-selection/default-provider, worker result,
+  and aggregate tests without changing their assertions.
+- Verification: 17 Node token-comparison groups checked moved implementations
+  and tests, helper splits, unchanged native execution, model defaults, workspace
+  wiring, and isolated lockfile changes. Module reachability, dependency DAG,
+  direct rustfmt, file-limit ratchet, and `git diff --check` passed. Evidence:
+  `artifacts/consolidation-swarm-invocation/`.
+- Cargo, rustc, Python, compilation and Rust tests were not run. The existing
+  unrelated lockfile and A2A worktree changes were preserved. Full consolidation
+  is still incomplete.

@@ -12,31 +12,20 @@ use std::sync::Arc;
 mod abort_on_drop;
 pub(crate) mod agent_prompt;
 pub(crate) mod agent_registry;
-mod aggregate;
-mod aggregate_response;
+use codetether_swarm_tool::aggregate;
+use codetether_swarm_tool::aggregate_response;
 mod default_impl;
-mod execution_config;
-mod input;
-mod input_error;
-#[cfg(test)]
-#[path = "swarm_execute/input_tests.rs"]
-mod input_tests;
-mod model_request;
-mod model_selection;
-#[cfg(test)]
-#[path = "swarm_execute/model_selection_tests.rs"]
-mod model_selection_tests;
+use codetether_swarm_tool::execution_config;
+use codetether_swarm_tool::input;
+use codetether_swarm_tool::model_selection;
 mod provider_setup;
-mod schema;
+use codetether_swarm_tool::schema;
 pub(crate) mod support;
 mod support_task;
-mod task_input;
-mod task_result;
-#[cfg(test)]
-#[path = "swarm_execute/task_result_tests.rs"]
-mod task_result_tests;
+use codetether_swarm_tool::task_input;
+use codetether_swarm_tool::task_result;
 pub(crate) mod tui_bridge;
-mod worktree_specs;
+use codetether_swarm_tool::worktree_specs;
 mod worktrees;
 
 use execution_config::ExecutionConfig;

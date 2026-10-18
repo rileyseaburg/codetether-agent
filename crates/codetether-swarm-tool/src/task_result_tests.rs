@@ -1,6 +1,6 @@
 use super::model_selection::ModelSelection;
 use super::task_result::{TaskResult, completed};
-use crate::swarm::executor::AgentLoopExit;
+use codetether_swarm_core::agent_retry::AgentLoopExit;
 
 #[test]
 fn only_completed_agent_loops_are_successful() {
