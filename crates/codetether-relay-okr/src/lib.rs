@@ -26,3 +26,6 @@ pub use rotation::next_go_model;
 pub const GO_SWAP_MODEL_GLM: &str = "zai/glm-5";
 /// MiniMax model used by the relay rotation.
 pub const GO_SWAP_MODEL_MINIMAX: &str = "minimax/MiniMax-M3";
+
+/// CLI relay progress persistence and final outcome recording.
+pub mod progress;

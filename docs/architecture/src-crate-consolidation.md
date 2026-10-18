@@ -13940,3 +13940,17 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, RLM analysis or provider calls ran. Full workspace
   consolidation remains unfinished.
+
+### Relay OKR progress extraction
+
+- Moved CLI relay target loading, monotonic turn progress and final outcome
+  recording into the existing codetether-relay-okr crate's progress module.
+  Files separate target lookup, advancement, finalization, evidence, outcomes,
+  UUID guarding and the execution report passed by the relay loop.
+- Query ordering, optional-run checks, best-effort writes, resumability gating,
+  progress arithmetic, outcome links and final statuses remain unchanged.
+- Verification: five static expanded-flow/full-native-source/size checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-relay-progress/.
+- No dependencies or lockfile entries changed. No Cargo, rustc, Rust tests or
+  OKR persistence operations ran. Full workspace consolidation remains unfinished.
