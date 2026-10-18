@@ -7,7 +7,7 @@ pub(super) async fn github_client(context: &RepoContext) -> Result<Client> {
     let token = std::env::var("CODETETHER_TOKEN").ok();
     let worker_id = std::env::var("CODETETHER_WORKER_ID").ok();
     let path = format!("{}/{}.git", context.owner, context.repo);
-    tracing::debug!(
+    tracing::debug!(target: "codetether_agent::github_pr::client::credentials",
         repo_root = %context.repo_root.display(),
         workspace_id = %context.workspace_id,
         github_installation_id = context.github_installation_id.as_deref().unwrap_or(""),

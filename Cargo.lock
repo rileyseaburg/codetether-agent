@@ -1624,6 +1624,7 @@ dependencies = [
  "codetether-git-tool",
  "codetether-github-auth",
  "codetether-github-pr",
+ "codetether-github-pr-cli",
  "codetether-goal-core",
  "codetether-goal-editor",
  "codetether-google-auth",
@@ -3008,6 +3009,20 @@ dependencies = [
  "codetether-a2a-http",
  "reqwest 0.13.4",
  "tokio",
+]
+
+[[package]]
+name = "codetether-github-pr-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-a2a-http",
+ "codetether-cli-options",
+ "codetether-github-pr",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

@@ -66,6 +66,7 @@ members = [
     "crates/codetether-goal-runtime",
     "crates/codetether-grep-tool",
     "crates/codetether-github-pr",
+    "crates/codetether-github-pr-cli",
     "crates/codetether-git-tool",
     "crates/codetether-github-auth",
     "crates/codetether-google-auth",
@@ -686,6 +687,7 @@ codetether-ralph-run = { path = "crates/codetether-ralph-run", version = "0.1.0"
 codetether-ralph-runtime = { path = "crates/codetether-ralph-runtime", version = "0.1.0" }
 codetether-benchmark = { path = "crates/codetether-benchmark", version = "0.1.0" }
 codetether-github-pr = { path = "crates/codetether-github-pr", version = "0.1.0" }
+codetether-github-pr-cli = { path = "crates/codetether-github-pr-cli", version = "0.1.0" }
 codetether-crash = { path = "crates/codetether-crash", version = "0.1.0" }
 codetether-moltbook = { path = "crates/codetether-moltbook", version = "0.1.0" }
 codetether-search = { path = "crates/codetether-search", version = "0.1.0" }

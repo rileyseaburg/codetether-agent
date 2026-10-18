@@ -1,0 +1,17 @@
+[package]
+name = "codetether-github-pr-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "GitHub PR CLI requests, credential acquisition and output"
+
+[dependencies]
+anyhow = "1"
+codetether-a2a-http = { path = "../codetether-a2a-http", version = "0.1.0" }
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-github-pr = { path = "../codetether-github-pr", version = "0.1.0" }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"

@@ -18841,3 +18841,23 @@ reachability, dependency-cycle checks, file-size ratchet, whitespace and direct
 formatting. Evidence: `artifacts/consolidation-mux-tool/`. No Cargo, rustc,
 Python, Rust tests or live mux operations ran; compilation and runtime behavior
 remain unverified.
+
+### GitHub PR CLI orchestration
+
+Moved PR create/update argument handling, body selection, A2A credential
+acquisition, result construction and CLI output into `codetether-github-pr-cli`.
+The native GitHub PR module re-exports run and retains the existing lifecycle,
+CI and provenance compatibility modules. Shared CLI option, repository-context,
+credential and HTTP services are used directly without application callbacks.
+
+Body/body-file precedence, credential environment reads, repository query fields,
+JSON and key/value output, serialized result order and the original credential
+diagnostic target are preserved. The lock entry reuses the existing shared PR
+HTTP client's resolved reqwest version.
+
+Validation: five complete function/signature comparisons, serialized fields,
+shared import identities, unchanged CLI caller and service modules, lexical
+module reachability, dependency-cycle checks, file-size ratchet, whitespace and
+formatting. Evidence: `artifacts/consolidation-github-pr-cli/`. No Cargo, rustc,
+Python, Rust tests, credential requests or PR publication were executed;
+compilation and runtime behavior remain unverified.
