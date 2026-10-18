@@ -4,7 +4,20 @@ use super::{CoordinationReply, LeaseRegistry, time};
 use std::path::{Path, PathBuf};
 
 impl LeaseRegistry {
-    pub(in crate::mux) fn acquire(
+    /// Atomically acquire every requested path or return all conflicts.
+    /// # Arguments
+    /// `owner` and `agent` identify the requester; `workspace` scopes `paths`.
+    /// # Returns
+    /// A grant, conflict report, or whole-workspace rejection.
+    /// # Panics
+    /// Panics if the lease-table mutex is poisoned.
+    /// # Examples
+    /// ```
+    /// let registry = codetether_worktree_lease::LeaseRegistry::new();
+    /// let reply = registry.acquire("turn", "agent", std::path::Path::new("/repo"), vec!["a.rs".into()]);
+    /// assert!(matches!(reply, codetether_worktree_lease::CoordinationReply::Acquired { .. }));
+    /// ```
+    pub fn acquire(
         &self,
         owner: &str,
         agent: &str,

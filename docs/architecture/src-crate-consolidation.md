@@ -10175,3 +10175,19 @@ code lines. Evidence is in `artifacts/consolidation-mutation-scope/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python, classified
 commands, coordinator calls or filesystem test fixtures were executed.
 Full workspace consolidation remains active.
+
+### Dedicated worktree-lease authority
+
+Moved mux lease records, wire requests/replies, the atomic registry, conflict
+checks, TTL handling, renewal/release, notifications and bounded waiting into
+`crates/codetether-worktree-lease`. Twenty-one modules retain the exact shared
+mutation-scope check and serializable protocol. The native mux lease module
+now re-exports the authority; client transport and server handling are unchanged.
+
+Twenty-six static comparisons/checks cover complete implementation modules,
+wire attributes, constants, ten original tests, shared scope checks and unchanged
+consumers. Module/dependency graphs, file budgets and whitespace checks passed;
+new files contain at most 40 code lines. Evidence is in
+`artifacts/consolidation-worktree-lease/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python, coordinator processes or lease operations ran.
+Full workspace consolidation remains active.

@@ -4,13 +4,20 @@ use super::{WorktreeLease, key::LeaseKey};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-pub(in crate::mux) struct LeaseRegistry {
+/// Thread-safe, process-local authority for exclusive worktree path ownership.
+/// # Examples
+/// ```
+/// let registry = codetether_worktree_lease::LeaseRegistry::new();
+/// assert!(matches!(registry.snapshot(), codetether_worktree_lease::CoordinationReply::Snapshot { .. }));
+/// ```
+pub struct LeaseRegistry {
     pub(super) entries: Mutex<HashMap<LeaseKey, WorktreeLease>>,
     pub(super) changes: tokio::sync::watch::Sender<u64>,
 }
 
 impl LeaseRegistry {
-    pub(in crate::mux) fn new() -> Self {
+    /// Create an empty lease table with its change-notification channel.
+    pub fn new() -> Self {
         let (changes, _) = tokio::sync::watch::channel(0);
         Self {
             entries: Mutex::new(HashMap::new()),

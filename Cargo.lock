@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-worktree-lease",
  "codetether-mutation-scope",
  "codetether-request-preparation",
  "codetether-evidence-runtime",
@@ -5075,6 +5076,17 @@ version = "0.1.0"
 dependencies = [
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-worktree-lease"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "codetether-mutation-scope",
+ "serde",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

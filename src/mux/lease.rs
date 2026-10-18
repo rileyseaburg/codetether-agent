@@ -1,40 +1,5 @@
-//! Authoritative shared-worktree leases owned by one mux server.
-
-#[path = "lease/acquire.rs"]
-mod acquire;
-#[path = "lease/claim.rs"]
-mod claim;
-#[path = "lease/conflict.rs"]
-mod conflict;
-#[path = "lease/key.rs"]
-mod key;
-#[path = "lease/lifecycle.rs"]
-mod lifecycle;
-#[path = "lease/record.rs"]
-mod record;
-#[path = "lease/registry.rs"]
-mod registry;
-#[path = "lease/reply.rs"]
-mod reply;
-#[path = "lease/reply_wait.rs"]
-mod reply_wait;
-#[path = "lease/request.rs"]
-mod request;
-#[path = "lease/scope.rs"]
-mod scope;
-#[path = "lease/signal.rs"]
-mod signal;
-#[path = "lease/time.rs"]
-mod time;
-#[path = "lease/wait.rs"]
-mod wait;
-
-pub(crate) use record::WorktreeLease;
-pub(in crate::mux) use registry::LeaseRegistry;
-pub(crate) use reply::CoordinationReply;
-pub(in crate::mux) use request::CoordinationRequest;
-pub(crate) use scope::workspace_claim;
-pub(in crate::mux) const ACQUIRE_WAIT_MILLIS: u64 = 60_000;
-
-#[cfg(test)]
-mod tests;
+//! Shared worktree lease authority and coordination contracts.
+pub(in crate::mux) use codetether_worktree_lease::{
+    ACQUIRE_WAIT_MILLIS, CoordinationRequest, LeaseRegistry,
+};
+pub(crate) use codetether_worktree_lease::{CoordinationReply, WorktreeLease, workspace_claim};

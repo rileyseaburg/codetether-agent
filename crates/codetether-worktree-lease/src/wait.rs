@@ -5,7 +5,22 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 impl LeaseRegistry {
-    pub(in crate::mux) async fn acquire_wait(
+    /// Acquire paths, waiting for release or expiry within the capped budget.
+    /// # Arguments
+    /// `owner`, `agent`, `workspace` and `paths` describe the claim; `wait_ms`
+    /// is capped at [crate::ACQUIRE_WAIT_MILLIS].
+    /// # Returns
+    /// The final acquisition reply annotated with elapsed wait time.
+    /// # Panics
+    /// Panics if the lease-table mutex is poisoned.
+    /// # Examples
+    /// ```no_run
+    /// # async fn example() {
+    /// let registry = codetether_worktree_lease::LeaseRegistry::new();
+    /// let _reply = registry.acquire_wait("turn", "agent", std::path::Path::new("/repo"), vec!["a.rs".into()], 100).await;
+    /// # }
+    /// ```
+    pub async fn acquire_wait(
         &self,
         owner: &str,
         agent: &str,

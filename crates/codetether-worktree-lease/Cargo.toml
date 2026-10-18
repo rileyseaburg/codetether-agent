@@ -1,0 +1,16 @@
+[package]
+name = "codetether-worktree-lease"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Atomic worktree path leases and coordination message contracts"
+
+[dependencies]
+chrono = "0.4"
+codetether-mutation-scope = { path = "../codetether-mutation-scope", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["sync", "time", "macros", "rt"] }
+
+[dev-dependencies]
+tempfile = "3"

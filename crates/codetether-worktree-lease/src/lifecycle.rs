@@ -3,7 +3,8 @@
 use super::{CoordinationReply, LeaseRegistry, time};
 
 impl LeaseRegistry {
-    pub(in crate::mux) fn renew(&self, owner: &str) -> CoordinationReply {
+    /// Renew unexpired leases for `owner`; panics if the table mutex is poisoned.
+    pub fn renew(&self, owner: &str) -> CoordinationReply {
         let mut entries = self.entries.lock().unwrap();
         reap(&mut entries);
         let mut count = 0;
@@ -14,7 +15,8 @@ impl LeaseRegistry {
         CoordinationReply::Renewed { count }
     }
 
-    pub(in crate::mux) fn release(&self, owner: &str) -> CoordinationReply {
+    /// Remove `owner` leases and wake waiters; panics if the mutex is poisoned.
+    pub fn release(&self, owner: &str) -> CoordinationReply {
         let count = {
             let mut entries = self.entries.lock().unwrap();
             let before = entries.len();
@@ -27,7 +29,8 @@ impl LeaseRegistry {
         CoordinationReply::Released { count }
     }
 
-    pub(in crate::mux) fn snapshot(&self) -> CoordinationReply {
+    /// Snapshot unexpired leases; panics if the table mutex is poisoned.
+    pub fn snapshot(&self) -> CoordinationReply {
         let mut entries = self.entries.lock().unwrap();
         reap(&mut entries);
         CoordinationReply::Snapshot {
