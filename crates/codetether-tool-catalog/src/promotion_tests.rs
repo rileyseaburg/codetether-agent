@@ -1,7 +1,7 @@
 //! Regression tests for compact-profile schema promotion.
 
 use super::promote;
-use crate::provider::ToolDefinition;
+use codetether_provider_core::ToolDefinition;
 use serde_json::json;
 
 fn tool(name: &str) -> ToolDefinition {

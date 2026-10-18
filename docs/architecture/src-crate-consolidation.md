@@ -10017,3 +10017,20 @@ test is unchanged. Module/dependency graphs, file budgets and whitespace checks
 passed; new crate files contain at most 42 code lines. Evidence is in
 `artifacts/consolidation-tool-parallel/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python or tool execution ran. Full consolidation remains active.
+
+### Dedicated tool-catalog crate
+
+Moved fallback tool-use prompt construction, the virtual list_tools schema,
+full-schema lookup, compact filtered listing and advertised-schema promotion
+into `crates/codetether-tool-catalog`. Eight modules separate prompt text,
+schema, request dispatch, lookup, listing, promotion and regression cases.
+Native bootstrap exports and discovery recording retain their existing callers.
+
+Twelve static comparisons cover exact prompt/schema contents, split lookup and
+listing logic, case-insensitive idempotent promotion, unchanged native discovery
+recording, existing tests and request consumers. Module/dependency graphs,
+file budgets and whitespace checks passed; the largest new crate file has 39
+code lines. Three original promotion tests moved without execution. Evidence is
+in `artifacts/consolidation-tool-catalog/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python or tool execution ran. Full workspace
+consolidation remains active.
