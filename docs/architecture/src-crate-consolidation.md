@@ -24049,3 +24049,21 @@ and 572 crates without missing modules or cycles. Direct rustfmt, source file
 limits and whitespace checks passed. Unrelated working changes are preserved.
 Evidence: artifacts/consolidation-thought-normalization/. No tests, Cargo,
 rustc, Python or compilation ran. Full consolidation remains active.
+
+### Persona and lineage regressions moved into the runtime crate
+
+Moved persona creation/lineage, spawn-depth and branching-limit test files into
+codetether-cognition-runtime. Their contents are byte-identical. Local request
+and runtime-option fixtures preserve the original values. A test host supplies
+empty initial state and no thinker; its driver rejects unexpected background
+startup. These tests exercise persona APIs without starting the loop. Native
+runtime fixtures remain for the lifecycle/governance tests that still need
+them. Enabled tokio's existing macros/runtime features as dev dependencies.
+
+Static comparisons preserve all moved test files and fixture bodies. The empty
+initial state matches the native test-mode policy. Module/dependency scans
+cover 691 roots and 572 crates without missing modules or cycles. Direct
+rustfmt, source file limits and whitespace checks passed. The feature-only
+manifest change requires no lockfile edits; unrelated changes are untouched.
+Evidence: artifacts/consolidation-persona-tests/. No tests, Cargo, rustc,
+Python or compilation ran. Full consolidation remains active.

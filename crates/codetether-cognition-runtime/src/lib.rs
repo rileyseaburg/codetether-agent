@@ -34,3 +34,5 @@ pub use drive::{drive, run_tick};
 /// Standard thinker, storage and tick composition for application runtimes.
 pub mod application;
 mod http;
+#[cfg(test)]
+mod tests;

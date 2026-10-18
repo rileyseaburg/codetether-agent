@@ -133,15 +133,6 @@ mod idle_reap_tests;
 #[path = "lifecycle_tests.rs"]
 mod lifecycle_tests;
 #[cfg(test)]
-#[path = "persona_branch_tests.rs"]
-mod persona_branch_tests;
-#[cfg(test)]
-#[path = "persona_depth_tests.rs"]
-mod persona_depth_tests;
-#[cfg(test)]
-#[path = "persona_tests.rs"]
-mod persona_tests;
-#[cfg(test)]
 #[path = "tests_request.rs"]
 mod tests_request;
 #[cfg(test)]
