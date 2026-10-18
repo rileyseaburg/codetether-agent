@@ -27,3 +27,6 @@ pub use token_delta::TokenDelta;
 pub use token_estimate::TokenEstimate;
 pub use token_source::TokenSource;
 pub use truncation::ContextTruncation;
+
+/// Bounded queued-event delivery with cumulative-text coalescing.
+pub mod drain;

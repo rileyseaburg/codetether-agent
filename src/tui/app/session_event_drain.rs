@@ -5,7 +5,7 @@
 //! a completion-notice drain that flushes pending stream events before the TUI
 //! applies session ownership changes from the runtime.
 //!
-//! The two drain modes share the same implementation in [`core`], but use
+//! The two drain modes share the same implementation in [`codetether_session_events::drain`], but use
 //! different limits and completion handling:
 //!
 //! - [`drain_batch`] performs a small, non-blocking UI pass drain so rendering
@@ -21,20 +21,20 @@ use crate::tui::app::session_runtime::SessionSlot;
 use crate::tui::app::state::App;
 use crate::tui::worker_bridge::TuiWorkerBridge;
 
-mod core;
+mod host;
 
 /// Maximum number of queued session events processed during a regular UI pass.
 ///
 /// This limit prevents a busy session stream from monopolizing the event loop.
 /// Any events left in the channel remain queued for a later drain pass.
-const DRAIN_BATCH_LIMIT: usize = 64;
+const DRAIN_BATCH_LIMIT: usize = codetether_session_events::drain::BATCH_LIMIT;
 
 /// Maximum number of queued session events flushed before handling a notice.
 ///
 /// Completion notices can transfer or finalize session state, so this larger
 /// limit gives pending stream output a chance to reach the UI before the notice
 /// changes runtime ownership or presentation state.
-const NOTICE_DRAIN_LIMIT: usize = 1024;
+const NOTICE_DRAIN_LIMIT: usize = codetether_session_events::drain::NOTICE_LIMIT;
 
 /// Drains a bounded batch of pending [`SessionEvent`] values into the TUI state.
 ///
@@ -70,7 +70,17 @@ pub(crate) async fn drain_batch(
     worker_bridge: &Option<TuiWorkerBridge>,
     event_rx: &mut mpsc::Receiver<SessionEvent>,
 ) {
-    core::drain(app, slot, worker_bridge, event_rx, DRAIN_BATCH_LIMIT, false).await;
+    codetether_session_events::drain::run(
+        &mut host::Native {
+            app,
+            slot,
+            worker_bridge,
+        },
+        event_rx,
+        DRAIN_BATCH_LIMIT,
+        false,
+    )
+    .await;
 }
 
 /// Flushes pending session events before a completion or ownership notice.
@@ -108,7 +118,17 @@ pub(crate) async fn drain_before_notice(
     worker_bridge: &Option<TuiWorkerBridge>,
     event_rx: &mut mpsc::Receiver<SessionEvent>,
 ) {
-    core::drain(app, slot, worker_bridge, event_rx, NOTICE_DRAIN_LIMIT, true).await;
+    codetether_session_events::drain::run(
+        &mut host::Native {
+            app,
+            slot,
+            worker_bridge,
+        },
+        event_rx,
+        NOTICE_DRAIN_LIMIT,
+        true,
+    )
+    .await;
 }
 
 #[cfg(test)]

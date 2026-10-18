@@ -16002,3 +16002,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-image-recovery/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared bounded session-event delivery
+
+- Moved queued session-event draining and cumulative-text coalescing into
+  `codetether-session-events::drain`. A generic native handler retains actual
+  TUI/session-slot updates. Removed the native drain core implementation.
+- Moved the 64-event regular and 1,024-event notice limits into the shared
+  module, preserving native names through constant aliases for existing tests.
+- Preserved flush-before-non-text ordering, final text flush, nonblocking channel
+  reads and stop-on-Done behavior only when requested.
+- Verification: complete drain/flush body comparisons, native handler and both
+  forwarding modes, exact limits, unchanged three TUI integration tests and
+  event application, module/dependency graphs, direct rustfmt, file budgets,
+  isolated lock addition and diff whitespace. Evidence:
+  `artifacts/consolidation-event-drain/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
