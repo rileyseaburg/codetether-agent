@@ -36,3 +36,5 @@ codetether-tool-outcome = { path = "../codetether-tool-outcome", version = "0.1.
 codetether-stream-bounds = { path = "../codetether-stream-bounds", version = "0.1.0" }
 
 codetether-goal-core = { path = "../codetether-goal-core", version = "0.1.0" }
+
+codetether-provider-metrics = { path = "../codetether-provider-metrics", version = "0.1.0" }

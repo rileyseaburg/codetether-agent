@@ -41,3 +41,6 @@ pub mod goal_recovery;
 
 /// Provider completion attempt state and retry sequencing.
 pub mod completion;
+
+/// Provider metrics, goal consumption and live usage reporting.
+pub mod usage;

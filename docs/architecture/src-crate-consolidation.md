@@ -15799,3 +15799,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-completion-driver/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared completion usage accounting
+
+- Moved provider telemetry, durable goal-consumption sequencing and live usage
+  reporting into `codetether-prompt-loop::usage`, split into record, accounting
+  and native-host contract modules. Provider metrics remain owned by the
+  existing provider-metrics crate; native bindings supply goal storage and state.
+- Preserved metrics before goal accounting, elapsed baseline reset before the
+  storage await, saturating prompt/completion token addition, best-effort error
+  logging, and live reports after accounting with the original duration cast.
+- Verification: both complete function-body comparisons, all four native
+  bindings, unchanged metrics/storage implementations, module/dependency graphs,
+  direct rustfmt, file budgets, isolated lock addition and diff whitespace.
+  Evidence: `artifacts/consolidation-usage-accounting/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains incomplete.

@@ -7529,6 +7529,7 @@ dependencies = [
  "codetether-tool-outcome",
  "codetether-stream-bounds",
  "codetether-goal-core",
+ "codetether-provider-metrics",
 ]
 
 [[package]]
