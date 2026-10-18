@@ -17,6 +17,7 @@ mod render;
 mod tool_stats;
 mod tool_summary;
 mod tools;
+pub mod transport;
 mod view;
 pub use chat::push_chat_turn_latency;
 pub use render::render_latency;

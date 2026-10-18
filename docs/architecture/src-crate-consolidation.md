@@ -23912,3 +23912,19 @@ entry is staged; unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-transcript-session/. No Cargo, rustc, Python,
 compilation, transcript operations or tests ran. Full consolidation remains
 active.
+
+### Transport-health rendering moved into the latency view crate
+
+Moved the complete native TCP transport-health renderer into
+codetether-latency-view::transport. The native TUI now reexports that module,
+preserving the existing render_transport call path. The renderer uses the same
+shared telemetry singleton, text, packet-loss warning, fallback message and
+ratatui layout. Added function usage documentation. No dependencies changed.
+
+Static token comparison preserves all executable source after the telemetry
+import substitution. Module/dependency scans cover 691 roots and 572 crates
+without missing modules or cycles. Direct rustfmt, source file limits and
+whitespace checks passed. The working lockfile and unrelated A2A edits remain
+untouched. Evidence: artifacts/consolidation-transport-view/. No Cargo, rustc,
+Python, compilation, TUI rendering or tests ran. Full consolidation remains
+active.

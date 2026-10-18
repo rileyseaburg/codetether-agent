@@ -18,8 +18,8 @@ pub mod sessions;
 pub mod settings;
 pub mod status;
 pub mod terminal;
+pub use codetether_latency_view::transport as transport_view;
 pub use codetether_theme as theme;
-pub mod transport_view;
 pub mod ui;
 pub mod utils;
 

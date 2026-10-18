@@ -12,9 +12,20 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use crate::telemetry::TRANSPORT_METRICS;
+use codetether_telemetry::TRANSPORT_METRICS;
 
 /// Render the transport-health panel into `area`.
+/// # Arguments
+/// * `f` - Current terminal frame.
+/// * `area` - Region available for the transport snapshot.
+/// # Returns
+/// Draws the latest shared TCP probe or its unavailable-sample message.
+/// # Examples
+/// ```no_run
+/// # fn draw(frame: &mut ratatui::Frame, area: ratatui::layout::Rect) {
+/// codetether_latency_view::transport::render_transport(frame, area);
+/// # }
+/// ```
 pub fn render_transport(f: &mut Frame, area: Rect) {
     let mut lines = vec![
         Line::from("Transport Health (TCP_INFO probe)"),
