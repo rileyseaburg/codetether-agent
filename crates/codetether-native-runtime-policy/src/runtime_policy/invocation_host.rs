@@ -7,7 +7,7 @@ use serde_json::Value;
 pub(super) struct Native;
 impl codetether_runtime_policy::evaluation::Host for Native {
     fn prior_context_block(tool_name: &str, args: &Value) -> Option<ToolResult> {
-        crate::session::helper::runtime::block_prior_context_from_runtime(tool_name, args)
+        codetether_prior_context_access::runtime_context(tool_name, args)
     }
     fn sandbox(
         policy: &RuntimeToolPolicy,

@@ -15,7 +15,10 @@ fn justification_edits_do_not_change_the_approval_resource() {
     let first = json!({"command": "cargo test", "justification": "first wording"});
     let blocked = evaluate_tool_invocation_with_config(&Config::default(), "bash", &first)
         .expect("approval required");
-    let id = blocked.metadata["approval_request_id"].as_str().unwrap().to_string();
+    let id = blocked.metadata["approval_request_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
     store.approve(&id, "riley", "ok").expect("approve");
     let retry = json!({"command": "cargo test", "justification": "reworded", "approval_id": id});
     assert!(evaluate_tool_invocation_with_config(&Config::default(), "bash", &retry).is_none());

@@ -25034,3 +25034,29 @@ Only four package entries and root dependencies are staged for Cargo.lock;
 its unrelated working contents and the existing A2A modifications remain
 unchanged. No Cargo, rustc, Python, compilation or runtime tests ran. The full
 workspace consolidation remains active.
+
+### Native approval and runtime policy moved as complete modules
+
+Moved all 34 files from src/approval/ and src/runtime_policy/ into dedicated
+codetether-native-approval and codetether-native-runtime-policy crates. The
+root library re-exports both public paths. Runtime evaluation now calls the
+same prior-context and sandbox-runtime functions directly rather than through
+application facades. The configured and workspace-aware entry points, approval
+bindings, justification schema handling and sandbox decisions remain intact.
+
+The approval crate owns the existing environment-test mutex, scope cleanup and
+grant resets under a test-support feature. Root tests and policy-crate tests
+both enable that feature and use the same module; no duplicate lock or grant
+store was introduced. The 38 existing tests moved without body changes. Hidden
+public exports retain access to the two policy helpers used by native callers.
+No declaration macros were introduced.
+
+All relocated sources match after the explicit module visibility and direct
+alias changes and formatting. The old directories no longer exist. Static
+module scans cover 699 roots, dependency scans cover 581 crates, and neither
+reports missing modules, dependency cycles or undeclared direct workspace
+imports. Declaration, file-limit, direct rustfmt and whitespace checks pass.
+Only the new package/root dependency entries are staged in Cargo.lock; its
+working content and unrelated A2A modifications remain unchanged. Evidence:
+artifacts/consolidation-native-policy/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full workspace consolidation remains active.

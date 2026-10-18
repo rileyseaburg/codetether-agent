@@ -19,5 +19,6 @@ pub use decision_kind::ApprovalDecisionKind;
 pub use exec_policy::{ExecPolicyAmendment, ReviewDecision};
 pub use live::{LiveApprovalDecision, LiveApprovalRequest};
 
-#[cfg(test)]
-pub(crate) mod test_env;
+#[cfg(any(test, feature = "test-support"))]
+#[doc(hidden)]
+pub mod test_env;

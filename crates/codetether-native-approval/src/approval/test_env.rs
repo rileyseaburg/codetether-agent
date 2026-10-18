@@ -5,15 +5,15 @@ use std::path::Path;
 
 static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-pub(crate) struct ScopedEnv;
+pub struct ScopedEnv;
 
 impl ScopedEnv {
-    pub(crate) fn access(mode: AccessMode) -> Self {
+    pub fn access(mode: AccessMode) -> Self {
         Config::apply_process_access_mode_override(Some(mode));
         Self
     }
 
-    pub(crate) fn data_dir_with_access(path: &Path, mode: AccessMode) -> Self {
+    pub fn data_dir_with_access(path: &Path, mode: AccessMode) -> Self {
         unsafe { std::env::set_var("CODETETHER_DATA_DIR", path) };
         Self::access(mode)
     }
@@ -26,7 +26,7 @@ impl Drop for ScopedEnv {
     }
 }
 
-pub(crate) fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+pub fn lock_env() -> std::sync::MutexGuard<'static, ()> {
     let guard = ENV_LOCK
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);

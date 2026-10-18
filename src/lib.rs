@@ -13,8 +13,8 @@ static GLOBAL_ALLOC: telemetry::alloc_guard::GuardAlloc = telemetry::alloc_guard
 
 pub mod a2a;
 pub mod agent;
-pub mod approval;
 pub use codetether_audit as audit;
+pub use codetether_native_approval as approval;
 pub mod autochat;
 pub mod benchmark;
 pub use codetether_browser::browser;
@@ -48,7 +48,7 @@ pub use codetether_provenance as provenance;
 pub mod ralph;
 pub mod review;
 pub mod rlm;
-pub mod runtime_policy;
+pub use codetether_native_runtime_policy as runtime_policy;
 pub use codetether_native_search as search;
 pub use codetether_secrets as secrets;
 pub mod server;

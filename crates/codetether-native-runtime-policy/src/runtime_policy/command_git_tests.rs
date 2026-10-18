@@ -17,7 +17,5 @@ fn scoped_git_inspection_is_read_only_but_mutation_is_not() {
         );
     }
     let args = json!({"command": "git -C /workspace commit -m change"});
-    assert!(
-        evaluate_tool_invocation_with_config(&config, "bash", &args).is_some()
-    );
+    assert!(evaluate_tool_invocation_with_config(&config, "bash", &args).is_some());
 }

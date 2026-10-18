@@ -12,15 +12,23 @@ fn ask_mode_blocks_prompt_until_model_justifies_request() {
     let data = tempfile::tempdir().expect("tempdir");
     let _env = ScopedEnv::data_dir_with_access(data.path(), AccessMode::Ask);
     let args = json!({"command": "cargo test", "cwd": data.path().display().to_string()});
-    let blocked = evaluate_tool_invocation_with_config(&Config::default(), "bash", &args)
-        .expect("blocked");
-    assert_eq!(blocked.metadata["error_code"], "TOOL_JUSTIFICATION_REQUIRED");
+    let blocked =
+        evaluate_tool_invocation_with_config(&Config::default(), "bash", &args).expect("blocked");
+    assert_eq!(
+        blocked.metadata["error_code"],
+        "TOOL_JUSTIFICATION_REQUIRED"
+    );
     assert_eq!(blocked.metadata["justification_required"], true);
     assert!(!blocked.metadata.contains_key("approval_request_id"));
     assert!(blocked.output.contains("\"justification\""));
     let output: serde_json::Value = serde_json::from_str(&blocked.output).expect("json");
     assert_eq!(output["error"]["example"]["command"], "cargo test");
-    assert!(output["error"]["message"].as_str().unwrap().contains("Nothing ran"));
+    assert!(
+        output["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Nothing ran")
+    );
 }
 
 #[test]

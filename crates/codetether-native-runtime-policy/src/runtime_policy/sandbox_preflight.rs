@@ -17,8 +17,8 @@ pub(super) fn decision(
         tool_name,
         command,
         policy.sandbox_mode(),
-        crate::tool::sandbox::unavailable_reason(),
-        crate::tool::sandbox::direct_fallback_env_allowed(),
+        codetether_sandbox_runtime::unavailable_reason(),
+        codetether_sandbox_runtime::direct_fallback_env_allowed(),
     )
 }
 use codetether_runtime_policy::sandbox::decision_for_state;

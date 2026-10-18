@@ -1928,6 +1928,8 @@ dependencies = [
  "codetether-windows-cli",
  "codetether-rlm-view",
  "codetether-session-schema",
+ "codetether-native-approval",
+ "codetether-native-runtime-policy",
 ]
 
 [[package]]
@@ -3549,6 +3551,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-native-approval"
+version = "0.1.0"
+dependencies = [
+ "codetether-approval-core",
+ "codetether-approval-session",
+ "codetether-config",
+]
+
+[[package]]
 name = "codetether-native-indexer"
 version = "0.1.0"
 dependencies = [
@@ -3566,6 +3577,21 @@ dependencies = [
  "codetether-application-providers",
  "codetether-memory-tool",
  "codetether-native-providers",
+]
+
+[[package]]
+name = "codetether-native-runtime-policy"
+version = "0.1.0"
+dependencies = [
+ "codetether-config",
+ "codetether-native-approval",
+ "codetether-prior-context-access",
+ "codetether-provider-core",
+ "codetether-runtime-policy",
+ "codetether-sandbox-runtime",
+ "codetether-tool-core",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

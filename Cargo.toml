@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "crates/codetether-native-approval",
+    "crates/codetether-native-runtime-policy",
     "crates/codetether-native-indexer",
     "crates/codetether-native-vectordb",
     "crates/codetether-native-memory",
@@ -689,6 +691,8 @@ fips = [
 ]
 
 [dependencies]
+codetether-native-approval = { path = "crates/codetether-native-approval", version = "0.1.0" }
+codetether-native-runtime-policy = { path = "crates/codetether-native-runtime-policy", version = "0.1.0" }
 codetether-native-indexer = { path = "crates/codetether-native-indexer", version = "0.1.0" }
 codetether-native-vectordb = { path = "crates/codetether-native-vectordb", version = "0.1.0" }
 codetether-native-memory = { path = "crates/codetether-native-memory", version = "0.1.0" }
@@ -1409,6 +1413,7 @@ windows = { version = "0.62.2", features = [
 libc = "0.2.189"
 
 [dev-dependencies]
+codetether-native-approval = { path = "crates/codetether-native-approval", version = "0.1.0", features = ["test-support"] }
 codetether-approval-core = { path = "crates/codetether-approval-core", version = "0.1.0", features = ["test-support"] }
 async-std = "1.13.2"
 tokio-test = "0.4"

@@ -1,0 +1,19 @@
+[package]
+name = "codetether-native-approval"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native approval and shared grant bindings"
+
+[features]
+default = []
+test-support = ["codetether-approval-core/test-support"]
+
+[dependencies]
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+codetether-approval-session = { path = "../codetether-approval-session", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+
+[dev-dependencies]
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0", features = ["test-support"] }
