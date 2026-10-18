@@ -11467,3 +11467,21 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-swarm-render/.
 - No Cargo, rustc, compilation, runtime tests or terminal rendering were run.
   Full workspace consolidation remains incomplete.
+
+### Settings panel extraction
+
+- Moved panel layout, settings/provider rows and row styling from the native
+  settings modules into crates/codetether-settings-view. Native code supplies
+  SettingsView data and delegates rendering with the existing status callback.
+- The application continues to own settings mutation and provider/access label
+  lookup. Label strings move into the crate's rows, preserving owned output.
+  Provider option order, selection indices, descriptions and footer are retained.
+- Split the crate into ten modules, at most 34 nonblank/noncomment code lines.
+  The existing AppState-based panel test remains at the native integration
+  boundary and still exercises the shared row builder via the projection.
+- Verification: 19 static comparisons and mapping checks for rendering, all
+  row helpers, provider labels, selected values and the unchanged native test.
+  Lexical module reachability, dependency cycles, direct rustfmt, native file
+  limits and git diff --check passed. Evidence: artifacts/consolidation-settings-view/.
+- No Cargo, rustc, compilation, runtime tests or terminal rendering were run.
+  Full workspace consolidation remains incomplete.

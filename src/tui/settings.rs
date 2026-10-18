@@ -1,34 +1,16 @@
-//! Settings panel rendering: composes rows and draws the widget.
-
-use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout, Rect},
-    widgets::{Block, Borders, Paragraph, Wrap},
-};
-
-use crate::tui::app::state::AppState;
-use crate::tui::status::render_status;
-
+//! Application binding for the shared settings presentation.
+use crate::tui::{app::state::AppState, status::render_status};
+use ratatui::{Frame, layout::Rect};
 #[path = "settings_lines.rs"]
 mod lines;
-#[path = "settings_provider_lines.rs"]
-mod provider_lines;
-#[path = "settings_rows.rs"]
-mod rows;
-
-use lines::settings_lines;
-
 pub fn render_settings(f: &mut Frame, area: Rect, app_state: &AppState) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(8), Constraint::Length(3)])
-        .split(area);
-
-    let widget = Paragraph::new(settings_lines(app_state))
-        .block(Block::default().borders(Borders::ALL).title("Settings"))
-        .wrap(Wrap { trim: false });
-    f.render_widget(widget, chunks[0]);
-    render_status(f, chunks[1], &app_state.status);
+    codetether_settings_view::render_settings(
+        f,
+        area,
+        lines::view(app_state),
+        &app_state.status,
+        render_status,
+    );
 }
 
 #[cfg(test)]
