@@ -1,0 +1,6 @@
+//! Preserved configuration, key, JSONL and pointer regressions.
+mod config_object_key_joins_prefix_and_session_id;
+mod encode_jsonl_delta_is_line_per_message_and_skippable;
+mod from_env_returns_none_when_endpoint_unset;
+mod pointer_handle_for_session_targets_history_object;
+mod pointer_handle_round_trips_through_serde;

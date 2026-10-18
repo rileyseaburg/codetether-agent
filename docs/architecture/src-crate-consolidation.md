@@ -8738,3 +8738,26 @@ remain below 45 code lines each. Evidence is in
 `artifacts/consolidation-store-window/`. Compilation and runtime tests were not
 run. No Cargo, rustc or Python commands ran. Other native implementation remains
 part of the active whole-workspace consolidation goal.
+
+### Dedicated history-sink crate
+
+Moved history-sink configuration, environment parsing, object-key construction,
+JSONL encoding, MinIO client creation, full/pre-encoded uploads, pointer handles
+and ranged retrieval into `crates/codetether-history-sink`. Seventeen modules
+separate these responsibilities and the five existing regression tests. The
+application retains a compatibility re-export for its existing callers and
+persisted history-sink configuration fields.
+
+Environment semantics, credentials, prefix defaults, object keys, serialization,
+client construction, request builder order and typed faults are preserved.
+Ranged retrieval is split into pointer validation and object-body fetching;
+client construction still precedes range validation. Upload logging retains its
+original target. No upload or download was performed during consolidation.
+
+Twenty-five static comparisons cover moved types, methods, function bodies,
+request/error sequences, public exports and all five moved tests. Module and
+workspace dependency checks, code budgets and whitespace checks passed; crate
+files contain at most 37 code lines. Evidence is in
+`artifacts/consolidation-history-sink/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. Archive scheduling and other
+remaining native code still require consolidation.

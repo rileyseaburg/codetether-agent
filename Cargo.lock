@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-history-sink",
  "codetether-session-store",
  "codetether-tracked-vec",
  "codetether-session-orchestration",
@@ -2452,6 +2453,19 @@ dependencies = [
  "codetether-config",
  "codetether-provider-core",
  "tokio",
+]
+
+[[package]]
+name = "codetether-history-sink"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "minio",
+ "serde",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]
