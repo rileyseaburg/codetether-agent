@@ -44,3 +44,6 @@ pub use state::RetryState;
 
 /// Session failover candidate ladders and delegation-aware target selection.
 pub mod router;
+
+/// Scheduled retry execution and temporary-model restoration.
+pub mod runtime_retry;

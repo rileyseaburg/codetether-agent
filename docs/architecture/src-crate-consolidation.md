@@ -16890,3 +16890,21 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-watchdog-recovery/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared model failover retry lifecycle
+
+- Moved scheduled smart-switch execution, cooldown status and temporary-model
+  restoration into `codetether-model-failover::runtime_retry`.
+- Core owns retry consumption/retention, validation, model-selection order,
+  timing/status updates and restoration scheduling. Native adapters retain
+  session persistence/view refresh and runtime submission; removed the two
+  native cooldown/restoration implementation files.
+- Preserved waiting retries, manual-model-change restoration guard, ignored
+  save failures, original pending prompt, registry-dependent submission and
+  retry bookkeeping.
+- Verification: complete retry/cooldown/restore bodies, every native state and
+  persistence binding, unchanged submission/timing/policy helpers, module and
+  dependency graphs, direct rustfmt, file limits and whitespace. No dependency
+  changes. Evidence: `artifacts/consolidation-smart-retry/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
