@@ -1,0 +1,14 @@
+[package]
+name = "codetether-swarm-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Swarm CLI configuration, strategy and result presentation"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+serde_json = "1"

@@ -13747,3 +13747,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, Vault requests or Ralph execution ran. Full
   workspace consolidation remains unfinished.
+
+### Swarm CLI policy extraction
+
+- Moved swarm configuration mapping, decomposition-name selection, command
+  orchestration and result output from src/main.rs into codetether-swarm-cli.
+  Native src/swarm_cli.rs retains process-global bus installation and executor
+  construction/execution.
+- Initialization order, all execution limits/options, strategy fallback,
+  JSON output and text summary fields are unchanged.
+- Verification: 10 static config/strategy/output/order/native-binding checks
+  passed, plus module reachability, dependency DAG, direct rustfmt, file-limit
+  ratchet and whitespace checks. Evidence: artifacts/consolidation-swarm-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests, swarm execution or sub-agent spawning ran.
+  Full workspace consolidation remains unfinished.

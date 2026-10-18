@@ -128,6 +128,7 @@ members = [
     "crates/codetether-okr-cli",
     "crates/codetether-benchmark-cli",
     "crates/codetether-ralph-cli",
+    "crates/codetether-swarm-cli",
     "crates/codetether-rlm-selection",
     "crates/codetether-rlm-cli",
     "crates/codetether-session-fork",
@@ -840,6 +841,7 @@ codetether-telemetry-cli = { path = "crates/codetether-telemetry-cli", version =
 codetether-okr-cli = { path = "crates/codetether-okr-cli", version = "0.1.0" }
 codetether-benchmark-cli = { path = "crates/codetether-benchmark-cli", version = "0.1.0" }
 codetether-ralph-cli = { path = "crates/codetether-ralph-cli", version = "0.1.0" }
+codetether-swarm-cli = { path = "crates/codetether-swarm-cli", version = "0.1.0" }
 codetether-rlm-selection = { path = "crates/codetether-rlm-selection", version = "0.1.0" }
 codetether-rlm-cli = { path = "crates/codetether-rlm-cli", version = "0.1.0" }
 codetether-session-fork = { path = "crates/codetether-session-fork", version = "0.1.0" }

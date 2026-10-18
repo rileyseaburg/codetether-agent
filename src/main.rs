@@ -16,7 +16,6 @@ use codetether_agent::{
     a2a, benchmark, bus, cli, config, forage, github_pr, indexer, mcp, mux, provider, ralph,
     server, swarm, tool, tui, worker_server,
 };
-use swarm::{DecompositionStrategy, ExecutionMode, SwarmExecutor};
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod cleanup_cli;
@@ -28,6 +27,7 @@ mod benchmark_cli;
 mod native_cli;
 mod ralph_cli;
 mod rlm_cli;
+mod swarm_cli;
 
 #[tokio::main(worker_threads = 8)]
 async fn main() -> anyhow::Result<()> {
@@ -207,52 +207,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Command::Spawn(args)) => a2a::spawn::run(args).await,
         Some(Command::Config(args)) => cli::config::execute(args).await,
-        Some(Command::Swarm(args)) => {
-            // Attach an agent bus so sub-agents are observable and can
-            // collaborate live (thinking/tool output/shared results) — not just
-            // run isolated in parallel. Install it as the process-global bus so
-            // tools like `bus_inspect` can read swarm activity.
-            let bus = bus::AgentBus::new().into_arc();
-            bus::set_global(bus.clone());
-
-            let executor = SwarmExecutor::new(swarm::SwarmConfig {
-                max_subagents: args.max_subagents,
-                max_steps_per_subagent: args.max_steps,
-                subagent_timeout_secs: args.timeout,
-                model: args.model.clone(),
-                execution_mode: ExecutionMode::from_cli_value(&args.execution_mode),
-                k8s_pod_budget: args.k8s_pod_budget,
-                k8s_subagent_image: args.k8s_image.clone(),
-                ..Default::default()
-            })
-            .with_bus(bus);
-
-            let strategy = match args.strategy.as_str() {
-                "auto" => DecompositionStrategy::Automatic,
-                "domain" => DecompositionStrategy::ByDomain,
-                "data" => DecompositionStrategy::ByData,
-                "stage" => DecompositionStrategy::ByStage,
-                "none" => DecompositionStrategy::None,
-                _ => DecompositionStrategy::Automatic,
-            };
-
-            let result = executor.execute(&args.task, strategy).await?;
-
-            if args.json {
-                println!("{}", serde_json::to_string_pretty(&result)?);
-            } else {
-                println!("=== Swarm Execution Results ===");
-                println!(
-                    "Status: {}",
-                    if result.success { "SUCCESS" } else { "FAILED" }
-                );
-                println!("Subtasks: {}", result.subtask_results.len());
-                println!("Speedup: {:.1}x", result.stats.speedup_factor);
-                println!("Critical Path: {} steps", result.stats.critical_path_length);
-                println!("\n{}", result.result);
-            }
-            Ok(())
-        }
+        Some(Command::Swarm(args)) => swarm_cli::execute(args).await,
         Some(Command::SwarmSubagent(args)) => swarm::remote_subtask::run_swarm_subagent(args).await,
         Some(Command::Rlm(args)) => rlm_cli::run(args).await,
         Some(Command::Oracle(args)) => cli::oracle::execute(args).await,
