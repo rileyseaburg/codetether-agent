@@ -4,12 +4,10 @@ use codetether_session_control as active_cancel;
 #[cfg(test)]
 mod active_turn;
 mod command;
-mod dispatch_host;
 mod handle;
 mod loop_submit;
 mod notice;
 mod prompt_result;
-mod runtime;
 mod slot;
 mod view;
 
@@ -40,4 +38,14 @@ codetether_session_runtime::declare_frontend_execution!(
     crate::tui::app::input::worktree_result::run_prompt,
     crate::tui::app::session_runtime::prompt_result::notice,
     crate::tui::app::input::worktree_result::handle_worktree_result,
+);
+
+codetether_session_runtime::declare_frontend_runtime_dispatch!(
+    crate::tui::app::session_runtime::PromptRequest,
+    crate::tui::app::session_runtime::SessionNotice,
+    crate::session::SessionEvent,
+    codetether_session_control::ActiveCancel,
+    crate::tui::app::session_runtime::TuiSessionHandle;
+    crate::session::tasks::runtime::answer_review::held,
+    crate::tui::app::session_runtime::execute::run,
 );

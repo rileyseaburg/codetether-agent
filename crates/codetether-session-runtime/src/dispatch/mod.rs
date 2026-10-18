@@ -2,6 +2,7 @@
 //! [run] consumes commands until shutdown. [handle] dispatches one command;
 //! [submit] checks review holds, attaches cancellation, announces and spawns.
 //! [Host] retains native policy checks, notices and execution.
+mod frontend;
 mod host;
 mod run;
 mod spawn;

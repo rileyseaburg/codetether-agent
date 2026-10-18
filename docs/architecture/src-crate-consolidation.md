@@ -27825,3 +27825,18 @@ standalone formatting, file-limit and whitespace checks pass for 725 roots and
 617 crates. Tests and unrelated files are unchanged; no manifest or lock changes
 were needed. Evidence: artifacts/consolidation-runtime-execution/. No Cargo,
 rustc, Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Frontend runtime startup and ordered submission binding
+
+Moved the runtime dispatch host, startup wrapper and ordered-submission wrapper
+into codetether-session-runtime::dispatch::frontend. Removed two root
+implementation files; the root selects request/notice/event/cancellation types,
+the review gate and the existing executor callback.
+
+All nine expanded function bodies and the dispatch host fields match after
+executor/host path qualification. The review-gated submission test is
+byte-for-byte unchanged. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. Unrelated files are unchanged; no manifest or lock changes were
+needed. Evidence: artifacts/consolidation-runtime-dispatch/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.
