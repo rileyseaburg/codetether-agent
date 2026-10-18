@@ -3715,6 +3715,10 @@ dependencies = [
  "codetether-session-location",
  "codetether-session-title",
  "codetether-provider-policy",
+ "async-trait",
+ "codetether-config",
+ "codetether-session-model-policy",
+ "codetether-run-checkpoint",
 ]
 
 [[package]]

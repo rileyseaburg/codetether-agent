@@ -24541,3 +24541,23 @@ unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-session-titles/. No Cargo, rustc, Python, compiler macro
 expansion, model calls, title operations or tests ran. Full consolidation
 remains active.
+
+### Session model and checkpoint bindings moved into the schema crate
+
+Moved two model-configuration methods and eight checkpoint API/storage methods
+into separate models and checkpoint modules in codetether-session-schema.
+Native lifecycle and checkpoint_store files now contain declaration bindings;
+removed lifecycle/subcall_model.rs and checkpoint_store_host.rs. Registry type,
+model policy calls, checkpoint metadata access, sidecar operations and inherent
+session directory/save callbacks are unchanged. Added four direct dependencies.
+
+Static comparison preserves signatures and all method bodies after explicit
+path substitution. Its initial optional generic trailing-comma mismatch was
+corrected by signature normalization and recorded in the evidence directory.
+Module/dependency scans cover 693 roots and 574 crates without missing modules
+or cycles. Direct dependency audit, direct rustfmt, file limits and whitespace
+checks passed. Only required lockfile dependencies are staged; unrelated
+working changes remain untouched. Evidence:
+artifacts/consolidation-session-model-checkpoints/. No Cargo, rustc, Python,
+compiler macro expansion, checkpoint I/O, model calls or tests ran. Full
+consolidation remains active.
