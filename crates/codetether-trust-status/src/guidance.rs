@@ -1,28 +1,7 @@
-use super::labels;
-use crate::config::{ApprovalPolicy, TrustPolicyStatus};
-
+//! Approval behavior explanations and startup guidance.
+pub(super) use crate::summary::{badge, summary};
+use codetether_config::{ApprovalPolicy, TrustPolicyStatus};
 const CHANGE_HINT: &str = "Settings controls Access mode and Network access separately; approval does not override sandbox limits";
-
-pub(super) fn summary(status: &TrustPolicyStatus) -> String {
-    format!(
-        "Access: {} | Trust: {} | Approval: {} | Sandbox: {} | Profile: {}",
-        labels::access(status.access_mode),
-        labels::trust(status),
-        labels::approval(status.approval_policy),
-        labels::sandbox(status.sandbox_mode),
-        labels::profile(status.permission_profile),
-    )
-}
-
-pub(super) fn badge(status: &TrustPolicyStatus) -> String {
-    format!(
-        " ACCESS {} | APPROVAL {} | SANDBOX {} | TRUST {} ",
-        labels::access(status.access_mode),
-        labels::approval(status.approval_policy),
-        labels::sandbox(status.sandbox_mode),
-        labels::trust(status),
-    )
-}
 
 pub(super) fn approval(status: Option<TrustPolicyStatus>) -> String {
     let Some(status) = status else {

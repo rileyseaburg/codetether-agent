@@ -1,6 +1,6 @@
 //! Compact labels for trust policy status.
 
-use crate::config::{
+use codetether_config::{
     AccessMode, ApprovalPolicy, PermissionProfile, SandboxMode, TrustPolicyStatus,
 };
 

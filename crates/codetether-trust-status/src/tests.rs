@@ -1,5 +1,5 @@
 use super::{format_status, set_status, trust_status_badge_span};
-use crate::config::{
+use codetether_config::{
     AccessMode, ApprovalPolicy, PermissionProfile, ProjectTrustLevel, SandboxMode,
     TrustPolicyStatus,
 };

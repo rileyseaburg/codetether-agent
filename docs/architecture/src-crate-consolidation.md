@@ -11946,3 +11946,18 @@ Full workspace consolidation remains active.
   limits and git diff --check passed. Evidence: artifacts/consolidation-chat-status/.
 - No Cargo, rustc, compilation or tests ran. Full workspace consolidation remains
   incomplete; source checks do not prove runtime or type correctness.
+
+### Trust-status ownership extraction
+
+- Moved the loaded trust-policy snapshot, compact labels, full/startup guidance,
+  approval explanations and terminal badge into codetether-trust-status. Seven
+  modules contain at most 42 code lines. Two existing status tests moved with
+  their implementation; the native module is a compatibility re-export.
+- Reused the shared configuration types and the same shared runtime-policy
+  note_access_mode function behind the former native alias. Notification order,
+  singleton locking, poison behavior, all policy labels and guidance are unchanged.
+- Verification: 21 source comparisons passed for moved functions, constants,
+  storage, exports and tests. Module reachability, dependency-cycle checks,
+  direct formatting, source limits and diff checks passed.
+- Evidence: artifacts/consolidation-trust-status/. No Cargo, rustc, compilation
+  or tests ran. Full workspace consolidation remains incomplete.

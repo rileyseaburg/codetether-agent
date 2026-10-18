@@ -1,0 +1,12 @@
+[package]
+name = "codetether-trust-status"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Effective trust-policy status snapshots and terminal guidance"
+
+[dependencies]
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-runtime-policy = { path = "../codetether-runtime-policy", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }
