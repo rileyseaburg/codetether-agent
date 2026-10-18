@@ -24419,3 +24419,20 @@ rustfmt, file limits and whitespace checks passed. Unrelated working changes
 remain untouched. Evidence: artifacts/consolidation-drain-modes/. No Cargo,
 rustc, Python, compilation, event handling or tests ran. Full consolidation
 remains active.
+
+### Legacy TUI helper module moved into the models crate
+
+Moved the complete src/tui/utils/helpers.rs implementation into
+codetether-tui-models::legacy_helpers and removed the native file. The native
+utils module re-exports it under the original helpers name, preserving public
+paths and unit-struct construction. Added documentation describing the existing
+placeholder behavior; no return values, truncation behavior, configuration
+loading or archive behavior changed.
+
+Static comparison confirms identical implementation tokens excluding added
+documentation. Module/dependency scans cover 692 roots and 573 crates without
+missing modules or cycles. Direct rustfmt, source file limits and whitespace
+checks passed. No dependencies changed, and unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-tui-legacy-helpers/. No Cargo,
+rustc, Python, compilation, helper execution or tests ran. Full consolidation
+remains active.

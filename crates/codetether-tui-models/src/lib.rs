@@ -19,3 +19,6 @@ pub use view_mode::ViewMode;
 
 mod session_view;
 pub use session_view::SessionView;
+
+/// Legacy UI utility types and fallback behavior.
+pub mod legacy_helpers;
