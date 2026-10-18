@@ -1,6 +1,6 @@
 //! Heartbeat and progress lifetime for an approved tool invocation.
 
-use super::super::super::super::{tool_exec, tool_heartbeat, tool_policy};
+use super::super::super::super::{tool_exec, tool_policy};
 use super::{Call, Runner};
 
 pub(super) async fn run(
@@ -9,25 +9,17 @@ pub(super) async fn run(
     input: &serde_json::Value,
     started: std::time::Instant,
 ) -> tool_policy::ToolTuple {
-    let heartbeat = runner
-        .events
-        .as_ref()
-        .map(|events| tool_heartbeat::spawn(events, &call.id, &call.name, started));
-    let progress = runner
-        .events
-        .as_ref()
-        .map(|events| (events, call.id.as_str()));
-    let result = tool_exec::execute_tool(
-        &runner.model.registry,
+    let host = tool_exec::NativeHost {
+        registry: &runner.model.registry,
+    };
+    codetether_tool_execution::execute_with_heartbeat(
+        &host,
+        &call.id,
         &call.name,
         input,
         &runner.session.id,
         started,
-        progress,
+        runner.events.as_ref(),
     )
-    .await;
-    if let Some(heartbeat) = heartbeat {
-        heartbeat.abort();
-    }
-    result
+    .await
 }

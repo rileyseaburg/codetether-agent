@@ -20886,3 +20886,23 @@ substitutions, and checks native bindings. Direct rustfmt, source graphs across
 `artifacts/consolidation-a2a-session-policy/`. No Cargo, rustc, or Python commands
 ran; no provider or persistence operations and no Rust tests were executed.
 Compilation and runtime behavior remain unverified. Consolidation remains active.
+
+### Approved-tool heartbeat lifetime ownership
+
+Moved optional heartbeat startup, progress-channel attachment, execution, and
+heartbeat shutdown from native `invoke_approved.rs` into
+`codetether-tool-execution::execute_with_heartbeat`. The native function now
+supplies its existing registry host, call identity, enriched input, session ID,
+start instant, and event channel. The same shared heartbeat guard and tool
+execution implementation remain in use, including cleanup when the future is
+dropped. No dependencies changed.
+
+Verification compares the complete lifecycle after explicit argument
+substitutions and checks the unchanged native policy/registry bindings and
+heartbeat implementation. A formatting-only optional trailing comma in the
+shortened call is normalized explicitly; initial evidence is retained. Direct
+rustfmt, source graph checks across 694 roots, native file-size checks, and
+whitespace checks passed. Evidence: `artifacts/consolidation-tool-heartbeat/`.
+No Cargo, rustc, or Python commands ran. No tool execution or Rust tests were
+performed. Compilation and runtime behavior remain unverified; consolidation
+remains active.
