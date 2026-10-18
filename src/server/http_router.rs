@@ -1,9 +1,9 @@
 //! Native runtime adapter routes supplied to the shared application router.
 use super::{
     AppState, approval_routes, config_status, models_catalog, openai_http_host, session_realtime,
-    session_recovery, session_routes, worker_modules,
+    session_routes, worker_modules,
 };
-use axum::{Router, routing::post};
+use axum::Router;
 use codetether_server_router::{Extensions, Transports};
 
 impl codetether_server_router::HttpState for AppState {}
@@ -25,9 +25,7 @@ pub(super) fn build(state: &AppState, root: Router, nested: Router) -> Router {
                 AppState,
             >(),
             workers: worker_modules::router(),
-            resume: Router::new().route(
-                "/v1/agent/codebases/{codebase_id}/sessions/{session_id}/resume",
-                post(session_recovery::handle),
+            resume: codetether_session_recovery::http::router::<crate::session::Session, AppState>(
             ),
         },
         Transports { root, nested },

@@ -7,6 +7,7 @@ license = "MIT"
 description = "Identity-preserving durable session recovery orchestration"
 
 [dependencies]
+axum = "0.8"
 anyhow = "1"
 async-trait = "0.1"
 codetether-session-access = { path = "../codetether-session-access", version = "0.1.0" }

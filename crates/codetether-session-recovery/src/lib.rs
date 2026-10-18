@@ -4,6 +4,7 @@
 //! verify workspace ownership before applying metadata or executing a prompt.
 mod execution;
 mod host;
+pub mod http;
 mod request;
 mod service;
 pub use host::RecoverySession;

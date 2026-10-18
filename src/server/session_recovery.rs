@@ -1,15 +1,13 @@
 //! Native HTTP binding for shared identity-preserving session recovery.
-mod authority;
-mod errors;
-mod handler;
 mod host;
-mod scope;
+#[cfg(test)]
+pub(super) use codetether_session_access::http_error;
+#[cfg(test)]
 pub(super) use codetether_session_recovery::ResumeRequest;
-pub(super) use errors::http_error;
-pub(super) use handler::handle;
 #[cfg(test)]
 mod tests;
 /// Recover exactly the requested native session identity.
+#[cfg(test)]
 pub(super) async fn resume(
     id: &str,
     request: ResumeRequest,

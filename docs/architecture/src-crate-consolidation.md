@@ -14441,3 +14441,20 @@ Full workspace consolidation remains active.
 - Staged only the realtime crate's anyhow and session-metadata lock dependencies.
   No Cargo, rustc, Rust tests or WebSocket sessions ran. Full consolidation is
   unfinished.
+
+### Authorized session recovery HTTP ownership
+
+- Moved control-plane URL validation, workspace authorization, durable recovery
+  dispatch and HTTP error mapping into codetether-session-recovery::http.
+  The owning crate also assembles the workspace/session recovery route.
+- Native code binds configuration and the existing RecoverySession operations.
+  Removed the native handler and three forwarding modules; durable integration
+  tests and their native-session fixtures remain unchanged.
+- Verification: seven static checks passed for authority/error sequencing,
+  state binding, route/storage selection, removed files, preserved integration
+  test sources, module sizes and isolated lock change. Module reachability,
+  dependency DAG, direct rustfmt, file-limit ratchet and whitespace checks passed.
+  Evidence: artifacts/consolidation-recovery-http/.
+- Added Axum to the recovery crate and staged only its lock dependency. No
+  Cargo, rustc, Rust tests, authority requests or session recovery ran. Full
+  workspace consolidation remains unfinished.
