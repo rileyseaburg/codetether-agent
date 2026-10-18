@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-recall-query",
  "codetether-recall-store",
  "codetether-recall-index",
  "codetether-proactive-context",
@@ -4004,6 +4005,19 @@ dependencies = [
  "codetether-session-recall",
  "codetether-vectordb",
  "serde",
+]
+
+[[package]]
+name = "codetether-recall-query"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-recall-index",
+ "codetether-recall-store",
+ "futures",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

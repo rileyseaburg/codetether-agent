@@ -9497,3 +9497,21 @@ lines. The existing deletion-guard test moved into the crate without execution.
 Evidence is in `artifacts/consolidation-recall-store/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python or worker commands ran. Full workspace
 consolidation remains active.
+
+### Dedicated recall-query orchestration crate
+
+Moved query controls and scope dispatch, 16-reader workspace scanning,
+direct-session migration and ranking coordination into
+`crates/codetether-recall-query`. Seven modules separate the public options,
+host contract, dispatch, direct ranking, migration and workspace stream.
+The native host supplies bounded session loading, projection construction and
+backfill scheduling. Existing search callers retain their native API.
+
+Twenty-three static comparisons cover scope dispatch, empty-query handling,
+512-message migration, persistence ordering, workspace filtering, concurrency,
+logging targets, native bindings and unchanged prefetch/worker callers.
+Module/dependency graphs, file budgets and whitespace checks passed; the
+largest crate file has 37 code lines. Evidence is in
+`artifacts/consolidation-recall-query/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python or worker commands ran. Full workspace
+consolidation remains active.
