@@ -14707,3 +14707,20 @@ Full workspace consolidation remains active.
   artifacts/consolidation-session-loading/.
 - Added anyhow and UUID support to session-resume. No Cargo, rustc, Rust tests,
   session loading/import or owner transfer ran. Full consolidation is unfinished.
+
+### New-session lifecycle ownership
+
+- Moved interactive `/new` creation, selected preference inheritance, storage
+  status handling and reset/refresh sequencing into codetether-new-session.
+  Modules separate orchestration, preferences, persistence and native contracts.
+- Native adapters retain only session storage/fields and view operations. The
+  sequence still creates first, saves the current session, copies preferences,
+  replaces, saves, resets chat and refreshes the listing. Failed replacement
+  persistence still reports failure and proceeds with the existing reset flow.
+- Verification: seven static checks passed for lifecycle ordering, preference
+  copies, persistence messages, native bindings, module bounds and isolated
+  lock additions. Module reachability, dependency DAG, direct rustfmt,
+  file-limit ratchet and whitespace checks passed. Evidence:
+  artifacts/consolidation-new-session/.
+- No Cargo, rustc, Rust tests or session creation/saves ran. Full workspace
+  consolidation remains unfinished.

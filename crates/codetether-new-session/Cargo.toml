@@ -1,0 +1,12 @@
+[package]
+name = "codetether-new-session"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Interactive new-session lifecycle and preference inheritance"
+
+[dependencies]
+anyhow = "1"
+codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
+tracing = "0.1"

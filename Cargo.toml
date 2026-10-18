@@ -7,6 +7,7 @@ members = [
     "crates/codetether-server-runtime",
     "crates/codetether-turn-undo",
     "crates/codetether-side-question",
+    "crates/codetether-new-session",
     "crates/codetether-a2a-discovery",
     "crates/codetether-a2a-grpc",
     "crates/codetether-a2a-http",
@@ -607,6 +608,7 @@ codetether-server-router = { path = "crates/codetether-server-router", version =
 codetether-server-runtime = { path = "crates/codetether-server-runtime", version = "0.1.0" }
 codetether-turn-undo = { path = "crates/codetether-turn-undo", version = "0.1.0" }
 codetether-side-question = { path = "crates/codetether-side-question", version = "0.1.0" }
+codetether-new-session = { path = "crates/codetether-new-session", version = "0.1.0" }
 codetether-audit = { path = "crates/codetether-audit", version = "0.1.0" }
 codetether-bedrock-auth = { path = "crates/codetether-bedrock-auth", version = "0.1.0" }
 codetether-bedrock-protocol = { path = "crates/codetether-bedrock-protocol", version = "0.1.0" }
