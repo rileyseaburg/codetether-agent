@@ -11077,3 +11077,18 @@ Full workspace consolidation remains active.
 - Evidence: `artifacts/consolidation-code-render/`. Compilation, tests and
   rendering were not run; no Cargo or rustc commands executed.
 - Full consolidation remains active, including the formatter state machine.
+
+### Terminal math text extraction
+
+- Moved the formatter's LaTeX-to-Unicode substitution function and its three
+  ordered tables into `crates/codetether-math-text`. The native formatter helper
+  now re-exports the function; substitution order is unchanged.
+- Six modules separate the conversion function, ordered tables and regression
+  test. Maximum module size is 37 code lines; no external dependencies needed.
+- One existing focused substitution test moved with the implementation. Nine
+  static comparisons verify the loop, complete tables, test and unchanged
+  formatter behavior apart from relocating that test.
+- Module reachability, dependency DAG, file-limit and whitespace checks passed.
+  Evidence: `artifacts/consolidation-math-text/`. Compilation and tests were not
+  run; no Cargo or rustc commands executed. The formatter state machine and
+  broader `src/` consolidation remain active work.

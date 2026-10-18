@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-math-text",
  "codetether-code-render",
  "codetether-mermaid",
  "codetether-terminal-text",
@@ -5710,6 +5711,10 @@ dependencies = [
  "codetether-mermaid",
  "ratatui",
 ]
+
+[[package]]
+name = "codetether-math-text"
+version = "0.1.0"
 
 [[package]]
 name = "codetether-tracked-vec"

@@ -1,0 +1,7 @@
+[package]
+name = "codetether-math-text"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Ordered LaTeX-to-Unicode conversion for terminal math text"

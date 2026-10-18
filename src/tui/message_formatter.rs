@@ -633,18 +633,6 @@ mod tests {
     }
 
     #[test]
-    fn prettify_math_substitutes_known_symbols() {
-        assert_eq!(prettify_math("\\sum_{i=1}^n"), "Σ_{i=1}^n");
-        assert_eq!(prettify_math("\\delta_{st}"), "δ_{st}");
-        assert_eq!(
-            prettify_math("H_n=(\\mathbb C)^{\\otimes n}"),
-            "H_n=(ℂ)^{⊗ n}"
-        );
-        // Unknown commands pass through unchanged.
-        assert_eq!(prettify_math("\\unknownmacro x"), "\\unknownmacro x");
-    }
-
-    #[test]
     fn unclosed_math_block_still_renders() {
         let f = MessageFormatter::new(40);
         let content = "\\[\nx = 1";

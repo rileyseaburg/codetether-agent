@@ -1,6 +1,6 @@
-//! Math substitution table chunk 1 of 3 (see `super::message_formatter_math`).
+//! Math substitution table chunk 1 of 3.
 
-/// LaTeX→Unicode pairs, applied longest-first.
+/// LaTeX-to-Unicode pairs in the original application order.
 pub(super) const PAIRS: &[(&str, &str)] = &[
     ("\\Rightarrow", "⇒"),
     ("\\Leftarrow", "⇐"),
