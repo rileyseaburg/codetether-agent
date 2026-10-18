@@ -1276,6 +1276,7 @@ name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
  "codetether-context-health",
+ "codetether-native-providers",
  "codetether-tool-panel",
  "codetether-message-bubbles",
  "codetether-composer-view",
@@ -8611,6 +8612,43 @@ name = "codetether-side-question"
 version = "0.1.0"
 dependencies = [
  "codetether-provider-core",
+]
+
+[[package]]
+name = "codetether-native-providers"
+version = "4.7.6-dev.38"
+dependencies = [
+ "anyhow",
+ "codetether-application-providers",
+ "codetether-codex-protocol",
+ "codetether-cognition-core",
+ "codetether-model-catalog",
+ "codetether-provider-anthropic",
+ "codetether-provider-bedrock",
+ "codetether-provider-bonsai",
+ "codetether-provider-codex",
+ "codetether-provider-copilot",
+ "codetether-provider-core",
+ "codetether-provider-deepseek",
+ "codetether-provider-factory",
+ "codetether-provider-gemini-web",
+ "codetether-provider-glm5",
+ "codetether-provider-google",
+ "codetether-provider-local-cuda",
+ "codetether-provider-metrics",
+ "codetether-provider-moonshot",
+ "codetether-provider-openai",
+ "codetether-provider-openrouter",
+ "codetether-provider-registry",
+ "codetether-provider-stepfun",
+ "codetether-provider-tetherscript",
+ "codetether-provider-vertex-anthropic",
+ "codetether-provider-vertex-glm",
+ "codetether-provider-zai",
+ "codetether-secrets",
+ "codetether-thinker-service",
+ "codetether-util",
+ "tokio",
 ]
 
 [[package]]

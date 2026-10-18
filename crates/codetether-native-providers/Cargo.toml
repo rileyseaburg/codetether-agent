@@ -1,0 +1,46 @@
+[package]
+name = "codetether-native-providers"
+version = "4.7.6-dev.38"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Native provider factory, cached registry and thinker composition"
+
+[features]
+default = []
+candle = ["codetether-provider-bonsai/candle", "codetether-thinker-service/candle"]
+candle-cuda = ["candle", "codetether-provider-local-cuda/candle-cuda", "codetether-thinker-service/candle-cuda"]
+tetherscript = ["codetether-provider-bonsai/tetherscript"]
+
+[dependencies]
+codetether-application-providers = { path = "../codetether-application-providers", version = "0.1.0" }
+codetether-codex-protocol = { path = "../codetether-codex-protocol", version = "0.1.0" }
+codetether-cognition-core = { path = "../codetether-cognition-core", version = "0.1.0" }
+codetether-model-catalog = { path = "../codetether-model-catalog", version = "0.1.0" }
+codetether-provider-anthropic = { path = "../codetether-provider-anthropic", version = "0.1.0" }
+codetether-provider-bedrock = { path = "../codetether-provider-bedrock", version = "0.1.0" }
+codetether-provider-bonsai = { path = "../codetether-provider-bonsai", version = "0.1.0" }
+codetether-provider-codex = { path = "../codetether-provider-codex", version = "0.1.0" }
+codetether-provider-copilot = { path = "../codetether-provider-copilot", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-provider-deepseek = { path = "../codetether-provider-deepseek", version = "0.1.0" }
+codetether-provider-factory = { path = "../codetether-provider-factory", version = "0.1.0" }
+codetether-provider-gemini-web = { path = "../codetether-provider-gemini-web", version = "0.1.0" }
+codetether-provider-glm5 = { path = "../codetether-provider-glm5", version = "0.1.0" }
+codetether-provider-google = { path = "../codetether-provider-google", version = "0.1.0" }
+codetether-provider-local-cuda = { path = "../codetether-provider-local-cuda", version = "0.1.0" }
+codetether-provider-metrics = { path = "../codetether-provider-metrics", version = "0.1.0" }
+codetether-provider-moonshot = { path = "../codetether-provider-moonshot", version = "0.1.0" }
+codetether-provider-openai = { path = "../codetether-provider-openai", version = "0.1.0" }
+codetether-provider-openrouter = { path = "../codetether-provider-openrouter", version = "0.1.0" }
+codetether-provider-registry = { path = "../codetether-provider-registry", version = "0.1.0" }
+codetether-provider-stepfun = { path = "../codetether-provider-stepfun", version = "0.1.0" }
+codetether-provider-tetherscript = { path = "../codetether-provider-tetherscript", version = "0.1.0" }
+codetether-provider-vertex-anthropic = { path = "../codetether-provider-vertex-anthropic", version = "0.1.0" }
+codetether-provider-vertex-glm = { path = "../codetether-provider-vertex-glm", version = "0.1.0" }
+codetether-provider-zai = { path = "../codetether-provider-zai", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+codetether-thinker-service = { path = "../codetether-thinker-service", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+anyhow = "1"
+tokio = { version = "1", features = ["sync"] }

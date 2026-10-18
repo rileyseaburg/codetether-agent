@@ -52,7 +52,8 @@ mod init_dispatch;
 use codetether_provider_factory as init_dispatch_impl;
 mod init_env;
 mod parse;
-pub(crate) mod registry;
+#[doc(hidden)]
+pub mod registry;
 mod tenant_keys;
 use codetether_provider_core as tool_call;
 use codetether_provider_core as traits;

@@ -24972,3 +24972,36 @@ direct rustfmt, file limits and whitespace checks passed. Unrelated working
 changes remain untouched. Evidence: artifacts/consolidation-cli-dispatch/.
 No Cargo, rustc, Python, compiler expansion or runtime tests ran. Full
 consolidation remains active.
+
+### Native provider module moved completely into its own crate
+
+Moved all 24 files from src/provider/ into
+crates/codetether-native-providers/src/provider/. The new crate owns the
+concrete provider factory, native registry specialization and its process-wide
+cache, task credential alias, provider compatibility exports and Copilot
+identity. src/lib.rs now re-exports this crate as provider; the original
+src/provider directory no longer exists. This is a crate-owned implementation,
+not a declaration macro expanded in the root application.
+
+The thinker client and service type aliases moved into the new crate's thinker
+module to close the CUDA factory's dependency without a dependency back to the
+application. The native cognition module re-exports these exact aliases and
+keeps its existing tests. Registry/application modules are public with hidden
+documentation so existing native integration bindings can still name Native.
+Other internal visibility boundaries remain intact. The new package version
+matches the application version (4.7.6-dev.38), preserving Copilot User-Agent
+identity; these versions must stay synchronized when releasing. Root candle,
+candle-cuda and tetherscript features forward to the new crate.
+
+All 24 relocated files match the original sources after explicit import/path,
+documentation and registry visibility changes and direct formatting. Module
+scans cover 694 roots; dependency scans cover 575 crates with no missing modules,
+cycles or undeclared direct workspace dependencies. The declaration audit,
+file limits, direct rustfmt and whitespace checks pass. The graph audit's old
+hard-coded provider entry paths were updated after the initial missing-path
+report. Evidence: artifacts/consolidation-native-providers/.
+
+Only the new workspace dependency and package entry are staged in Cargo.lock;
+its unrelated working contents and the two pre-existing A2A modifications are
+unchanged. No Cargo, rustc, Python, compiler type checking or runtime tests ran.
+The complete workspace consolidation remains active.
