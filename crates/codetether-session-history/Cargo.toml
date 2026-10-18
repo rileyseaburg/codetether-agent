@@ -1,0 +1,11 @@
+[package]
+name = "codetether-session-history"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Append-only transcript view with page-sidecar alignment"
+
+[dependencies]
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }

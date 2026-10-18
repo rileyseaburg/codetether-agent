@@ -9159,3 +9159,19 @@ file budgets and whitespace checks passed; the largest crate file has
 43 code lines. Evidence is in `artifacts/consolidation-thread-events/`.
 Compilation and runtime tests were not run. No Cargo, rustc or Python
 commands ran. Full workspace consolidation remains active.
+
+### Dedicated append-only session-history crate
+
+Moved the borrowed History type, message append/page-alignment logic and
+immutable read methods into `crates/codetether-session-history`. Eight
+modules separate state/construction, append, reads and the two existing
+tests. The native module only re-exports History; with_pages is public
+so native Session construction can retain its existing sidecar binding.
+
+Ten static comparisons cover the borrowed fields, all six methods and
+existing test bodies. Provider messages and page classification reference
+their existing owning crates. Module/dependency graphs, file budgets and
+whitespace checks passed; the largest crate file has 18 code lines. Evidence
+is in `artifacts/consolidation-session-history/`. Compilation and runtime
+tests were not run. No Cargo, rustc or Python commands ran. Full workspace
+consolidation remains active.
