@@ -14724,3 +14724,17 @@ Full workspace consolidation remains active.
   artifacts/consolidation-new-session/.
 - No Cargo, rustc, Rust tests or session creation/saves ran. Full workspace
   consolidation remains unfinished.
+
+### Session picker refresh ownership
+
+- Moved workspace session-list refresh and empty/failure feedback into
+  codetether-session-picker::refresh. Native adapters retain the combined
+  listing operation and access to picker/status fields.
+- Preserved logging, replacement/clearing order, empty-list text and error
+  formatting. The separate return-to-chat operation remains unchanged.
+- Verification: exact refresh-body comparison, native binding checks, unchanged
+  chat-return check and isolated lock additions passed. Module reachability,
+  dependency DAG, direct rustfmt, file-limit ratchet and whitespace checks passed.
+  Evidence: artifacts/consolidation-picker-refresh/.
+- Added anyhow and tracing to the picker crate. No Cargo, rustc, Rust tests or
+  session scans ran. Full workspace consolidation remains unfinished.

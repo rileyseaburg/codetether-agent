@@ -6153,6 +6153,8 @@ dependencies = [
  "codetether-theme",
  "codetether-util",
  "ratatui",
+ "anyhow",
+ "tracing",
 ]
 
 [[package]]

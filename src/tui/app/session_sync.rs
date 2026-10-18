@@ -1,29 +1,19 @@
-use crate::session::list_all_sessions_for_directory;
 use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 
 mod new_session;
+mod picker_host;
 mod upsert;
 
 pub use new_session::create as create_new_session;
 pub use upsert::upsert_active_session;
-
+/// Refresh workspace sessions through shared picker policy.
 pub async fn refresh_sessions(app: &mut App, cwd: &std::path::Path) {
-    tracing::info!(cwd = %cwd.display(), "refresh_sessions: starting");
-    match list_all_sessions_for_directory(cwd).await {
-        Ok(sessions) => {
-            tracing::info!(count = sessions.len(), "refresh_sessions: loaded sessions");
-            app.state.session_picker.replace_sessions(sessions);
-            if app.state.session_picker.sessions.is_empty() {
-                app.state.status = "No sessions found for this workspace".to_string();
-            }
-        }
-        Err(err) => {
-            tracing::error!(error = %err, "refresh_sessions: failed");
-            app.state.status = format!("Failed to list sessions: {err}");
-            app.state.session_picker.clear_sessions();
-        }
-    }
+    codetether_session_picker::refresh::refresh::<picker_host::Catalog, _>(
+        &mut picker_host::Picker(app),
+        cwd,
+    )
+    .await;
 }
 
 pub fn return_to_chat(app: &mut App) {

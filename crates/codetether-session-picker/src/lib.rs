@@ -9,6 +9,7 @@ mod help;
 mod item;
 mod list;
 mod list_item;
+pub mod refresh;
 mod relative_time;
 mod render;
 mod row;

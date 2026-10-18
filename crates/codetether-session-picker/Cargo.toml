@@ -7,6 +7,8 @@ license = "MIT"
 description = "Session picker filtering and terminal presentation"
 
 [dependencies]
+anyhow = "1"
+tracing = "0.1"
 chrono = "0.4"
 codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
 codetether-theme = { path = "../codetether-theme", version = "0.1.0", features = ["ratatui"] }
