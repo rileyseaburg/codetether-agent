@@ -16339,3 +16339,20 @@ Full workspace consolidation remains active.
   No dependencies changed. Evidence: `artifacts/consolidation-claimed-task/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared resumable worker frame dispatch
+
+- Moved worker SSE frame processing and resync handling from native
+  `frame_handler.rs` into `codetether-a2a-stream::dispatch`, alongside the
+  existing frame classification, parsing and durable cursor implementation.
+- Separate dispatch and resync modules own event filtering, JSON decoding,
+  task dispatch order, cursor commit/reset and reconciliation error logging.
+  Two native hooks retain actual task dispatch and pending-task polling.
+- Preserved special resync precedence, empty/DONE/invalid-JSON handling,
+  dispatch-before-commit ordering and reset-before-reconciliation ordering.
+- Verification: complete function-body comparisons, exact native hook binding,
+  unchanged ingestion/dispatch/polling and protocol implementation/test files,
+  module/dependency graphs, direct rustfmt, file budgets and diff whitespace.
+  No dependency changes. Evidence: `artifacts/consolidation-stream-dispatch/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

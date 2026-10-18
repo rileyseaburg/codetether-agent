@@ -38,3 +38,6 @@ pub mod reconnect;
 
 /// Resumable worker SSE request construction.
 pub mod worker_request;
+
+/// Worker event dispatch and resume-cursor progression.
+pub mod dispatch;
