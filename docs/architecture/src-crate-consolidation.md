@@ -10724,3 +10724,20 @@ passed; modules have at most 41 code lines. Evidence is in
 `artifacts/consolidation-cookie-auth-cli/`. Compilation and runtime tests were
 not run. No Cargo, rustc, Python, cookie-file read or Vault operation ran.
 Full workspace consolidation remains active.
+
+### OAuth callback transport and parsing extracted
+
+Moved automatic IPv4/IPv6 callback capture, bounded listener waiting, HTTP
+request/response handling and pasted callback URL/query parsing into
+`crates/codetether-oauth-callback`. Twelve modules separate listener binding,
+transport, response templates and parsing. Native provider login uses shared
+exports. Seven existing callback tests moved; two device-response parsing tests
+remain native.
+
+Fifty-three static comparisons/checks cover original helper bodies, listener
+binding and fallback, response content, parser behavior and unchanged remaining
+auth items/tests. Module/dependency graphs, file budgets and whitespace checks
+passed; modules have at most 42 code lines. Evidence is in
+`artifacts/consolidation-oauth-callback/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python, callback listener or authentication operation ran.
+Full workspace consolidation remains active.

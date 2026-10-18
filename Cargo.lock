@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-oauth-callback",
  "codetether-cookie-auth-cli",
  "codetether-user-auth",
  "codetether-bedrock-auth-cli",
@@ -5485,6 +5486,17 @@ dependencies = [
  "codetether-secrets",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-oauth-callback"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest 0.13.4",
+ "tokio",
+ "tracing",
+ "urlencoding",
 ]
 
 [[package]]
