@@ -103,6 +103,7 @@ members = [
     "crates/codetether-thinker-service",
     "crates/codetether-voice-capture",
     "crates/codetether-chat-files",
+    "crates/codetether-chat-clipboard",
     "crates/codetether-paths",
     "crates/codetether-platform",
     "crates/codetether-plan",
@@ -1080,6 +1081,7 @@ codetether-cognition-runtime = { path = "crates/codetether-cognition-runtime", v
 codetether-thinker-service = { path = "crates/codetether-thinker-service", version = "0.1.0" }
 codetether-voice-capture = { path = "crates/codetether-voice-capture", version = "0.1.0" }
 codetether-chat-files = { path = "crates/codetether-chat-files", version = "0.1.0" }
+codetether-chat-clipboard = { path = "crates/codetether-chat-clipboard", version = "0.1.0" }
 codetether-github-auth = { path = "crates/codetether-github-auth", version = "0.1.0" }
 codetether-webfetch = { path = "crates/codetether-webfetch", version = "0.1.0" }
 codetether-websearch = { path = "crates/codetether-websearch", version = "0.1.0" }

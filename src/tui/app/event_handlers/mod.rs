@@ -7,6 +7,7 @@ mod approval_key;
 #[cfg(test)]
 mod approval_key_tests;
 mod click_open;
+mod chat_clipboard_host;
 mod clipboard;
 mod copy_reply;
 mod copy_transcript;

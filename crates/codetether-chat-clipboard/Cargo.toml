@@ -1,0 +1,14 @@
+[package]
+name = "codetether-chat-clipboard"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Chat reply/transcript copy and text/image paste workflows"
+
+[dependencies]
+codetether-chat-model = { path = "../codetether-chat-model", version = "0.1.0" }
+codetether-chat-transcript = { path = "../codetether-chat-transcript", version = "0.1.0" }
+codetether-image = { path = "../codetether-image", version = "0.1.0" }
+codetether-terminal-clipboard = { path = "../codetether-terminal-clipboard", version = "0.1.0" }
+tracing = "0.1"

@@ -19418,3 +19418,22 @@ module reachability, dependency-cycle checks, file-size ratchet, whitespace
 and direct formatting. Evidence: `artifacts/consolidation-editor-keys/`.
 No Cargo, rustc, Python or Rust tests ran; compilation and runtime remain
 unverified.
+
+### Chat clipboard workflows
+
+Moved latest-reply copying, transcript copying and text/image clipboard paste
+into `codetether-chat-clipboard`. Dedicated modules own each workflow; the crate
+uses the existing transcript formatter and terminal clipboard implementation.
+Native handlers delegate through five message/image/status/scroll/paste bindings.
+
+Preserved newest nonempty assistant selection, transcript turn counting, copy
+status and scroll behavior, text-before-image precedence, newline normalization,
+attachment ordering and SSH/headless guidance. Both warning log targets remain
+unchanged. Existing terminal clipboard access and chat paste paths are reused.
+
+Validation: three complete translated workflow bodies, five native state
+bindings, three delegates, unchanged callers/clipboard access, isolated lockfile
+addition, lexical module reachability, dependency-cycle checks, file-size
+ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-chat-clipboard/`. No Cargo, rustc, Python, Rust tests
+or real clipboard operations ran; compilation and runtime remain unverified.

@@ -1253,6 +1253,7 @@ dependencies = [
  "codetether-trust-status",
  "codetether-chat-status",
  "codetether-chat-submit",
+ "codetether-chat-clipboard",
  "codetether-chat-files",
  "codetether-chat-layout",
  "codetether-message-cache",
@@ -2265,6 +2266,17 @@ dependencies = [
  "codetether-bus-core",
  "codetether-tool-core",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-chat-clipboard"
+version = "0.1.0"
+dependencies = [
+ "codetether-chat-model",
+ "codetether-chat-transcript",
+ "codetether-image",
+ "codetether-terminal-clipboard",
+ "tracing",
 ]
 
 [[package]]
