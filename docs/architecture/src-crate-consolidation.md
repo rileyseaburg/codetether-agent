@@ -16199,3 +16199,18 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-worker-context/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared worker transcript updates
+
+- Moved visible loop-halt diagnostics, budget wrap-up injection and raw
+  tool-result insertion into `codetether-a2a-worker-core::session_protocol::transcript`.
+  Native session bindings retain standard append and save behavior.
+- Preserved assistant/tool message roles, diagnostic text, wrap-up selection,
+  raw tool output encoding and best-effort diagnostic persistence logging.
+- Verification: all three complete function-body comparisons, append/save
+  bindings, native re-exports, unchanged halt integration test and caller
+  implementations, module/dependency graphs, direct rustfmt, file budgets and
+  diff whitespace. No dependencies changed. Evidence:
+  `artifacts/consolidation-worker-transcript/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

@@ -36,3 +36,6 @@ pub mod policy;
 
 /// Shared provider and response execution context data.
 pub mod context;
+
+/// Transcript insertion and persisted worker halt diagnostics.
+pub mod transcript;
