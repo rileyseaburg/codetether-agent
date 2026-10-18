@@ -12861,3 +12861,20 @@ Full workspace consolidation remains active.
 - Only the new package/root dependency entries were staged from Cargo.lock.
   No language servers, diagnostics, Cargo, rustc, compilation or Rust tests ran.
   Full consolidation remains incomplete.
+
+### Relay OKR drafting extraction
+
+- Moved the default objective template, draft schema/normalization, JSON recovery,
+  model prompt/request construction and provider drafting call into
+  codetether-relay-okr. Eight modules contain at most 39 code lines.
+- Native code retains provider resolution, pending approval lifecycle, repository
+  setup and model rotation. The previous title helper was an identity function;
+  template/normalization preserve that behavior instead of adding truncation.
+- Verification: 20 static source comparisons passed for request parameters and
+  exact prompt text, draft parsing/logging, schema, fallback normalization,
+  unchanged approval lifecycle and native tests. Module/dependency checks,
+  direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-relay-okr/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  provider calls, OKR creation, Cargo, rustc, compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

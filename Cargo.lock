@@ -1269,6 +1269,7 @@ dependencies = [
  "codetether-approval-view",
  "codetether-proposed-content",
  "codetether-approval-diagnostics",
+ "codetether-relay-okr",
  "codetether-question-view",
  "codetether-inspector-view",
  "codetether-interlude",
@@ -6406,6 +6407,18 @@ dependencies = [
  "codetether-lsp-core",
  "codetether-proposed-content",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-relay-okr"
+version = "0.1.0"
+dependencies = [
+ "codetether-okr",
+ "codetether-provider-core",
+ "serde",
+ "serde_json",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

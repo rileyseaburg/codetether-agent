@@ -1,0 +1,15 @@
+[package]
+name = "codetether-relay-okr"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Relay OKR templates, model drafting and response normalization"
+
+[dependencies]
+codetether-okr = { path = "../codetether-okr", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+tracing = "0.1"
