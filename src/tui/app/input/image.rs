@@ -1,27 +1,31 @@
-//! Image attachment helpers for the TUI chat.
-
+//! Native pending-image queue and output bindings for shared attachment policy.
+use crate::tui::{
+    app::state::App,
+    chat::message::{ChatMessage, MessageType},
+};
+use codetether_image::{
+    ImageAttachment,
+    interactive::{Presentation, View},
+};
+pub(crate) use codetether_image::{attachment_from_file as attach_image_file, image_summary};
 use std::path::Path;
-
-use crate::session::ImageAttachment;
-
-pub(crate) fn attach_image_file(path: &Path) -> Result<ImageAttachment, String> {
-    super::image_file::attach(path)
-}
-
-pub(crate) fn image_summary(image: &ImageAttachment) -> String {
-    let mime = image.mime_type.as_deref().unwrap_or("image/*");
-    match super::image_data_url::decoded_len(&image.data_url) {
-        Some(bytes) => format!("[{mime} image, {}]", format_bytes(bytes)),
-        None => format!("[{mime} image]"),
+struct ImageView<'a>(&'a mut App);
+impl View for ImageView<'_> {
+    fn push_image(&mut self, image: ImageAttachment) -> usize {
+        self.0.state.pending_images.push(image);
+        self.0.state.pending_images.len()
+    }
+    fn set_status(&mut self, message: String) {
+        self.0.state.status = message;
+    }
+    fn push_system_message(&mut self, message: String) {
+        self.0
+            .state
+            .messages
+            .push(ChatMessage::new(MessageType::System, message));
+        self.0.state.scroll_to_bottom();
     }
 }
-
-fn format_bytes(bytes: usize) -> String {
-    if bytes >= 1024 * 1024 {
-        format!("{:.1} MiB", bytes as f64 / 1024.0 / 1024.0)
-    } else if bytes >= 1024 {
-        format!("{:.1} KiB", bytes as f64 / 1024.0)
-    } else {
-        format!("{bytes} B")
-    }
+pub(crate) fn attach_image_command(app: &mut App, cwd: &Path, cleaned: &str, mode: Presentation) {
+    codetether_image::interactive::attach(&mut ImageView(app), cwd, cleaned, mode);
 }

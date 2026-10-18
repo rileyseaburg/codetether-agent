@@ -14623,3 +14623,19 @@ Full workspace consolidation remains active.
   artifacts/consolidation-go-interactive/.
 - No dependency changes. No Cargo, rustc, Rust tests, provider requests or
   objective/session mutations ran. Full workspace consolidation is unfinished.
+
+### Image attachment command ownership
+
+- Moved image-command path resolution, attachment loading, queue dispatch and
+  presentation policy into codetether-image::interactive. Explicit chat and
+  pending modes retain the existing system-notice versus status-only behavior.
+- Moved MIME/decoded-size summaries into the image crate. Native input code now
+  binds only the pending queue and output fields; both session and session-free
+  command paths delegate to the shared implementation.
+- Verification: eight static checks passed for summary bodies, path/attachment
+  operations, presentation messages, dispatcher scope, pending mode, native
+  bindings, retained attachment test sources and module bounds. Module
+  reachability, dependency DAG, direct rustfmt, file-limit ratchet and whitespace
+  checks passed. Evidence: artifacts/consolidation-image-command/.
+- No dependencies changed. No Cargo, rustc, Rust tests or image file reads ran.
+  Full workspace consolidation remains unfinished.
