@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-answer-review-view",
  "codetether-tui-style",
  "codetether-goal-prompt",
  "codetether-question-view",
@@ -6097,6 +6098,14 @@ version = "0.1.0"
 dependencies = [
  "codetether-theme",
  "codetether-tui-models",
+ "ratatui",
+]
+
+[[package]]
+name = "codetether-answer-review-view"
+version = "0.1.0"
+dependencies = [
+ "crossterm",
  "ratatui",
 ]
 

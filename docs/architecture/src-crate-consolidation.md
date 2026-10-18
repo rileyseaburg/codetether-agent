@@ -11844,3 +11844,19 @@ Full workspace consolidation remains active.
   artifacts/consolidation-tui-style/.
 - No Cargo, rustc, compilation, tests or rendered-output checks ran. Full workspace
   consolidation remains incomplete.
+
+### Answer-satisfaction presentation extraction
+
+- Moved answer-review popup content, geometry, rendering and explicit yes/no
+  key selection into codetether-answer-review-view. Five modules contain at most
+  27 code lines each. The existing keyboard-choice test moved with the helper.
+- Native rendering still checks durable review readiness, slash-command input
+  and goal-editor visibility. Native decision recording, input clearing, status
+  updates, command passthrough and goal-resumption behavior are unchanged. The
+  shared crate returns intent and draws UI without a goal-runtime dependency.
+- Verification: 10 source comparisons passed, covering moved bodies, readiness
+  guards, the original choice test and unchanged native recording/passthrough
+  and rendering integration test. Module and dependency graph checks, direct
+  formatting, source file limits and git diff --check passed.
+- Evidence: artifacts/consolidation-answer-review-view/. No Cargo, rustc,
+  compilation, tests or terminal rendering ran. Full consolidation is incomplete.
