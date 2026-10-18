@@ -24,6 +24,8 @@ pub mod render;
 
 /// Focused-child detail selection.
 pub mod detail;
+/// Read-only agent-tree panel adapter and row callbacks.
+pub mod panel;
 pub mod selection;
 /// Parent-scoped tool-child transcript assembly.
 pub mod tool_detail;

@@ -28174,3 +28174,19 @@ file-limit checks passed (725 roots, 617 crates). Evidence:
 artifacts/consolidation-watchdog-state/. No dependencies or unrelated working
 files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Crate-owned subagent panel adapter
+
+Moved the subagent Panel type and its five Host methods from
+src/tui/ui/subagent_view/host.rs into codetether-agent-dashboard::panel.
+The ordinary crate-owned adapter borrows AgentTreeState<S> and accepts overview
+and detail-row callbacks. Root rendering now supplies those existing callbacks
+and the state reference; the former root host file is removed.
+
+Static comparisons cover all five methods and root callback wiring. Both row
+builders and shared panel rendering policy are unchanged. Declaration,
+module/dependency, production-scope, formatting, whitespace and file-limit
+checks passed (725 roots, 617 crates). Evidence:
+artifacts/consolidation-agent-panel/. No dependencies or unrelated working
+files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.
