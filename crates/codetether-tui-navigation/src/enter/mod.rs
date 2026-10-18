@@ -2,6 +2,7 @@
 //!
 //! [dispatch] selects handlers through [Host]; native code retains session
 //! ownership and the concrete submission/settings implementations.
+mod binding;
 mod host;
 mod run;
 pub use host::{Async, Host, Sync};

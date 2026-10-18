@@ -27628,3 +27628,19 @@ formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
 Unrelated files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-image-paste/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### View-level Enter frontend bindings
+
+Moved synchronous/asynchronous Enter host methods, session-bound setting and
+session selection handlers, swarm input/detail behavior and the Enter entry
+into codetether-tui-navigation::enter::binding modules. Removed five root
+implementation files; the root selects concrete resource types and callbacks.
+
+All sixteen expanded function bodies and the borrowed host layout match after
+callback qualification. View selection, session borrowing and empty/nonempty
+swarm input behavior are unchanged. Declaration, module/dependency, native
+production-scope, standalone formatting, file-limit and whitespace checks pass
+for 725 roots and 617 crates. Tests and unrelated files are unchanged; no
+manifest or lock changes were needed. Evidence:
+artifacts/consolidation-enter-bindings/. No Cargo, rustc, Python, compilation or
+runtime tests ran. Full consolidation remains active.
