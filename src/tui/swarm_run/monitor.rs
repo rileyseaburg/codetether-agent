@@ -14,7 +14,7 @@ mod tests {
     #[test]
     fn bare_swarm_without_active_run_shows_guidance_and_stays_in_chat() {
         let mut app = App::default();
-        app.state.set_view_mode(ViewMode::Chat);
+        crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Chat);
         open_swarm_monitor(&mut app);
         assert_eq!(app.state.view_mode, ViewMode::Chat);
         assert!(app.state.status.contains("/swarm <task>"));

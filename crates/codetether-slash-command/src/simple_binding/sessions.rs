@@ -16,7 +16,8 @@ macro_rules! __simple_sessions {
                     SimpleCommand::Sessions => {
                         $refresh(app, cwd).await;
                         app.state.session_picker.clear_session_filter();
-                        app.state.set_view_mode(ViewMode::Sessions);
+                        crate::tui::app::state::view::transition(&mut app.state)
+                            .set_view_mode(ViewMode::Sessions);
                         app.state.status = "Session picker".to_string();
                     }
                     SimpleCommand::ImportCodex => {

@@ -35,7 +35,7 @@ impl codetether_tui_navigation::focus::Host for Navigation<'_> {
         self.0.state.swarm.list_state.select(Some(index));
     }
     fn show_swarm(&mut self) {
-        self.0.state.set_view_mode(ViewMode::Swarm);
+        crate::tui::app::state::view::transition(&mut self.0.state).set_view_mode(ViewMode::Swarm);
     }
     fn enter_swarm_detail(&mut self) {
         self.0.state.swarm.enter_detail();

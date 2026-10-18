@@ -34,7 +34,7 @@ impl codetether_new_session::View for NewView<'_> {
         self.0.state.chat_viewport.scroll_to_bottom();
     }
     fn show_chat(&mut self) {
-        self.0.state.set_view_mode(ViewMode::Chat);
+        crate::tui::app::state::view::transition(&mut self.0.state).set_view_mode(ViewMode::Chat);
     }
     async fn refresh_sessions(&mut self, cwd: &Path) {
         crate::tui::app::session_sync::refresh_sessions(self.0, cwd).await;

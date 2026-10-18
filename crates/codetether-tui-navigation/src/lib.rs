@@ -55,3 +55,6 @@ pub mod tab;
 pub mod state_binding;
 
 mod view_save_binding;
+
+mod view_transition;
+pub use view_transition::ViewTransition;

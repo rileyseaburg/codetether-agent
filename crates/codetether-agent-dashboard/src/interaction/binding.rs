@@ -36,7 +36,8 @@ macro_rules! declare_frontend_dashboard_input {
                     &mut self.state.swarm
                 }
                 fn show_swarm(&mut self) {
-                    self.state.set_view_mode(ViewMode::Swarm);
+                    crate::tui::app::state::view::transition(&mut self.state)
+                        .set_view_mode(ViewMode::Swarm);
                 }
                 fn open_local_detail(&mut self) {
                     self.state.agent_tree.detail_mode = true;

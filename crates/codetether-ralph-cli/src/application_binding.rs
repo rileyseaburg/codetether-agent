@@ -50,7 +50,8 @@ macro_rules! declare_frontend_ralph {
                     self.0.state.ralph.attach_event_rx(events);
                 }
                 fn show_monitor(&mut self) {
-                    self.0.state.set_view_mode(ViewMode::Ralph);
+                    crate::tui::app::state::view::transition(&mut self.0.state)
+                        .set_view_mode(ViewMode::Ralph);
                 }
                 fn stories(&self) -> &[RalphStoryInfo] {
                     &self.0.state.ralph.stories

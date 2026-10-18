@@ -12,13 +12,13 @@ pub(super) async fn run(host: &mut $dispatch, kind: SimpleCommand) {
     match kind {
         SimpleCommand::Audit => {
             $audit(&mut app.state.audit).await;
-            app.state.set_view_mode(ViewMode::Audit);
+            crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Audit);
             app.state.status = "Audit — subagent activity".to_string();
         }
         SimpleCommand::Git => {
             let cwd = std::path::PathBuf::from(&app.state.cwd_display);
             app.state.git = $git(&cwd);
-            app.state.set_view_mode(ViewMode::Git);
+            crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Git);
             app.state.status = "Git status".to_string();
         }
         SimpleCommand::Plugin => {

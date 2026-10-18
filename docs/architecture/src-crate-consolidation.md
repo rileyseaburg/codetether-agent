@@ -28443,3 +28443,21 @@ formatting, whitespace and file-limit checks pass (724 roots, 617 crates).
 Evidence: artifacts/consolidation-chat-scroll-methods/. No dependencies or
 unrelated working files changed. No Cargo, rustc, Python, compilation or runtime
 tests ran. Full consolidation remains active and incomplete.
+
+### Crate-owned view transitions
+
+Moved view selection and saved-scroll capture/restore into
+codetether-tui-navigation::ViewTransition. Removed the root settings_nav.rs and
+view_save.rs declaration files. A single root projection borrows the current
+mode, saved scroll, chat position/follow flag and tool position; callers invoke
+the crate-owned transition operations through it.
+
+Static comparisons cover 31 caller/registration files, all three transition
+operations and the five-field projection. Shared view-state rules are unchanged.
+The preexisting unrelated formatting in app/tests.rs was restored after the
+line-limit check identified it. An unnecessary verifier match-arm normalization
+was removed; initial failure logs are retained. Declaration, module/dependency,
+production-scope, formatting, whitespace and file-limit checks pass (724 roots,
+617 crates). Evidence: artifacts/consolidation-view-transition/.
+No dependencies or unrelated working files changed. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active and incomplete.

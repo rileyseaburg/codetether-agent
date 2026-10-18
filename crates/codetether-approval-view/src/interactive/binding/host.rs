@@ -35,7 +35,8 @@ macro_rules! __frontend_approval_keys_host {
                     self.0.state.editor.hscroll = 0;
                 }
                 fn show_editor(&mut self) {
-                    self.0.state.set_view_mode(ViewMode::Editor);
+                    crate::tui::app::state::view::transition(&mut self.0.state)
+                        .set_view_mode(ViewMode::Editor);
                 }
                 fn set_status(&mut self, status: String) {
                     self.0.state.status = status;

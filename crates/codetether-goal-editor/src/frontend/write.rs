@@ -29,10 +29,12 @@ macro_rules! __frontend_goal_editor_write {
                     self.app.state.composer.clear_input();
                 }
                 fn show_editor(&mut self) {
-                    self.app.state.set_view_mode(ViewMode::Editor);
+                    crate::tui::app::state::view::transition(&mut self.app.state)
+                        .set_view_mode(ViewMode::Editor);
                 }
                 fn show_chat(&mut self) {
-                    self.app.state.set_view_mode(ViewMode::Chat);
+                    crate::tui::app::state::view::transition(&mut self.app.state)
+                        .set_view_mode(ViewMode::Chat);
                 }
                 fn status(&mut self, text: String) {
                     self.app.state.status = text;

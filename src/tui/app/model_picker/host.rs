@@ -8,7 +8,7 @@ impl codetether_model_picker::interactive::View for Picker<'_> {
         &mut self.0.state.model_picker
     }
     fn show_picker(&mut self) {
-        self.0.state.set_view_mode(ViewMode::Model);
+        crate::tui::app::state::view::transition(&mut self.0.state).set_view_mode(ViewMode::Model);
     }
     fn set_status(&mut self, status: String) {
         self.0.state.status = status;

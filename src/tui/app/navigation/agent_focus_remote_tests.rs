@@ -10,7 +10,7 @@ fn tab_selects_the_observed_mdns_agent() {
     crate::tool::agent::bridge::record_remote_turn(&name, &parent, "inspect", "done");
     let mut app = App::default();
     app.state.session_id = Some(parent);
-    app.state.set_view_mode(ViewMode::Chat);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Chat);
 
     handle_tab(&mut app);
 

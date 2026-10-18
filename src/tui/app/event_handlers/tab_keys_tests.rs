@@ -25,7 +25,7 @@ fn task(id: &str) -> SubTaskInfo {
 #[test]
 fn tab_and_backtab_navigate_swarm_workers() {
     let mut app = App::default();
-    app.state.set_view_mode(ViewMode::Swarm);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Swarm);
     app.state.swarm.subtasks = vec![task("one"), task("two")];
     dispatch(&mut app, KeyCode::Tab);
     assert_eq!(app.state.swarm.selected_index, 1);

@@ -44,16 +44,15 @@ pub use codetether_telemetry::state_binding::tool as pending_tool;
 pub mod prompt_queue;
 pub mod scroll;
 pub use codetether_chat_layout as scroll_page;
-pub use codetether_session_picker as session_nav;
-pub use codetether_util::fuzzy as session_fuzzy;
-pub mod settings_nav;
 pub use codetether_chat_model as streaming;
 pub use codetether_composer_view::state_binding::completion as slash_suggest;
+pub use codetether_session_picker as session_nav;
 pub use codetether_slash_command as slash_commands;
 pub use codetether_slash_command as slash_hints;
 pub use codetether_telemetry as timing;
+pub use codetether_util::fuzzy as session_fuzzy;
 pub mod types;
-pub mod view_save;
+pub mod view;
 pub use codetether_tui_worker as worker_bridge;
 
 #[cfg(test)]

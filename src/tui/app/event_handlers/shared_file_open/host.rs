@@ -24,7 +24,7 @@ impl codetether_chat_files::Host for Native<'_> {
         self.0.state.git.captured_at = time;
     }
     fn save_scroll_state(&mut self) {
-        self.0.state.save_scroll_state();
+        crate::tui::app::state::view::transition(&mut self.0.state).save_scroll_state();
     }
     fn show_git(&mut self) {
         self.0.state.view_mode = ViewMode::Git;

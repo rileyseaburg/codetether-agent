@@ -21,7 +21,8 @@ macro_rules! __simple_views {
                         app.state
                             .ralph
                             .mark_active(app.state.cwd_display.clone(), "TUI Ralph monitor");
-                        app.state.set_view_mode(ViewMode::Ralph);
+                        crate::tui::app::state::view::transition(&mut app.state)
+                            .set_view_mode(ViewMode::Ralph);
                     }
                     SimpleCommand::Chat => $chat(app),
                     SimpleCommand::Webview => {

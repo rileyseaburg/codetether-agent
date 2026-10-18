@@ -23,7 +23,7 @@ impl codetether_file_share::interactive::View for Composer<'_> {
         self.0.state.composer.refresh_slash_suggestions();
     }
     fn show_chat(&mut self) {
-        self.0.state.set_view_mode(ViewMode::Chat);
+        crate::tui::app::state::view::transition(&mut self.0.state).set_view_mode(ViewMode::Chat);
     }
     fn scroll_to_bottom(&mut self) {
         self.0.state.chat_viewport.scroll_to_bottom();

@@ -27,7 +27,8 @@ impl codetether_agent_command::detach::Host for App {
         self.state.status = status;
     }
     fn show_subagents(&mut self) {
-        self.state.set_view_mode(ViewMode::Subagents);
+        crate::tui::app::state::view::transition(&mut self.state)
+            .set_view_mode(ViewMode::Subagents);
     }
     fn push_system(&mut self, content: String) {
         self.state

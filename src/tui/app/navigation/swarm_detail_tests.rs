@@ -25,7 +25,7 @@ fn task(id: &str) -> SubTaskInfo {
 #[test]
 fn arrows_switch_agents_in_detail_mode() {
     let mut app = App::default();
-    app.state.set_view_mode(ViewMode::Swarm);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Swarm);
     app.state.swarm.subtasks = vec![task("one"), task("two")];
     app.state.swarm.enter_detail();
     handle_down(&mut app, KeyModifiers::NONE);

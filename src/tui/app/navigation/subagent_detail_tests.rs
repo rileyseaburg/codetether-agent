@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn escape_returns_from_child_detail_to_agent_dashboard() {
     let mut app = App::default();
-    app.state.set_view_mode(ViewMode::Subagents);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Subagents);
     app.state.agent_tree.detail_mode = true;
     app.state.agent_tree.detail_scroll = 12;
     handle_escape(&mut app);
@@ -15,7 +15,7 @@ fn escape_returns_from_child_detail_to_agent_dashboard() {
 #[test]
 fn detail_arrows_scroll_transcript() {
     let mut app = App::default();
-    app.state.set_view_mode(ViewMode::Subagents);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Subagents);
     app.state.agent_tree.detail_mode = true;
     handle_down(&mut app, KeyModifiers::NONE);
     assert_eq!(app.state.agent_tree.detail_scroll, 1);

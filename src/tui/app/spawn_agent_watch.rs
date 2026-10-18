@@ -8,7 +8,7 @@ use crate::tui::models::ViewMode;
 /// The dashboard remains available through the existing Esc binding.
 pub(super) fn open(app: &mut App, name: &str) {
     app.state.agent_tree.active = Some(name.to_string());
-    app.state.set_view_mode(ViewMode::Subagents);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Subagents);
     app.state.agent_tree.detail_mode = true;
     app.state.agent_tree.detail_scroll = 0;
 }

@@ -6,7 +6,8 @@ impl Native<'_> {
         self.app.state.swarm.selected_index = index;
         self.app.state.swarm.list_state.select(Some(index));
         self.app.state.swarm.enter_detail();
-        self.app.state.set_view_mode(ViewMode::Swarm);
+        crate::tui::app::state::view::transition(&mut self.app.state)
+            .set_view_mode(ViewMode::Swarm);
         self.app.state.agent_tree.active = self.app.state.swarm.subtasks[index].agent_name.clone();
     }
 }

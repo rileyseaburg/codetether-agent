@@ -20,7 +20,8 @@ macro_rules! __frontend_session_free_host {
                     super::image::attach_image_command(self.app, self.cwd, path);
                 }
                 fn open_settings(&mut self) {
-                    self.app.state.set_view_mode(ViewMode::Settings);
+                    crate::tui::app::state::view::transition(&mut self.app.state)
+                        .set_view_mode(ViewMode::Settings);
                 }
                 fn open_model(&mut self) {
                     super::helpers::open_model_view(self.app, self.registry);

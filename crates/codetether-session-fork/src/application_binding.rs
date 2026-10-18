@@ -60,7 +60,8 @@ macro_rules! declare_fork_command {
                     self.0.state.chat_viewport.scroll_to_bottom();
                 }
                 fn show_chat(&mut self) {
-                    self.0.state.set_view_mode(ViewMode::Chat);
+                    crate::tui::app::state::view::transition(&mut self.0.state)
+                        .set_view_mode(ViewMode::Chat);
                 }
                 fn set_status(&mut self, status: String) {
                     self.0.state.status = status;

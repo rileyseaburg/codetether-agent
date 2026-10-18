@@ -17,7 +17,7 @@ pub async fn refresh_sessions(app: &mut App, cwd: &std::path::Path) {
 }
 
 pub fn return_to_chat(app: &mut App) {
-    app.state.restore_scroll_state();
-    app.state.set_view_mode(ViewMode::Chat);
+    crate::tui::app::state::view::transition(&mut app.state).restore_scroll_state();
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Chat);
     app.state.status = "Back to chat".to_string();
 }

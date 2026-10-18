@@ -17,7 +17,7 @@ impl View for App {
         &mut self.state.swarm
     }
     fn show_monitor(&mut self) {
-        self.state.set_view_mode(ViewMode::Swarm);
+        crate::tui::app::state::view::transition(&mut self.state).set_view_mode(ViewMode::Swarm);
     }
     fn set_status(&mut self, status: String) {
         self.state.status = status;

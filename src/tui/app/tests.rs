@@ -49,7 +49,7 @@ async fn apply_selected_model_persists_to_session() {
     app.state.model_picker.available_models = vec!["zai/glm-5".to_string(), "openai/gpt-4o".to_string()];
     app.state.model_picker.open(&mut app.state.status);
     app.state.model_picker.selected_model_index = 1;
-    app.state.set_view_mode(ViewMode::Model);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Model);
 
     let mut session = Session::new().await.expect("session should create");
     apply_selected_model(&mut app, &mut session);
@@ -63,7 +63,7 @@ async fn apply_selected_model_persists_to_session() {
 fn closing_model_picker_returns_to_chat() {
     let mut app = App::default();
     app.state.model_picker.open(&mut app.state.status);
-    app.state.set_view_mode(ViewMode::Model);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Model);
 
     close_model_picker(&mut app);
 

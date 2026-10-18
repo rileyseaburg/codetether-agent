@@ -16,7 +16,7 @@ fn managed(name: &str) -> SpawnedAgent {
 #[test]
 fn enter_opens_managed_agent_detail_before_swarm() {
     let mut app = App::default();
-    app.state.set_view_mode(ViewMode::Subagents);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Subagents);
     app.state
         .agent_tree
         .spawned

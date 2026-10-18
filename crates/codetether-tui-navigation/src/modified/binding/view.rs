@@ -23,7 +23,8 @@ macro_rules! __frontend_modified_view {
                             .clear_streaming_text(&mut app.state.streaming);
                     }
                     Action::SaveScroll => {
-                        app.state.save_scroll_state();
+                        crate::tui::app::state::view::transition(&mut app.state)
+                            .save_scroll_state();
                     }
                     Action::View(view) => {
                         app.state.view_mode = view.clone();

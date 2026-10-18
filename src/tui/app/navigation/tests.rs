@@ -13,7 +13,7 @@ mod swarm_detail_tests;
 fn help_overlay_consumes_chat_arrow_navigation() {
     let mut app = App::default();
     app.state.help.visible = true;
-    app.state.set_view_mode(ViewMode::Chat);
+    crate::tui::app::state::view::transition(&mut app.state).set_view_mode(ViewMode::Chat);
     app.state.chat_viewport.set_chat_max_scroll(25);
     app.state.chat_viewport.scroll_to_bottom();
 
