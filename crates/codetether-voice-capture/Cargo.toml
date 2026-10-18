@@ -1,0 +1,13 @@
+[package]
+name = "codetether-voice-capture"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Background microphone capture and blocking Voice API transcription"
+
+[dependencies]
+codetether-voice-input-tool = { path = "../codetether-voice-input-tool", version = "0.1.0" }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "multipart", "blocking", "rustls"] }
+serde_json = "1"
+tracing = "0.1"

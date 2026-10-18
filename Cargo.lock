@@ -1780,6 +1780,7 @@ dependencies = [
  "codetether-undo-tool",
  "codetether-util",
  "codetether-vectordb",
+ "codetether-voice-capture",
  "codetether-voice-core",
  "codetether-voice-input-tool",
  "codetether-voice-stream-tool",
@@ -5809,6 +5810,16 @@ version = "0.1.0"
 dependencies = [
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "codetether-voice-capture"
+version = "0.1.0"
+dependencies = [
+ "codetether-voice-input-tool",
+ "reqwest 0.13.4",
+ "serde_json",
+ "tracing",
 ]
 
 [[package]]

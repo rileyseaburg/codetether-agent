@@ -8,20 +8,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use crate::tui::app::state::App;
 use crate::tui::models::ViewMode;
 
+use codetether_voice_capture::max_duration;
 use voice_worker::spawn_voice_worker;
 
 mod voice_drain;
-mod voice_transcribe;
 mod voice_worker;
-
-/// Maximum recording duration from env (default 60s).
-fn max_duration() -> u64 {
-    std::env::var("CODETETHER_VOICE_INPUT_MAX_SECS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(60)
-        .min(300)
-}
 
 /// Handle Ctrl+R keypress — toggle voice recording.
 pub(super) fn handle_voice_input(app: &mut App) {

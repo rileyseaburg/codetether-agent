@@ -19263,3 +19263,25 @@ dependency-cycle checks, file-size ratchet, whitespace and direct formatting.
 Evidence: `artifacts/consolidation-provider-constructors/`. No Cargo, rustc,
 Python, Rust tests, credential refresh or provider construction ran; compilation
 and runtime behavior remain unverified.
+
+### Background voice capture and transcription
+
+Moved the TUI's recording worker, recording-duration configuration, blocking
+Voice API transcription and result-slot publication into
+`codetether-voice-capture`, split into configuration, worker and transcription
+modules. Native TUI code retains recording state transitions and delegates the
+worker. Removed the unreferenced duplicate transcription file after verifying
+it matched the active implementation exactly.
+
+Preserved environment defaults/caps, detached-thread behavior, PCM/WAV helpers,
+120-second HTTP timeout, multipart fields/filename/MIME type, response parsing,
+error-to-empty-string behavior, slot locking and original diagnostic targets.
+The shared VoiceSlot is the same Arc/Mutex/Option/String type used by TUI state.
+
+Validation: five complete body comparisons, unchanged TUI state-handler body,
+identical duplicate proof, native forwarding and slot shape, isolated
+manifest/lock additions, lexical module reachability, dependency-cycle checks,
+file-size ratchet, whitespace and direct formatting. Evidence:
+`artifacts/consolidation-voice-capture/`. No Cargo, rustc, Python, Rust tests,
+microphone access or transcription requests ran; compilation and runtime remain
+unverified.
