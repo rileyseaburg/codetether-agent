@@ -1,4 +1,4 @@
-use crate::session::helper::router::known_good_router_candidates;
+use super::known_good_router_candidates;
 
 #[test]
 fn bedrock_fable_failure_prefers_bedrock_siblings_over_zai() {

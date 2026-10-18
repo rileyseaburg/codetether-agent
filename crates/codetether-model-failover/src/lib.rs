@@ -41,3 +41,6 @@ pub mod temporary_fallback;
 
 mod state;
 pub use state::RetryState;
+
+/// Session failover candidate ladders and delegation-aware target selection.
+pub mod router;

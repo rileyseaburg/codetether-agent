@@ -8,3 +8,5 @@ description = "Provider failover classification, candidate selection, and retry 
 
 [dependencies]
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }

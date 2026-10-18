@@ -6362,6 +6362,7 @@ name = "codetether-model-failover"
 version = "0.1.0"
 dependencies = [
  "codetether-provider-core",
+ "codetether-context-policy",
 ]
 
 [[package]]

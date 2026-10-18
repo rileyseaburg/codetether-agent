@@ -15423,3 +15423,24 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-proactive-context/`.
 - No Cargo, rustc, Python, compilation or Rust tests ran. Full consolidation
   remains incomplete; provider failover policy still resides in the native router.
+
+### Session failover router ownership
+
+- Moved preferred-model environment parsing, same-provider ladders, candidate
+  deduplication, ordinary target selection, and delegation-scored target selection
+  from `src/session/helper/router.rs` into `codetether-model-failover::router`.
+- Reused the same provider-core live Codex catalog reached by the former native
+  re-export chain. Delegation state, context bucket and skill identifier remain
+  the same shared types and values.
+- Moved all four candidate regression tests into the shared router module.
+  Native typed forwarding functions preserve the existing ProviderRegistry
+  coercion behavior for Arc-backed callers; an availability adapter delegates
+  directly to the original registry lookup.
+- Verification: complete function-body comparisons covered both selectors,
+  preferred-list parsing, candidate assembly and provider ladders; all test
+  assertions were preserved. Checked native caller and typed wrappers, catalog
+  identity, module reachability, dependency DAG, direct rustfmt, line limits,
+  isolated lock addition and diff whitespace. Evidence:
+  `artifacts/consolidation-model-router/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains unfinished beyond this session-router extraction.

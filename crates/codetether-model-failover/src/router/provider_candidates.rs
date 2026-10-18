@@ -1,13 +1,13 @@
 //! Per-provider failover candidate ladders for the session router.
 //!
 //! Same-provider candidates are tried before the cross-provider tail in
-//! [`known_good_router_candidates`](super::router::known_good_router_candidates),
+//! [`known_good_router_candidates`](super::known_good_router_candidates),
 //! so a failing model first retries a sibling model on its own provider
 //! (e.g. Bedrock `fable` → Bedrock Sonnet) instead of jumping straight
 //! to another vendor such as `zai`.
 
 /// Same-provider failover model refs for `provider`, in preference order.
-pub(in crate::session::helper) fn provider_failover_candidates(provider: &str) -> Vec<String> {
+pub(super) fn provider_failover_candidates(provider: &str) -> Vec<String> {
     match provider {
         "openrouter" => vec![
             "openrouter/qwen/qwen3-coder:free".to_string(),
@@ -26,7 +26,7 @@ pub(in crate::session::helper) fn provider_failover_candidates(provider: &str) -
         "github-copilot" | "github-copilot-enterprise" => {
             vec![format!("{provider}/gpt-5-mini")]
         }
-        "openai-codex" => crate::provider::openai_codex::model_catalog::current_models()
+        "openai-codex" => codetether_provider_core::codex::model_catalog::current_models()
             .iter()
             .map(|model| format!("openai-codex/{model}"))
             .collect(),
@@ -37,7 +37,3 @@ pub(in crate::session::helper) fn provider_failover_candidates(provider: &str) -
         _ => Vec::new(),
     }
 }
-
-#[cfg(test)]
-#[path = "router_candidates_tests.rs"]
-mod tests;
