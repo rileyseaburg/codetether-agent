@@ -1,8 +1,8 @@
-//! Bind bulk approval release to native UI state and integration coverage.
-use crate::tui::app::state::App;
-pub(crate) fn all(app: &mut App) -> Result<usize, String> {
-    codetether_approval_view::command::release_all(&mut super::host::Native(app))
-}
+//! Frontend view selection for bulk approval release.
+codetether_approval_view::declare_frontend_approval_release!(
+    crate::tui::app::state::App,
+    crate::tui::app::input::approval_command::host::Native,
+);
 #[cfg(test)]
 #[path = "approval_command_release_tests.rs"]
 mod tests;

@@ -27674,3 +27674,18 @@ and whitespace checks pass for 725 roots and 617 crates. Tests and unrelated
 files are unchanged; no manifest or lock changes were needed. Evidence:
 artifacts/consolidation-view-input/. No Cargo, rustc, Python, compilation or
 runtime tests ran. Full consolidation remains active.
+
+### Approval-command frontend bindings
+
+Moved approval command dispatch, its UI view implementation and bulk-release
+wrapper into codetether-approval-view::command::binding. Removed the root host
+file. Root modules retain test placement and select the existing frontend
+message types and release host.
+
+All nine expanded function bodies match after release-host path qualification.
+Approval tests and support files are byte-for-byte unchanged. Shared approval
+policy and release sequencing are unchanged. Declaration, module/dependency,
+native production-scope, standalone formatting, file-limit and whitespace checks
+pass for 725 roots and 617 crates. Unrelated files are unchanged; no manifest or
+lock changes were needed. Evidence: artifacts/consolidation-approval-input/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation remains active.

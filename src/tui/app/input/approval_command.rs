@@ -1,9 +1,9 @@
-use crate::tui::app::state::App;
-
-pub(crate) fn run(app: &mut App, prompt: &str) -> bool {
-    codetether_approval_view::command::run(&mut host::Native(app), prompt)
-}
-
+//! Frontend view selection for shared approval commands.
+codetether_approval_view::declare_frontend_approval_command!(
+    crate::tui::app::state::App,
+    crate::tui::chat::message::ChatMessage,
+    crate::tui::chat::message::MessageType,
+);
 pub(crate) use release::all as release_all;
 
 #[cfg(test)]
@@ -24,6 +24,3 @@ mod test_support;
 #[cfg(test)]
 #[path = "approval_command_navigation_tests.rs"]
 mod navigation_tests;
-
-#[path = "approval_command_host.rs"]
-mod host;
