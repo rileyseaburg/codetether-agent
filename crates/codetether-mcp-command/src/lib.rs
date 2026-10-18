@@ -22,3 +22,6 @@ pub struct CommandOutput {
     /// System message to append when present.
     pub message: Option<String>,
 }
+
+/// Frontend command execution and result presentation.
+pub mod interactive;

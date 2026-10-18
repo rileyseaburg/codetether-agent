@@ -1,3 +1,5 @@
+#[path = "commands/mcp_host.rs"]
+mod mcp_host;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -54,11 +56,7 @@ fn push_system_message(app: &mut App, content: impl Into<String>) {
     app.state.scroll_to_bottom();
 }
 async fn handle_mcp_command(app: &mut App, raw: &str) {
-    let output = codetether_mcp_command::execute(&app.state.mcp_registry, raw).await;
-    app.state.status = output.status;
-    if let Some(message) = output.message {
-        push_system_message(app, message);
-    }
+    codetether_mcp_command::interactive::handle(&mut mcp_host::Native(app), raw).await;
 }
 
 /// Dispatch a `/context ...` command for context/RLM health status.

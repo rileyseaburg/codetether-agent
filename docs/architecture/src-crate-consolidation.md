@@ -19868,3 +19868,20 @@ operation host/classifier/manifests, module reachability, dependency cycles,
 file-size ratchet, whitespace and direct formatting. Evidence:
 `artifacts/consolidation-session-commands/`. No Cargo, rustc, Python, Rust tests
 or goal commands ran; compilation and runtime remain unverified.
+
+### MCP command result presentation
+
+Moved MCP result application into `codetether-mcp-command::interactive`.
+The shared handler executes through a native registry callback, applies the
+returned status, and then presents an optional system notice. Native code
+provides three existing registry/status/message operations.
+
+Preserved execution/status/message order and the existing system-message
+scroll helper. No dependencies changed.
+
+Validation: complete translated presentation body, three native bindings,
+unchanged message helper, command execution/caller and manifests, module
+reachability, dependency cycles, file-size ratchet, whitespace and direct
+formatting. Evidence: `artifacts/consolidation-mcp-presentation/`. No Cargo,
+rustc, Python, Rust tests or MCP commands ran; compilation and runtime remain
+unverified.
