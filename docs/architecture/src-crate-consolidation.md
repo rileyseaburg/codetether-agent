@@ -21467,3 +21467,21 @@ the lock change stages only that provider-package edge. Evidence:
 `artifacts/consolidation-anthropic-boundary/`. No Cargo, rustc, or Python commands
 ran. The moved test was inspected but not executed; compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Provider image compatibility tests in the factory crate
+
+Moved the nine-file chat-image compatibility matrix from the native provider
+module into `codetether-provider-factory`, which already owns dependencies on
+all five tested provider adapters. All eight tests, fixtures, and serializer
+matrix entries remain present. The Copilot static serializer now calls the
+underlying provider directly; the previous application wrapper delegates to
+that exact function without using application identity.
+
+Removed the unused native chat-image forwarding module and its declaration.
+Full formatted-source comparisons allow only owning-crate import changes;
+assertions and inputs are unchanged. No dependency or lockfile changes.
+Source/dependency graphs across 698 roots and 564 crates, direct rustfmt,
+native file-size limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-chat-image-tests/`. No Cargo, rustc, or Python commands
+ran. The relocated Rust tests were inspected but not executed. Compilation
+and runtime behavior remain unverified; full consolidation remains active.

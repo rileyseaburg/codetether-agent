@@ -11,7 +11,7 @@ fn legacy_chat_text_only_content_stays_a_string() {
 }
 #[test]
 fn legacy_chat_google_thought_signature_survives_decoration() {
-    use crate::provider::google::GoogleProvider;
+    use codetether_provider_google::GoogleProvider;
     let input = [
         message(
             Role::Assistant,

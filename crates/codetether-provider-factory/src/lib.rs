@@ -35,3 +35,6 @@ pub mod vault;
 
 /// Shared constructors with caller-provided identity and local runtime hooks.
 pub mod application;
+
+#[cfg(test)]
+mod chat_image_tests;
