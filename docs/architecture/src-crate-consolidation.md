@@ -10975,3 +10975,23 @@ Full workspace consolidation remains active.
   mismatch was corrected before source changes. No dependency/lockfile change
   was needed. Compilation and tests were not run; no Cargo or rustc commands
   executed. Full consolidation remains active.
+
+### Latency inspector extraction
+
+- Moved latency inspector section formatting, layout, provider/tool aggregation,
+  ranking, row limits, and chat-turn presentation from `src/tui/latency.rs` and
+  `latency_chat_turn.rs` into `crates/codetether-latency-view`.
+- Seventeen modules separate state inputs, section rendering, formatting,
+  tool accumulation, recent rows and layout. Maximum module size is 37 code
+  lines. The native adapter projects request state and timed tool records;
+  token-display text is obtained through a deferred caller callback.
+- The shared view uses telemetry's provider snapshots and chat-turn statistics.
+  Native event handling, application fields and token formatting are unchanged.
+- Fifty-four static assertions compare section bodies, duration formats,
+  provider ranking, tool accumulation/ranking, state mapping, section order,
+  row limits and unchanged callers. Module reachability, dependency DAG,
+  file-limit and whitespace checks passed.
+- Evidence: `artifacts/consolidation-latency-view/`. An initial comparison's
+  brace-boundary mismatch was corrected in the verifier. Compilation, runtime
+  tests and terminal rendering were not run. No Cargo or rustc commands ran.
+- Full consolidation remains active.

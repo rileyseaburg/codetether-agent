@@ -1,0 +1,11 @@
+[package]
+name = "codetether-latency-view"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Latency inspector aggregation and terminal presentation"
+
+[dependencies]
+codetether-telemetry = { path = "../codetether-telemetry", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }

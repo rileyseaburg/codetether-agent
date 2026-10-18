@@ -211,6 +211,7 @@ members = [
     "crates/codetether-clipboard",
     "crates/codetether-clipboard-cli",
     "crates/codetether-terminal-clipboard",
+    "crates/codetether-latency-view",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -523,6 +524,7 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-latency-view = { path = "crates/codetether-latency-view", version = "0.1.0" }
 codetether-terminal-clipboard = { path = "crates/codetether-terminal-clipboard", version = "0.1.0" }
 codetether-clipboard-cli = { path = "crates/codetether-clipboard-cli", version = "0.1.0" }
 codetether-clipboard = { path = "crates/codetether-clipboard", version = "0.1.0" }
