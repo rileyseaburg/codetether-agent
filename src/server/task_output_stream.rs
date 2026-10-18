@@ -1,10 +1,7 @@
 //! Task-output SSE transport with server-level authentication middleware.
 //! Tenant ownership, worker authorization, and durable replay are separate contracts.
 
-mod filter;
 mod service;
-#[cfg(test)]
-mod tests;
 
 use super::AppState;
 use axum::extract::{Path, State};

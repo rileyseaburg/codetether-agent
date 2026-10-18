@@ -13012,3 +13012,19 @@ Full workspace consolidation remains active.
 - Only new package/root dependency entries were staged from Cargo.lock. No
   registry operations, Cargo, rustc or Rust tests ran. Full consolidation is
   incomplete.
+
+### Bus and task-output SSE extraction
+
+- Moved general bus topic filtering, event formatting and task-output streams
+  into codetether-bus-sse. Eleven modules contain at most 39 code lines, including
+  six existing isolation, lag and wire-format tests plus their fixtures.
+- Native handlers retain JWT topic extraction, subscriptions, task lookup and
+  HTTP authentication. General bus lag continues with a notice; task-output lag
+  emits a gap and terminates. Exact task topic/payload filtering is unchanged.
+- Verification: 102 static comparisons passed for moved stream/filter code,
+  tests, native endpoints and remaining server items. Module/dependency checks,
+  direct rustfmt, file limits and whitespace checks passed. Evidence:
+  artifacts/consolidation-bus-sse/.
+- Only new package/root dependency entries were staged from Cargo.lock. No
+  streams, HTTP requests, Cargo, rustc or Rust tests ran. Full consolidation
+  remains incomplete.

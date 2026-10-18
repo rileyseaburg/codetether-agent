@@ -1,6 +1,6 @@
 use super::super::filter::matches_task;
 use super::fixtures::{artifact, envelope, update};
-use crate::bus::BusMessage;
+use codetether_bus_core::BusMessage;
 
 #[test]
 fn rejects_prefix_collisions_and_descendant_topics() {

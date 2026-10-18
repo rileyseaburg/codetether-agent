@@ -1,7 +1,7 @@
 //! Render finite broadcast streams through the actual Axum SSE response body.
 
-use crate::bus::BusEnvelope;
 use axum::response::{IntoResponse, Sse};
+use codetether_bus_core::BusEnvelope;
 use std::time::Duration;
 
 pub(super) async fn render(messages: Vec<BusEnvelope>, capacity: usize) -> String {

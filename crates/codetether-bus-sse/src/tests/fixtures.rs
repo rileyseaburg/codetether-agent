@@ -1,6 +1,6 @@
 pub(super) use super::transport::render;
-use crate::a2a::types::{Artifact, TaskState};
-use crate::bus::{BusEnvelope, BusMessage};
+use codetether_a2a_core::{Artifact, TaskState};
+use codetether_bus_core::{BusEnvelope, BusMessage};
 
 pub(super) fn envelope(topic: &str, message: BusMessage) -> BusEnvelope {
     BusEnvelope {

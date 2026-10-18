@@ -1044,54 +1044,9 @@ async fn stream_bus_events(
     let bus_handle = state.bus.handle("stream_bus_events");
     let rx = bus_handle.into_receiver();
 
-    let event_stream = stream::unfold(rx, move |mut rx: broadcast::Receiver<BusEnvelope>| {
-        let allowed_topics = allowed_topics.clone();
-        async move {
-            match rx.recv().await {
-                Ok(envelope) => {
-                    // Filter by allowed topics if any are specified
-                    let should_send = allowed_topics.is_empty()
-                        || allowed_topics
-                            .iter()
-                            .any(|pattern| topic_matches(&envelope.topic, pattern));
-
-                    if should_send {
-                        let payload =
-                            serde_json::to_string(&envelope).unwrap_or_else(|_| "{}".to_string());
-                        let sse_event = Event::default().event("bus").data(payload);
-                        return Some((Ok(sse_event), rx));
-                    }
-
-                    // Skip this event but keep the receiver
-                    Some((Ok(Event::default().event("keepalive").data("")), rx))
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                    let lag_event = Event::default()
-                        .event("lag")
-                        .data(format!("skipped {}", skipped));
-                    Some((Ok(lag_event), rx))
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => None,
-            }
-        }
-    });
+    let event_stream = codetether_bus_sse::bus_events(rx, allowed_topics);
 
     Sse::new(event_stream).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
-}
-
-/// Check if a topic matches a pattern.
-/// Supports wildcards: `agent.*` matches `agent.123`, `agent.*.events` matches `agent.456.events`
-fn topic_matches(topic: &str, pattern: &str) -> bool {
-    if pattern == "*" {
-        return true;
-    }
-    if let Some(prefix) = pattern.strip_suffix(".*") {
-        return topic.starts_with(prefix);
-    }
-    if let Some(suffix) = pattern.strip_prefix(".*") {
-        return topic.ends_with(suffix);
-    }
-    topic == pattern
 }
 
 async fn get_latest_snapshot(
