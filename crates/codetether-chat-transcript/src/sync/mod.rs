@@ -11,3 +11,8 @@ pub use host::View;
 pub use metrics::Metrics;
 pub use service::sync_messages_from_source;
 pub use window::recent;
+
+#[cfg(test)]
+mod test_view;
+#[cfg(test)]
+mod tool_entries_tests;

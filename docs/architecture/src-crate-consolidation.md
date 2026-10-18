@@ -28673,3 +28673,20 @@ file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
 Evidence: artifacts/consolidation-mention-composer/. No dependencies or unrelated
 working files changed. Cargo, rustc, Python, compilation, doc tests and runtime
 tests were not run. Full consolidation remains active and incomplete.
+
+### Move tool-entry synchronization regression to chat-transcript
+
+Moved the tool-entry projection regression out of src/tui/app/message_text.rs
+and into codetether-chat-transcript::sync. The test now invokes the shared
+synchronization service on the original four provider messages using a minimal
+in-memory presentation view. It no longer creates an unrelated native session,
+timestamps or full application state. All original output-row assertions remain.
+The native session adapter and production synchronization implementation are
+unchanged; the moved test covers the shared service rather than session setup.
+
+Static comparison verifies the original message sequence and every assertion.
+Declaration, module/dependency, production-dependency, dependency-audit,
+file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
+Evidence: artifacts/consolidation-transcript-test/. No dependencies or unrelated
+working files changed. Cargo, rustc, Python, compilation and runtime tests were
+not run. Full consolidation remains active and incomplete.
