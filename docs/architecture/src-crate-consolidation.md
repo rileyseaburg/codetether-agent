@@ -14322,3 +14322,24 @@ Full workspace consolidation remains active.
   artifacts/consolidation-plugin-router/.
 - No dependencies or lockfile changes. No Cargo, rustc, Rust tests, signing
   probes or server startup ran. Full workspace consolidation is unfinished.
+
+### Cognition HTTP ownership
+
+- Moved all eighteen cognition/persona handlers and their routes out of
+  src/server/mod.rs into codetether-cognition-api::http. HTTP modules separate
+  lifecycle control, event transport, persona creation/reaping, belief queries,
+  governance and workspace queries. Route assembly is split into runtime,
+  persona and state groups.
+- Added focused lifecycle, persona, belief, proposal and workspace runtime
+  interfaces. Native bindings delegate to existing CognitionRuntime methods;
+  native AppState exposes the same runtime and existing HTTP error mapper.
+- Preserved optional-body defaults, all response projections, SSE delegation,
+  request paths/methods, startup logic and outer authentication/policy/audit
+  order. Added only anyhow to the cognition API crate's dependencies and staged
+  only that dependency in Cargo.lock.
+- Verification: 28 static checks passed for every handler, route assembly,
+  native runtime bindings, error policy, module size and isolated lock changes.
+  Module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks passed. Evidence: artifacts/consolidation-cognition-http/.
+- No Cargo, rustc, Rust tests, runtime operations or server startup ran. Full
+  workspace consolidation remains unfinished.

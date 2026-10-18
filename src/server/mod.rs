@@ -6,6 +6,7 @@ mod approval_routes;
 mod audit_http_state;
 pub mod auth;
 mod bus_http_state;
+mod cognition_http_state;
 mod config_status;
 mod k8s_http_state;
 mod models_catalog;
@@ -29,33 +30,23 @@ use crate::a2a;
 use crate::audit::{self, AuditCategory, AuditLog, AuditOutcome};
 use crate::bus::{AgentBus, BusEnvelope};
 use crate::cli::ServeArgs;
-use crate::cognition::{
-    AttentionItem, CognitionRuntime, CognitionStatus, CreatePersonaRequest, GlobalWorkspace,
-    LineageGraph, MemorySnapshot, Proposal, ReapPersonaRequest, ReapPersonaResponse,
-    SpawnPersonaRequest, StartCognitionRequest, StopCognitionRequest, beliefs::Belief,
-    executor::DecisionReceipt,
-};
+use crate::cognition::CognitionRuntime;
 use crate::config::Config;
 use crate::k8s::K8sManager;
 use crate::tool::{PluginRegistry as AgentPluginRegistry, hash_bytes};
 use anyhow::Result;
 use auth::AuthState;
 use axum::{
-    extract::Path,
-    extract::{Query, State},
     http::StatusCode,
     middleware,
-    response::sse::{Event, Sse},
     response::{IntoResponse, Json, Response},
     routing::{get, post},
 };
 use futures::StreamExt;
-use std::convert::Infallible;
 use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 
 use codetether_authorization_policy::policy_middleware;
-use codetether_cognition_api::BeliefFilter;
 use codetether_event_replay::{list_session_event_files, replay_session_events};
 use codetether_openai_adapter::{
     OpenAiApiResult, canonicalize_provider_name, convert_finish_reason, convert_openai_messages,
@@ -214,30 +205,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
             openai_http_host::AppHost,
             AppState,
         >())
-        // Perpetual cognition APIs
-        .route("/v1/cognition/start", post(start_cognition))
-        .route("/v1/cognition/stop", post(stop_cognition))
-        .route("/v1/cognition/status", get(get_cognition_status))
-        .route("/v1/cognition/stream", get(stream_cognition))
-        .route("/v1/cognition/snapshots/latest", get(get_latest_snapshot))
-        // Swarm persona lifecycle APIs
-        .route("/v1/swarm/personas", post(create_persona))
-        .route("/v1/swarm/personas/{id}/spawn", post(spawn_persona))
-        .route("/v1/swarm/personas/{id}/reap", post(reap_persona))
-        .route("/v1/swarm/lineage", get(get_swarm_lineage))
-        // Belief, attention, governance, workspace APIs
-        .route("/v1/cognition/beliefs", get(list_beliefs))
-        .route("/v1/cognition/beliefs/{id}", get(get_belief))
-        .route("/v1/cognition/attention", get(list_attention))
-        .route("/v1/cognition/proposals", get(list_proposals))
-        .route(
-            "/v1/cognition/proposals/{id}/approve",
-            post(approve_proposal),
-        )
-        .route("/v1/cognition/receipts", get(list_receipts))
-        .route("/v1/cognition/workspace", get(get_workspace))
-        .route("/v1/cognition/governance", get(get_governance))
-        .route("/v1/cognition/personas/{id}", get(get_persona))
+        .merge(codetether_cognition_api::http::router::<AppState>())
         // Audit trail API
         .merge(codetether_audit_http::http::router::<AppState>())
         // Event stream replay API (for SOC 2, FedRAMP, ATO compliance)
@@ -316,163 +284,6 @@ async fn list_providers() -> Json<Vec<String>> {
 async fn list_agents() -> Json<Vec<crate::agent::AgentInfo>> {
     let registry = crate::agent::AgentRegistry::with_builtins();
     Json(registry.list().into_iter().cloned().collect())
-}
-
-async fn start_cognition(
-    State(state): State<AppState>,
-    payload: Option<Json<StartCognitionRequest>>,
-) -> Result<Json<CognitionStatus>, (StatusCode, String)> {
-    state
-        .cognition
-        .start(payload.map(|Json(body)| body))
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn stop_cognition(
-    State(state): State<AppState>,
-    payload: Option<Json<StopCognitionRequest>>,
-) -> Result<Json<CognitionStatus>, (StatusCode, String)> {
-    let reason = payload.and_then(|Json(body)| body.reason);
-    state
-        .cognition
-        .stop(reason)
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn get_cognition_status(
-    State(state): State<AppState>,
-) -> Result<Json<CognitionStatus>, (StatusCode, String)> {
-    Ok(Json(state.cognition.status().await))
-}
-
-async fn stream_cognition(
-    State(state): State<AppState>,
-) -> Sse<impl futures::Stream<Item = Result<Event, Infallible>>> {
-    codetether_cognition_api::stream_cognition(state.cognition.subscribe_events())
-}
-
-async fn get_latest_snapshot(
-    State(state): State<AppState>,
-) -> Result<Json<MemorySnapshot>, (StatusCode, String)> {
-    codetether_cognition_api::latest_snapshot(state.cognition.latest_snapshot().await)
-}
-
-async fn create_persona(
-    State(state): State<AppState>,
-    Json(req): Json<CreatePersonaRequest>,
-) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
-    state
-        .cognition
-        .create_persona(req)
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn spawn_persona(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-    Json(req): Json<SpawnPersonaRequest>,
-) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
-    state
-        .cognition
-        .spawn_child(&id, req)
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn reap_persona(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-    payload: Option<Json<ReapPersonaRequest>>,
-) -> Result<Json<ReapPersonaResponse>, (StatusCode, String)> {
-    let req = payload
-        .map(|Json(body)| body)
-        .unwrap_or(ReapPersonaRequest {
-            cascade: Some(false),
-            reason: None,
-        });
-
-    state
-        .cognition
-        .reap_persona(&id, req)
-        .await
-        .map(Json)
-        .map_err(internal_error)
-}
-
-async fn get_swarm_lineage(
-    State(state): State<AppState>,
-) -> Result<Json<LineageGraph>, (StatusCode, String)> {
-    Ok(Json(state.cognition.lineage_graph().await))
-}
-
-async fn list_beliefs(
-    State(state): State<AppState>,
-    Query(filter): Query<BeliefFilter>,
-) -> Result<Json<Vec<Belief>>, (StatusCode, String)> {
-    codetether_cognition_api::list_beliefs(state.cognition.get_beliefs().await, filter)
-}
-
-async fn get_belief(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Result<Json<Belief>, (StatusCode, String)> {
-    codetether_cognition_api::belief(state.cognition.get_belief(&id).await, &id)
-}
-
-async fn list_attention(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<AttentionItem>>, (StatusCode, String)> {
-    Ok(Json(state.cognition.get_attention_queue().await))
-}
-
-async fn list_proposals(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<Proposal>>, (StatusCode, String)> {
-    codetether_cognition_api::list_proposals(state.cognition.get_proposals().await)
-}
-
-async fn approve_proposal(
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    state
-        .cognition
-        .approve_proposal(&id)
-        .await
-        .map(|_| Json(serde_json::json!({ "approved": true, "proposal_id": id })))
-        .map_err(internal_error)
-}
-
-async fn list_receipts(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<DecisionReceipt>>, (StatusCode, String)> {
-    Ok(Json(state.cognition.get_receipts().await))
-}
-
-async fn get_workspace(
-    State(state): State<AppState>,
-) -> Result<Json<GlobalWorkspace>, (StatusCode, String)> {
-    Ok(Json(state.cognition.get_workspace().await))
-}
-
-async fn get_governance(
-    State(state): State<AppState>,
-) -> Result<Json<crate::cognition::SwarmGovernance>, (StatusCode, String)> {
-    Ok(Json(state.cognition.get_governance().await))
-}
-
-async fn get_persona(
-    State(state): State<AppState>,
-    axum::extract::Path(id): axum::extract::Path<String>,
-) -> Result<Json<crate::cognition::PersonaRuntimeState>, (StatusCode, String)> {
-    codetether_cognition_api::persona(state.cognition.get_persona(&id).await, &id)
 }
 
 // ── Session resume ──────────────────────────────────────────────────────

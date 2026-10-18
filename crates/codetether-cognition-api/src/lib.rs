@@ -1,9 +1,10 @@
 //! Cognition HTTP projection, query ordering and event transport.
 //!
-//! Callers capture runtime state and pass records into these response functions.
-//! This crate owns HTTP representation without depending on the live runtime.
+//! HTTP routes use caller-supplied runtime interfaces. Response projections
+//! also accept captured records directly without depending on a live runtime.
 mod beliefs;
 mod filter;
+pub mod http;
 mod proposals;
 mod records;
 mod stream;

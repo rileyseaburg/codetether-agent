@@ -6687,6 +6687,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "anyhow",
 ]
 
 [[package]]
