@@ -7,6 +7,7 @@ license = "MIT"
 description = "Read-only local-child and discovered-peer views for agent UIs"
 
 [dependencies]
+codetether-session-store = { path = "../codetether-session-store", version = "0.1.0" }
 anyhow = "1"
 codetether-agent-registry = { path = "../codetether-agent-registry", version = "0.1.0" }
 codetether-agent-trace = { path = "../codetether-agent-trace", version = "0.1.0" }

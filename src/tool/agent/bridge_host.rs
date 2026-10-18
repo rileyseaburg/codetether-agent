@@ -1,9 +1,10 @@
-//! Native live-registry and transcript access for shared agent views.
-use crate::{provider::Message, session::Session, tool::agent::store};
-use codetether_agent_view::Host;
+//! Native live-registry lookup for shared snapshot-based agent views.
+use crate::{session::Session, tool::agent::store};
 /// Native session snapshots used by the shared agent view.
-pub struct ApplicationHost;
-impl Host for ApplicationHost {
+pub type ApplicationHost = codetether_agent_view::application::ApplicationHost<RegistrySource>;
+/// Registry source preserving native parent resolution and name lookup.
+pub struct RegistrySource;
+impl codetether_agent_view::application::Source for RegistrySource {
     type Session = Session;
     fn entries(parent: Option<&str>) -> Vec<store::AgentEntry> {
         store::entries_for_parent(parent)
@@ -11,14 +12,6 @@ impl Host for ApplicationHost {
     fn get_for_parent(name: &str, parent: &str) -> Option<store::AgentEntry> {
         store::get_for_parent(name, Some(parent))
     }
-    fn message_count(session: &Session) -> usize {
-        session.messages.len()
-    }
-    fn into_messages(session: Session) -> Vec<Message> {
-        session.messages.into_vec()
-    }
-}
-impl codetether_peer_agent::LocalNames for ApplicationHost {
     fn contains(name: &str) -> bool {
         store::contains_name(name, None)
     }

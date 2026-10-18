@@ -3,6 +3,7 @@
 //! [Host] supplies existing session snapshots. [list] and [find] project local
 //! and observed peer identities; [live_trace] and [transcript] preserve the same
 //! owner-scoped fallback. [legacy_list] renders the agent tool's JSON roster.
+pub mod application;
 mod host;
 mod listing;
 mod live;

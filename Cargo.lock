@@ -3528,6 +3528,7 @@ dependencies = [
  "codetether-provider-core",
  "codetether-tool-core",
  "serde_json",
+ "codetether-session-store",
 ]
 
 [[package]]

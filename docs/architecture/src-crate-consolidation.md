@@ -24222,3 +24222,22 @@ and 573 crates without missing modules or cycles. Direct rustfmt, source file
 limits and whitespace checks passed. Unrelated changes remain untouched.
 Evidence: artifacts/consolidation-detail-registry/. No Cargo, rustc, Python,
 compilation, registry operations or tests ran. Full consolidation remains active.
+
+### Agent-view session operations moved into a shared application host
+
+Added agent-view::application::Source and ApplicationHost. The shared host
+supplies loaded-message counting, consuming transcript extraction and the peer
+local-name contract using the existing session snapshot/restore interfaces.
+The native bridge preserves registry entry, parent resolution and name lookup
+in a narrow RegistrySource; its ApplicationHost name is now a type alias.
+Added the direct session-store dependency.
+
+Static comparisons preserve the native lookup bodies. Loaded-message counting
+still uses the same buffer; extraction takes that tracked buffer and returns
+its underlying Vec without cloning messages. Native bridge callers and store
+operations remain unchanged. Module/dependency scans cover 692 roots and 573
+crates without missing modules or cycles. Direct rustfmt, source file limits
+and whitespace checks passed. Only the required lockfile dependency is staged;
+unrelated edits remain untouched. Evidence:
+artifacts/consolidation-agent-view-host/. No Cargo, rustc, Python, compilation,
+registry operations or tests ran. Full consolidation remains active.
