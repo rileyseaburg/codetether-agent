@@ -4,15 +4,16 @@ use super::socket::{SocketSink, SocketStream};
 use super::{turn_finish, turn_start, turn_step};
 
 /// Run one prompt while keeping its WebSocket input live for steering.
-pub(super) async fn run(
+pub(super) async fn run<S: Send + Sync + 'static>(
     mut sink: SocketSink,
     mut stream: SocketStream,
     session_id: String,
     message: String,
     model: Option<String>,
+    start: super::PromptStarter<S>,
 ) {
     let Some((mut mapper, mut run)) =
-        turn_start::start(&mut sink, &session_id, message, model).await
+        turn_start::start(&mut sink, &session_id, message, model, start).await
     else {
         return;
     };

@@ -1,6 +1,6 @@
 //! One concurrency step across input, events, and prompt completion.
 
-use crate::session::thread_events::ThreadEventMapper;
+use codetether_thread_events::ThreadEventMapper;
 
 use super::prompt_run::{PromptOutcome, PromptRun};
 use super::socket::{SocketSink, SocketStream};
@@ -14,12 +14,12 @@ pub(super) enum TurnStep {
 }
 
 /// Wait for and classify the next active-turn signal.
-pub(super) async fn next(
+pub(super) async fn next<S>(
     sink: &mut SocketSink,
     stream: &mut SocketStream,
     session_id: &str,
     mapper: &mut ThreadEventMapper,
-    run: &mut PromptRun,
+    run: &mut PromptRun<S>,
     events_open: &mut bool,
 ) -> TurnStep {
     tokio::select! {

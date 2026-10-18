@@ -1,35 +1,16 @@
-//! Ownership of a single event-producing session prompt task.
-
+//! Native session execution callback for the shared realtime turn loop.
 use crate::provider::ProviderRegistry;
 use crate::session::{Session, SessionEvent, SessionResult};
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
-
 #[path = "prompt_model.rs"]
 mod prompt_model;
+type PromptRun = codetether_session_realtime::PromptRun<Session>;
 
-/// Terminal join result produced by one prompt task.
-pub(super) type PromptOutcome = Result<Result<SessionResult, String>, tokio::task::JoinError>;
-
-/// Live event receiver and terminal task for one prompt.
-pub(super) struct PromptRun {
-    pub(super) events: mpsc::Receiver<SessionEvent>,
-    pub(super) task: JoinHandle<Result<SessionResult, String>>,
-}
-
-impl PromptRun {
-    /// Start a prompt without blocking WebSocket steering input.
-    pub(super) fn start(session_id: String, message: String, model: Option<String>) -> Self {
-        let (event_tx, events) = mpsc::channel(256);
-        let task = tokio::spawn(execute(session_id, message, model, event_tx));
-        Self { events, task }
-    }
-
-    /// Aborts the prompt and waits until its owned resources are dropped.
-    pub(super) async fn cancel(&mut self) {
-        self.task.abort();
-        let _ = (&mut self.task).await;
-    }
+/// Start a prompt without blocking WebSocket steering input.
+pub(super) fn start(session_id: String, message: String, model: Option<String>) -> PromptRun {
+    let (event_tx, events) = mpsc::channel(256);
+    let task = tokio::spawn(execute(session_id, message, model, event_tx));
+    PromptRun { events, task }
 }
 
 /// Load, execute, and persist one session prompt.
@@ -53,7 +34,3 @@ async fn execute(
     session.save().await.map_err(|error| error.to_string())?;
     Ok(result)
 }
-
-#[cfg(test)]
-#[path = "prompt_run_tests.rs"]
-mod tests;

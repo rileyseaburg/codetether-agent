@@ -12,7 +12,7 @@ impl Drop for CleanupProbe {
 async fn cancel_waits_for_prompt_cleanup() {
     let cleaned = Arc::new(AtomicBool::new(false));
     let probe = CleanupProbe(Arc::clone(&cleaned));
-    let (_event_tx, events) = mpsc::channel(1);
+    let (_event_tx, events) = mpsc::channel::<SessionEvent<()>>(1);
     let task = tokio::spawn(async move {
         let _probe = probe;
         std::future::pending::<Result<SessionResult, String>>().await

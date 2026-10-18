@@ -13398,3 +13398,21 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests, WebSocket connections or session execution ran.
   The full workspace consolidation remains unfinished.
+
+### Realtime turn orchestration consolidation
+
+- Moved connection readiness/handshake, turn startup, the concurrent input /
+  events / completion loop, and prompt-task cancellation into the existing
+  codetether-session-realtime crate. A typed PromptStarter callback supplies
+  the application-owned task and SessionEvent<S> channel.
+- Native realtime code retains route upgrade and the original session load,
+  model application, provider lookup, execution and save body. Its event
+  channel remains capacity 256. The shared turn loop still sends turn-start
+  before starting work and aborts then awaits cancellation cleanup.
+- The existing cancellation cleanup test moved with PromptRun; only its
+  snapshot type is now explicit. No new package or lockfile entry was needed.
+- Verification: 14 static body/test/size comparisons passed, alongside module
+  reachability, local dependency DAG, direct rustfmt, source file limits and
+  whitespace checks. Evidence: artifacts/consolidation-realtime-turn/.
+  No Cargo, rustc, Rust tests, sockets or prompt execution ran. Full source
+  consolidation remains unfinished.

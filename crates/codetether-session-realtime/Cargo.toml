@@ -15,4 +15,4 @@ codetether-thread-store = { path = "../codetether-thread-store", version = "0.1.
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1.53.1", features = ["sync", "rt"] }
+tokio = { version = "1.53.1", features = ["sync", "rt", "macros"] }
