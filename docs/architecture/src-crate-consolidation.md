@@ -17031,3 +17031,20 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-chat-queued/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared stream-reconnect execution lifecycle
+
+- Moved retry admission, pending-prompt retention, backoff sequencing,
+  in-flight state updates and failed-submission recovery from
+  `src/tui/app/stream_reconnect_execute.rs` into
+  `codetether-stream-recovery::retry` alongside existing reconnect policy.
+- Native bindings supply session ownership, request construction, sleep,
+  request timing and UI banner publication. Core receives the provider by
+  reference and preserves the original single clone during request creation.
+- Verification: complete execution-body comparison, native state/runtime
+  bindings and entry arguments; unchanged scheduling, backoff, notice callers
+  and classification tests; module/dependency graphs, direct rustfmt,
+  file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-stream-retry/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

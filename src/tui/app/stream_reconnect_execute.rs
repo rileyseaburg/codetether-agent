@@ -4,13 +4,13 @@
 //! provider has time to recover after SRP exhausted its 3-stream-restart budget.
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::provider::ProviderRegistry;
-use crate::tui::app::session_runtime::{PromptRequest, SessionSlot, TuiSessionHandle};
+use crate::tui::app::session_runtime::{SessionSlot, TuiSessionHandle};
 use crate::tui::app::state::App;
 
-use super::stream_reconnect::{push_reconnect_banner, reset_on_success};
+use super::stream_reconnect::reset_on_success;
+mod host;
 
 /// Re-submit the pending prompt after a stream disconnect.
 ///
@@ -21,35 +21,11 @@ pub(crate) async fn execute(
     registry: &Option<Arc<ProviderRegistry>>,
     runtime: &TuiSessionHandle,
 ) {
-    if app.state.processing {
-        return;
-    }
-    let Some(prompt) = app.state.stream_recovery.pending_stream_reconnect.take() else {
-        return;
-    };
-    let Some(registry) = registry.as_ref() else {
-        app.state.stream_recovery.pending_stream_reconnect = Some(prompt);
-        return;
-    };
-    let Some(session) = slot.take_for_prompt() else {
-        app.state.stream_recovery.pending_stream_reconnect = Some(prompt);
-        return;
-    };
-    push_reconnect_banner(app);
-    app.state.processing = true;
-    // Backoff: 10s / 20s / 40s for attempts 1 / 2 / 3.
-    let secs =
-        codetether_stream_recovery::backoff_secs(app.state.stream_recovery.stream_reconnect_count);
-    tokio::time::sleep(Duration::from_secs(secs)).await;
-    app.state.begin_request_timing();
-    app.state.main_inflight_prompt = Some(prompt.clone());
-    app.state.main_last_event_at = Some(std::time::Instant::now());
-    let dir = session.metadata.directory.clone();
-    let request = PromptRequest::new(session, prompt, Vec::new(), Arc::clone(registry), dir, None);
-    if let Err(req) = runtime.submit(request).await {
-        slot.restore(req.session);
-        app.state.processing = false;
-    }
+    codetether_stream_recovery::retry::execute(
+        &mut host::Native { app, slot, runtime },
+        registry.as_ref(),
+    )
+    .await;
 }
 
 /// Called when a turn finishes successfully — resets the reconnect budget.
