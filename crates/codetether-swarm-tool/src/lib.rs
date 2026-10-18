@@ -36,3 +36,13 @@ mod task_result_tests;
 pub mod worktree_specs;
 
 mod task_parse;
+
+/// Direct worker cancellation on dropped join handles.
+pub mod abort_on_drop;
+/// Task intent classification and workspace selection.
+pub mod support;
+mod support_task;
+/// Ordered allocation and integration of direct swarm worktrees.
+pub mod worktrees;
+
+mod workspace;

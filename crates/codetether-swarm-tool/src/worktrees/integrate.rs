@@ -1,8 +1,8 @@
 //! Merge outcome handling for an isolated direct-swarm worker.
 
-use super::super::TaskResult;
 use super::state::SwarmWorktrees;
-use crate::worktree::WorktreeInfo;
+use crate::task_result::TaskResult;
+use codetether_worktree::WorktreeInfo;
 
 pub(super) async fn apply(
     worktrees: &SwarmWorktrees,

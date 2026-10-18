@@ -1,12 +1,12 @@
 use super::state::SwarmWorktrees;
-use crate::worktree::WorktreeInfo;
+use codetether_worktree::WorktreeInfo;
 use std::path::PathBuf;
 
 impl SwarmWorktrees {
-    pub(in crate::tool::swarm_execute) fn dir(
-        &self,
-        index: usize,
-    ) -> anyhow::Result<Option<PathBuf>> {
+    /// Return a task workspace or preserve its allocation failure.
+    /// # Errors
+    /// Fails for an invalid index or failed worktree allocation.
+    pub fn dir(&self, index: usize) -> anyhow::Result<Option<PathBuf>> {
         let slot = self.infos.get(index).ok_or_else(|| {
             anyhow::anyhow!("missing swarm worktree allocation state for task {index}")
         })?;

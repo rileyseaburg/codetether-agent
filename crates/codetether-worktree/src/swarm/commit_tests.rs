@@ -1,5 +1,5 @@
 use super::prepare;
-use crate::worktree::WorktreeInfo;
+use crate::WorktreeInfo;
 use std::{path::Path, process::Command};
 
 fn git(path: &Path, args: &[&str]) -> String {

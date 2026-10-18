@@ -7,4 +7,4 @@ mod integrate;
 mod premerge;
 mod state;
 
-pub(super) use state::SwarmWorktrees;
+pub use state::SwarmWorktrees;

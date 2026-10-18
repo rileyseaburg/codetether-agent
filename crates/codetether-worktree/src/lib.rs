@@ -54,9 +54,11 @@ mod vscode_workspace;
 #[cfg(test)]
 mod vscode_workspace_tests;
 
-pub use info::{MergeResult, WorktreeInfo};
-pub use manager::WorktreeManager;
-pub use tui_active::{is_tui_active, set_tui_active};
+mod exports;
+pub use exports::*;
 
 /// Repository clone, refspec and hook validation policy.
 pub mod repository;
+
+/// Swarm branch preparation, patch checks, and artifact inventory.
+pub mod swarm;

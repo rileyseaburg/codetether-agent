@@ -1,5 +1,5 @@
 use super::state::SwarmWorktrees;
-use crate::worktree::WorktreeManager;
+use codetether_worktree::WorktreeManager;
 use futures::stream::{self, StreamExt};
 use std::sync::Arc;
 
@@ -11,7 +11,8 @@ mod create_tasks;
 const PARALLELISM: usize = 8;
 
 impl SwarmWorktrees {
-    pub(in crate::tool::swarm_execute) async fn create(
+    /// Allocate isolated worktrees in task order with at most eight parallel creations.
+    pub async fn create(
         repo: &std::path::Path,
         tasks: &[(String, String, Option<String>, Option<bool>)],
     ) -> Self {

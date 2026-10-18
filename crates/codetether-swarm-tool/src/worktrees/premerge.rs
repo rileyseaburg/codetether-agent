@@ -1,9 +1,9 @@
 //! Pre-merge policy for direct swarm worktrees.
 
-use super::super::TaskResult;
 use super::state::SwarmWorktrees;
-use crate::swarm::worktree_branch::policy::{self, Decision};
-use crate::worktree::WorktreeInfo;
+use crate::task_result::TaskResult;
+use codetether_worktree::WorktreeInfo;
+use codetether_worktree::swarm::branch::policy::{self, Decision};
 
 pub(super) async fn apply(
     worktrees: &SwarmWorktrees,

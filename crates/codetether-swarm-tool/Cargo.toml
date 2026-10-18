@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
-description = "Direct swarm tool invocation parsing, model selection and result reporting"
+description = "Direct swarm invocation policy, isolated worktree lifecycle and result reporting"
 
 [dependencies]
 anyhow = "1"
@@ -14,3 +14,11 @@ codetether-provider-core = { path = "../codetether-provider-core", version = "0.
 codetether-provider-policy = { path = "../codetether-provider-policy", version = "0.1.0" }
 codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
 codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+codetether-worktree = { path = "../codetether-worktree", version = "0.1.0" }
+futures = "0.3.34"
+tracing = "0.1"
+uuid = { version = "1.24.0", features = ["v4"] }
+tokio = { version = "1.53.1", features = ["macros", "rt"] }
+
+[dev-dependencies]
+tempfile = "3"

@@ -15237,3 +15237,30 @@ Full workspace consolidation remains active.
 - Cargo, rustc, Python, compilation and Rust tests were not run. The existing
   unrelated lockfile and A2A worktree changes were preserved. Full consolidation
   is still incomplete.
+
+### Swarm worktree and worker lifetime ownership
+
+- Moved provenance-aware Git preparation, branch patch detection, pre-merge
+  decisions, artifact inventory, and their existing tests from `src/swarm/`
+  into `crates/codetether-worktree/src/swarm/`. Native swarm modules now retain
+  compatibility re-exports. The separate executor merge-record implementation
+  is still in `src/` and was not accidentally activated or moved with these files.
+- Moved ordered direct-worker worktree allocation, allocation error lookup,
+  completion/merge handling, task-intent helpers, workspace choice, abort-on-drop
+  guards, and their tests from `src/tool/swarm_execute/` into
+  `crates/codetether-swarm-tool/src/`. The native executor imports these modules.
+- Preserved eight-at-a-time ordered allocation, workspace isolation setup,
+  failed-worktree retention, provenance commit ordering, missing/unexpected patch
+  rejection, cleanup behavior, allocation-error text, and guard cancellation.
+- Split Git subprocess execution from commit preparation, and workspace selection
+  from task-intent classification. Grouped the existing worktree public exports
+  without changing their API; all moved/new files and the two crate roots remain
+  within 50 non-comment/nonblank lines.
+- Verification: 27 Node comparison groups checked moved implementations/tests,
+  split helpers, unchanged native execution, compatibility exports, and isolated
+  lockfile additions. Module reachability, dependency DAG, direct rustfmt, file
+  limit ratchet, and `git diff --check` passed. Evidence remains in
+  `artifacts/consolidation-swarm-worktrees/`.
+- No Cargo, rustc, Python, compilation or Rust test execution. Full consolidation
+  remains incomplete; provider loading, worker-loop orchestration, and TUI
+  observation still have native implementation.

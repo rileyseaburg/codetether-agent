@@ -1,6 +1,6 @@
-use crate::swarm::SubTask;
+use codetether_swarm_core::SubTask;
 
-pub(super) fn build(
+pub fn build(
     name: &str,
     instruction: &str,
     specialty: Option<&str>,

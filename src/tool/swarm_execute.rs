@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 use std::sync::Arc;
 
-mod abort_on_drop;
+use codetether_swarm_tool::abort_on_drop;
 pub(crate) mod agent_prompt;
 pub(crate) mod agent_registry;
 use codetether_swarm_tool::aggregate;
@@ -20,13 +20,12 @@ use codetether_swarm_tool::input;
 use codetether_swarm_tool::model_selection;
 mod provider_setup;
 use codetether_swarm_tool::schema;
-pub(crate) mod support;
-mod support_task;
+pub(crate) use codetether_swarm_tool::support;
 use codetether_swarm_tool::task_input;
 use codetether_swarm_tool::task_result;
 pub(crate) mod tui_bridge;
 use codetether_swarm_tool::worktree_specs;
-mod worktrees;
+use codetether_swarm_tool::worktrees;
 
 use execution_config::ExecutionConfig;
 use input::parse_tasks;

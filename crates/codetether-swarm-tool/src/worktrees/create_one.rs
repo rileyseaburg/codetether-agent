@@ -1,8 +1,8 @@
 //! Allocation of one task-specific swarm worktree.
 
-use crate::swarm::SubTask;
-use crate::worktree::{WorktreeInfo, WorktreeManager};
 use anyhow::Context;
+use codetether_swarm_core::SubTask;
+use codetether_worktree::{WorktreeInfo, WorktreeManager};
 use std::sync::Arc;
 
 pub(super) async fn run(

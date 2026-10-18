@@ -7420,6 +7420,12 @@ dependencies = [
  "codetether-provider-policy",
  "codetether-swarm-core",
  "codetether-tool-core",
+ "codetether-worktree",
+ "futures",
+ "tokio",
+ "tracing",
+ "uuid",
+ "tempfile",
 ]
 
 [[package]]

@@ -35,5 +35,5 @@ pub async fn written_files(worktree: &Path) -> Vec<String> {
 }
 
 #[cfg(test)]
-#[path = "worktree_inventory_tests.rs"]
+#[path = "inventory_tests.rs"]
 mod tests;

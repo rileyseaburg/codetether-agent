@@ -1,5 +1,5 @@
 use super::net_git;
-use crate::worktree::{WorktreeInfo, WorktreeManager};
+use crate::{WorktreeInfo, WorktreeManager};
 use std::fs;
 
 pub(super) struct Fixture {

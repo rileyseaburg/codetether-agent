@@ -1,4 +1,5 @@
-use crate::worktree::{WorktreeInfo, WorktreeManager};
+//! Ordered worktree allocation state and task expectation lookups.
+use codetether_worktree::{WorktreeInfo, WorktreeManager};
 use std::sync::Arc;
 
 /// Worktree allocation state shared by swarm task runners.
@@ -6,12 +7,18 @@ use std::sync::Arc;
 /// `SwarmWorktrees` owns the worktree manager used for cleanup/lifecycle
 /// operations and keeps the per-task worktree metadata in positional order.
 /// Each slot in `infos` corresponds to a swarm participant index; `None` means
-/// that participant did not receive an isolated worktree or allocation failed.
+/// that participant did not need an isolated worktree. An error preserves failed allocation.
 ///
-/// The struct does not create, delete, or mutate worktrees itself. It is a small
-/// lookup container used by orchestration code after worktree setup has already
-/// completed.
-pub(in crate::tool::swarm_execute) struct SwarmWorktrees {
+/// Construction allocates worktrees; finishing commits and integrates successful
+/// tasks while retaining failed allocations and task worktrees for inspection.
+/// # Examples
+/// ```no_run
+/// # async fn example() {
+/// let worktrees = codetether_swarm_tool::worktrees::SwarmWorktrees::create(std::path::Path::new("."), &[]).await;
+/// assert!(worktrees.expects_changes(0));
+/// # }
+/// ```
+pub struct SwarmWorktrees {
     /// Manager responsible for creating and cleaning up swarm worktrees.
     pub(super) mgr: Arc<WorktreeManager>,
     /// Per-participant worktree metadata, indexed by swarm task position.
@@ -41,11 +48,13 @@ impl SwarmWorktrees {
         }
     }
 
-    pub(in crate::tool::swarm_execute) fn expects_changes(&self, index: usize) -> bool {
+    /// Return the task change expectation, defaulting to true for missing indices.
+    pub fn expects_changes(&self, index: usize) -> bool {
         self.expects_changes.get(index).copied().unwrap_or(true)
     }
 
-    pub(in crate::tool::swarm_execute) fn is_verification(&self, index: usize) -> bool {
+    /// Return whether the task is verification, defaulting to false for missing indices.
+    pub fn is_verification(&self, index: usize) -> bool {
         self.verification.get(index).copied().unwrap_or(false)
     }
 }
