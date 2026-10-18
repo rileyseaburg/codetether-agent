@@ -7,6 +7,8 @@ description = "Swarm execution contracts, metrics and event payloads"
 license = "MIT"
 
 [dependencies]
+codetether-runtime-input = { path = "../codetether-runtime-input", version = "0.1.0" }
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
 base64 = "0.23.1"
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 async-trait = "0.1.92"

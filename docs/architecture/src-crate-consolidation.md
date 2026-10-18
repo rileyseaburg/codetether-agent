@@ -21007,3 +21007,23 @@ file-size limits, and whitespace checks passed. Evidence:
 `artifacts/consolidation-swarm-raw-tool/`. No dependencies changed. No Cargo,
 rustc, or Python commands ran. No tools or Rust tests were executed; compilation
 and runtime behavior remain unverified. The complete consolidation is active.
+
+### Sub-agent tool input preparation ownership
+
+Moved raw argument parsing, malformed-JSON fallback, optional workspace path
+normalization, policy-before-enrichment ordering, swarm provenance creation,
+and authoritative runtime input enrichment into
+`codetether-swarm-core::agent_loop::tools::input`. The native adapter supplies
+workspace/model/task fields and the existing runtime-policy callback. Denial
+messages, default workspace, agent identity, and the original tracing target
+are preserved.
+
+Added direct runtime-input and provenance dependencies to the owning crate;
+source/dependency checks found no cycles. Verification compares the full
+preparation body after explicit input/callback substitutions, plus the native
+policy binding. Direct rustfmt, source graphs across 694 roots, native file-size
+limits, and whitespace checks passed. Evidence:
+`artifacts/consolidation-swarm-input/`. Only the two owning-package edges are
+staged in the lockfile. No Cargo, rustc, or Python commands ran; no policy/tool
+operations or Rust tests were executed. Compilation and runtime behavior remain
+unverified. Full workspace consolidation remains active.
