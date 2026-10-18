@@ -1,5 +1,4 @@
-//! Compatibility export and application approval regression tests.
-pub use crate::ExecCommandTool;
+//! Application approval policy regression tests.
 #[cfg(test)]
 #[path = "exec_command/policy.rs"]
 mod policy;

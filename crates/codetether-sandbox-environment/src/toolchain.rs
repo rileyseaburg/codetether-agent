@@ -16,7 +16,7 @@ mod defaults;
 mod path;
 pub use path::path_entries;
 #[cfg(test)]
-pub use path::path_entries_from;
+pub(crate) use path::path_entries_from;
 
 /// Colon-separated extra toolchain roots to expose read-only.
 pub const ENV: &str = "CODETETHER_SANDBOX_TOOLCHAIN_PATHS";
