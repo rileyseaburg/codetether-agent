@@ -1257,6 +1257,7 @@ dependencies = [
  "codetether-message-cache",
  "codetether-answer-review-view",
  "codetether-tui-style",
+ "codetether-tui-tick",
  "codetether-goal-prompt",
  "codetether-spawn-form",
  "codetether-terminal-runtime",
@@ -5984,6 +5985,10 @@ dependencies = [
  "thiserror 2.0.20",
  "tracing",
 ]
+
+[[package]]
+name = "codetether-tui-tick"
+version = "0.1.0"
 
 [[package]]
 name = "codetether-tui-worker"

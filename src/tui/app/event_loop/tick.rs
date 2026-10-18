@@ -1,4 +1,6 @@
 use crate::tui::app::state::App;
+#[path = "tick/host.rs"]
+mod host;
 
 #[path = "tick/approval.rs"]
 mod approval;
@@ -23,25 +25,7 @@ pub async fn refresh_audit(app: &mut App) {
 }
 
 pub async fn run(app: &mut App) {
-    crate::tui::app::watchdog::question_wait::tick(app);
-    let before = dirty::Snapshot::capture(app);
-    super::autochat::drain_autochat(app);
-    crate::tui::app::event_handlers::drain_voice_transcription(&mut app.state);
-    let ralph_changed = app.state.ralph.drain_events();
-    let swarm_changed = crate::tool::swarm_execute::tui_bridge::drain(&mut app.state.swarm);
-    let forage_changed = crate::tui::forage_run::drain_forage_updates(app);
-    let shell_changed = crate::tui::app::input::shell_bg::drain_shell_events(app);
-    let history_changed = crate::tui::app::state::history_page::drain(app);
-    let symbols_changed = crate::tui::app::symbols::drain_refresh(app);
-    let approval_changed = approval::reconcile(app);
-    app.state.needs_redraw |= ralph_changed
-        || swarm_changed
-        || forage_changed
-        || shell_changed
-        || history_changed
-        || symbols_changed
-        || approval_changed
-        || before.changed_since(app);
+    codetether_tui_tick::run(&mut host::Native(app));
 }
 
 #[cfg(test)]

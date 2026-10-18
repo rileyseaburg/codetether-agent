@@ -16908,3 +16908,22 @@ Full workspace consolidation remains active.
   changes. Evidence: `artifacts/consolidation-smart-retry/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Dedicated periodic TUI update crate
+
+- Moved ordered periodic subsystem draining and redraw decision policy into
+  the dependency-free `codetether-tui-tick` crate, with separate host, snapshot,
+  animation and orchestration modules.
+- Native adapters retain subsystem execution and project existing UI counters
+  into the shared snapshot. Moved the three animation cadence tests unchanged.
+- Preserved question-wait update timing, all drain order, boolean accumulation,
+  short-circuited final snapshot capture and existing redraw-flag OR behavior.
+- Registered the crate and staged only its new package/root dependency in a
+  HEAD-derived lockfile, preserving unrelated working-tree changes.
+- Verification: full tick/drain comparison, every native snapshot/handler,
+  animation function and moved-test comparison, unchanged adjacent operations,
+  module/dependency graphs, direct rustfmt, file limits and whitespace. A missing
+  native projection brace was fixed after direct formatting caught it. Evidence:
+  `artifacts/consolidation-tui-tick/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

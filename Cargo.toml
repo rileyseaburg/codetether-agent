@@ -1,6 +1,7 @@
 [workspace]
 members = [
     ".",
+    "crates/codetether-tui-tick",
     "crates/codetether-a2a-core",
     "crates/codetether-http-error",
     "crates/codetether-server-router",
@@ -780,6 +781,7 @@ codetether-mermaid = { path = "crates/codetether-mermaid", version = "0.1.0" }
 codetether-terminal-text = { path = "crates/codetether-terminal-text", version = "0.1.0" }
 codetether-chat-model = { path = "crates/codetether-chat-model", version = "0.1.0" }
 codetether-chat-submit = { path = "crates/codetether-chat-submit", version = "0.1.0" }
+codetether-tui-tick = { path = "crates/codetether-tui-tick", version = "0.1.0" }
 codetether-token-display = { path = "crates/codetether-token-display", version = "0.1.0" }
 codetether-latency-view = { path = "crates/codetether-latency-view", version = "0.1.0" }
 codetether-terminal-clipboard = { path = "crates/codetether-terminal-clipboard", version = "0.1.0" }
