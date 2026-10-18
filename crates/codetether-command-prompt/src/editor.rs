@@ -5,6 +5,7 @@ use std::path::Path;
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
 
+use super::editor_helpers::{complete, done};
 use super::state::State;
 
 pub(super) fn read(workspace: &Path) -> Result<Option<String>> {
@@ -40,15 +41,4 @@ pub(super) fn read(workspace: &Path) -> Result<Option<String>> {
         }
         super::render::prompt(&state)?;
     }
-}
-
-fn complete(state: &mut State, workspace: &Path) -> Result<()> {
-    let result = super::completion::directory(&state.line(), workspace)?;
-    state.replace(result.line);
-    super::render::matches(&result.matches)
-}
-
-fn done(value: Option<String>) -> Result<Option<String>> {
-    print!("\r\n");
-    Ok(value)
 }

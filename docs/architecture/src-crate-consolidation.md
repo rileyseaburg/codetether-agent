@@ -10380,3 +10380,19 @@ contain at most 40 code lines. Evidence is in
 `artifacts/consolidation-mux-programs/`. Compilation and runtime tests were not
 run. No Cargo, rustc, Python, terminal or program operations ran.
 Full workspace consolidation remains active.
+
+### Dedicated terminal command prompt
+
+Moved asynchronous prompt reading, character-buffer editing, cursor movement,
+paste normalization, directory completion, rendering and raw-terminal cleanup
+into `crates/codetether-command-prompt`. Fourteen modules separate editor state,
+editing/navigation operations, event handling and completion. The native mux
+prompt now re-exports the same read interface.
+
+Twenty-five static comparisons cover original editor/completion/terminal
+modules, state methods, six moved tests and the unchanged mux session loop.
+Module/dependency graphs, file budgets and whitespace checks passed; new files
+contain at most 44 code lines. Evidence is in
+`artifacts/consolidation-command-prompt/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python, terminal input or filesystem test fixtures ran.
+Full workspace consolidation remains active.

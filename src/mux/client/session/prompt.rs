@@ -1,13 +1,2 @@
-//! Asynchronous wrapper around the blocking terminal prompt editor.
-
-mod completion;
-mod editor;
-mod input_event;
-mod paste;
-mod render;
-mod state;
-mod terminal;
-
-pub(super) async fn read(workspace: std::path::PathBuf) -> anyhow::Result<Option<String>> {
-    tokio::task::spawn_blocking(move || editor::read(&workspace)).await?
-}
+//! Shared asynchronous command-prompt editor.
+pub(super) use codetether_command_prompt::read;
