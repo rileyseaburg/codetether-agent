@@ -11367,3 +11367,22 @@ Full workspace consolidation remains active.
 - Evidence: artifacts/consolidation-symbol-runtime/. No Cargo, rustc, compilation,
   runtime tests, filesystem discovery or language-server requests were executed.
   Full src-to-crates consolidation remains incomplete.
+
+### Symbol mention composer extraction
+
+- Moved symbol mention boundary detection, opening, dismissal and confirmation
+  from src/tui/app/symbols/mention.rs into crates/codetether-symbol-mention.
+  Native code re-exports the functions and implements the Composer interface.
+- The adapter delegates insertion and character-range replacement to the same
+  AppState editing methods, exposes the same picker and assigns status text.
+  The crate uses the shared symbol runtime for cancellation and preserves the
+  original operation ordering, selected-symbol handling and dismissal behavior.
+- Moved three pure boundary tests; four native integration tests still exercise
+  actual App editing and remain at the host boundary. No new mock editor replaces
+  that coverage. Seven crate modules contain at most 16 code lines each.
+- Verification: 20 static comparisons cover all moved function bodies, every
+  adapter method and all seven existing tests. Lexical module reachability,
+  dependency-cycle checks, direct rustfmt, the file-limit ratchet and
+  git diff --check passed. Evidence: artifacts/consolidation-symbol-mention/.
+- No Cargo, rustc, compilation or runtime tests were run. Full consolidation
+  remains incomplete.

@@ -1,0 +1,11 @@
+[package]
+name = "codetether-symbol-mention"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Symbol mention selection and host composer editing"
+
+[dependencies]
+codetether-symbol-search = { path = "../codetether-symbol-search", version = "0.1.0" }
+codetether-symbol-runtime = { path = "../codetether-symbol-runtime", version = "0.1.0" }
