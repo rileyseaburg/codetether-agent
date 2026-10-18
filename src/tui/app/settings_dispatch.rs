@@ -7,6 +7,6 @@ mod host;
 
 /// Execute the action for the currently selected settings row.
 pub async fn toggle_selected_setting(app: &mut App, session: &mut Session) {
-    let index = app.state.selected_settings_index;
+    let index = app.state.settings_panel.selected;
     codetether_settings_policy::panel::toggle(&mut host::Native { app, session }, index).await;
 }

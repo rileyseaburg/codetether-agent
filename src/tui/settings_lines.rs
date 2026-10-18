@@ -8,7 +8,7 @@ use crate::tui::app::{
 };
 pub(super) fn view(s: &AppState) -> codetether_settings_view::SettingsView {
     codetether_settings_view::SettingsView {
-        selected_settings_index: s.selected_settings_index,
+        selected_settings_index: s.settings_panel.selected,
         auto_apply_edits: s.preferences.auto_apply_edits,
         allow_network: s.preferences.allow_network,
         slash_autocomplete: s.preferences.slash_autocomplete,

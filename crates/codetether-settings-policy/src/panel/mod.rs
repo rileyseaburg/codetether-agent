@@ -4,9 +4,11 @@
 //! to activate a row through the application's existing [Host] setters.
 mod host;
 mod selection;
+mod state;
 use crate::{cycles::Cycle, persistence::Preference};
 pub use host::Host;
 pub use selection::{COUNT, select_next, select_previous};
+pub use state::PanelState;
 
 /// Activate the selected settings row through its existing persistence path.
 ///

@@ -49,7 +49,7 @@ impl ::core::default::Default for $state {
             pending_text_pastes: ::std::vec::Vec::new(),
             current_turn_cancel: None,
             preferences: ::core::default::Default::default(),
-            selected_settings_index: 0,
+            settings_panel: ::core::default::Default::default(),
             mcp_registry: ::std::sync::Arc::new($mcp()),
             agent_tree: ::core::default::Default::default(),
             message_cache: ::core::default::Default::default(),

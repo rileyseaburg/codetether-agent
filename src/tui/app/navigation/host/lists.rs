@@ -22,10 +22,10 @@ pub(super) fn apply(app: &mut App, action: &Action) -> bool {
             app.state.model_select_next();
         }
         Action::SettingsPrevious => {
-            app.state.settings_select_prev();
+            app.state.settings_panel.select_previous();
         }
         Action::SettingsNext => {
-            app.state.settings_select_next();
+            app.state.settings_panel.select_next();
         }
         Action::SlashPrevious => {
             app.state.select_prev_slash_suggestion();

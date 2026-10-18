@@ -28258,3 +28258,20 @@ checks pass (725 roots, 617 crates). Evidence:
 artifacts/consolidation-protocol-state/. No dependencies or unrelated working
 files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Crate-owned settings panel selection
+
+Moved the selected settings index and previous/next operations into
+codetether-settings-policy::panel::PanelState. Removed the root declaration of
+settings navigation methods and its unused associated row-count constant.
+Navigation now calls the crate-owned methods directly; display and activation
+read the component's selected index. Preference persistence remains separate.
+
+Static comparison covers all six changed existing files and both moved method
+bodies. Selection still starts at zero and uses the same bounded movement
+functions. The old exported declaration macro remains available for compatibility
+but is no longer invoked by the root frontend. Declaration, module/dependency,
+production-scope, formatting, whitespace and file-limit checks pass (725 roots,
+617 crates). Evidence: artifacts/consolidation-settings-panel-state/.
+No dependencies or unrelated working files changed. No Cargo, rustc, Python,
+compilation or runtime tests ran. Full consolidation remains active and incomplete.
