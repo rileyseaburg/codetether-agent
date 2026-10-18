@@ -24151,3 +24151,21 @@ or cycles. Direct rustfmt, source file limits and whitespace checks passed.
 Pending A2A edits and the working lockfile remain untouched. Evidence:
 artifacts/consolidation-tui-peer/. No Cargo, rustc, Python, compilation, peer
 startup or tests ran. Full consolidation remains active.
+
+### Unreachable provider and tool fragments removed
+
+Removed four undeclared native files: the old Gemini batchexecute transport,
+the unused Gemini CLI exit-code helper, the incomplete HTTP tool module and the
+old agent-to-mux adapter. The HTTP module's declared implementation files were
+absent, and the exit-code fragment's declared test file was absent. None was
+reachable through the active module declarations or named source consumers.
+The removed implementations remain recoverable in Git and the evidence snapshot.
+
+Provider/tool/agent module declarations are byte-identical. Active module and
+dependency reports are unchanged across removal, covering 692 roots and 573
+crates with no missing modules or cycles. A source scan found no remaining named
+consumers of the removed APIs. Source file limits and whitespace checks passed.
+No manifests or lockfiles changed; unrelated working edits remain untouched.
+Evidence: artifacts/consolidation-obsolete-runtime/. No Cargo, rustc, Python,
+compilation, provider/tool execution or tests ran. Full consolidation remains
+active.
