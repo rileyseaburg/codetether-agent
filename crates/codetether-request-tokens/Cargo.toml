@@ -1,0 +1,12 @@
+[package]
+name = "codetether-request-tokens"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Shared estimates of provider request token costs"
+
+[dependencies]
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
+serde_json = "1"

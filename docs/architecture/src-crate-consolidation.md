@@ -9204,3 +9204,19 @@ budgets and whitespace checks passed; the largest crate file has seven code
 lines. Evidence is in `artifacts/consolidation-step-limit/`. Compilation
 and runtime tests were not run. No Cargo, rustc or Python commands ran.
 Full workspace consolidation remains active.
+
+### Dedicated request-token estimator crate
+
+Moved content-part token estimates, transcript/tool totals and complete
+request estimates into `crates/codetether-request-tokens`. Seven modules
+separate these calculations and the existing opaque-signature regression.
+Native token helpers now re-export the shared estimators and existing
+canonical model/output limits.
+
+Nine static checks compare the four estimator functions, reasoning/signature
+accounting, unchanged test source and removal of native helper modules.
+Module/dependency graphs, file budgets and whitespace checks passed; the
+largest crate file has 39 code lines. Evidence is in
+`artifacts/consolidation-request-tokens/`. Compilation and runtime tests
+were not run. No Cargo, rustc or Python commands ran. Full workspace
+consolidation remains active.
