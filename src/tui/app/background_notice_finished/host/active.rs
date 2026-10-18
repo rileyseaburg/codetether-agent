@@ -9,9 +9,6 @@ impl ActiveSession for Native<'_> {
     fn attach_bus(&mut self) {
         self.session.attach_global_bus_if_missing();
     }
-    fn clear_cancel(&mut self) {
-        crate::tui::app::turn_cancel::clear(self.app);
-    }
     fn reset_reconnect(&mut self) {
         crate::tui::app::background::stream_reconnect_execute::on_success(self.app);
     }

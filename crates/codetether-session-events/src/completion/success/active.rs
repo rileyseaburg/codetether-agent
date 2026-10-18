@@ -5,8 +5,6 @@
 pub trait ActiveSession {
     /// Attach the global session bus when it is absent.
     fn attach_bus(&mut self);
-    /// Clear turn-cancellation state.
-    fn clear_cancel(&mut self);
     /// Reset the successful stream's reconnect budget.
     fn reset_reconnect(&mut self);
     /// Update the frontend's current-session identifier.

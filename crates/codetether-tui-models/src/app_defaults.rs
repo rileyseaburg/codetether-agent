@@ -47,7 +47,6 @@ impl ::core::default::Default for $state {
             tool_timing: ::core::default::Default::default(),
             pending_images: ::std::vec::Vec::new(),
             pending_text_pastes: ::std::vec::Vec::new(),
-            current_turn_cancel: None,
             preferences: ::core::default::Default::default(),
             settings_panel: ::core::default::Default::default(),
             mcp_registry: ::std::sync::Arc::new($mcp()),

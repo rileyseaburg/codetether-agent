@@ -28535,3 +28535,15 @@ formatting, whitespace and file-limit checks pass (724 roots, 617 crates).
 Evidence: artifacts/consolidation-view-state/. No dependencies or unrelated
 working files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
 Full consolidation remains active and incomplete.
+
+### Remove obsolete frontend cancellation state
+
+Removed the never-populated current_turn_cancel field, its clear-only helper,
+and the completion callback that only cleared it. Actual cancellation remains
+owned by session-runtime::ActiveTurn; its implementation is unchanged. This is
+cleanup after the runtime migration, not a new implementation extraction.
+
+Repository-wide symbol checks, unchanged runtime/source hashes, declaration,
+module/dependency, production-dependency, file-limit, formatting and whitespace
+checks pass. Evidence: artifacts/consolidation-legacy-cancel/. Cargo, rustc,
+Python and runtime tests were not run. Full consolidation remains incomplete.

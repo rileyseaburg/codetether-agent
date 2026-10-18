@@ -28,7 +28,6 @@ pub async fn apply<H: Host>(host: &mut H, session: H::Session) {
         return;
     };
     active.attach_bus();
-    active.clear_cancel();
     active.reset_reconnect();
     active.set_session_id();
     active.save().await;
