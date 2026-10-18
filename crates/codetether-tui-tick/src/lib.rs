@@ -11,3 +11,8 @@ pub use animation::{animation_epoch, animation_epoch_at};
 pub use host::Host;
 pub use run::run;
 pub use snapshot::Snapshot;
+
+/// Approval overlay reconciliation after external decisions.
+pub mod approval;
+/// Cursor-gated worker roster updates.
+pub mod worker_sync;

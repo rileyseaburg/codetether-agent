@@ -16927,3 +16927,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-tui-tick/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared tick approval and worker-sync policies
+
+- Moved externally resolved approval display reconciliation and bus-cursor
+  worker synchronization into focused modules in `codetether-tui-tick`.
+- Native adapters retain queue access and roster synchronization, supplying
+  disjoint overlay fields. Approval decisions are unchanged; this move only
+  coordinates stale display removal and resulting UI updates.
+- Preserved no-change early returns, remaining-count status strings, cursor
+  recording before sync and the existing worker-sync regression test, now in
+  the shared crate. The native approval integration test remains unchanged.
+- Verification: complete policy bodies and native bindings, moved test tokens,
+  unchanged approval queue policy, module/dependency graphs, direct rustfmt,
+  file limits and whitespace. No dependency changes. Evidence:
+  `artifacts/consolidation-tui-tick-helpers/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

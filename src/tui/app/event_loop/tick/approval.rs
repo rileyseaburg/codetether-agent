@@ -1,23 +1,25 @@
-//! Reconciliation of approvals resolved outside the local TUI.
-
+//! Native approval queue/display bindings for shared reconciliation.
 use crate::tui::app::state::{App, approval_queue};
-
-pub(super) fn reconcile(app: &mut App) -> bool {
-    let removed = approval_queue::remove_stale();
-    if removed == 0 {
-        return false;
+use codetether_tui_tick::approval::{Host, State};
+struct Native<'a>(&'a mut App);
+impl Host for Native<'_> {
+    fn remove_stale(&mut self) -> usize {
+        approval_queue::remove_stale()
     }
-    let remaining = approval_queue::len();
-    app.state.approval_waiting = remaining > 0;
-    app.state.approval_preview_scroll = 0;
-    app.state.status = if remaining == 0 {
-        format!("Reconciled {removed} externally resolved approval request(s)")
-    } else {
-        format!("Reconciled {removed} externally resolved approval request(s); {remaining} pending")
-    };
-    true
+    fn remaining(&self) -> usize {
+        approval_queue::len()
+    }
+    fn state(&mut self) -> State<'_> {
+        State {
+            waiting: &mut self.0.state.approval_waiting,
+            preview_scroll: &mut self.0.state.approval_preview_scroll,
+            status: &mut self.0.state.status,
+        }
+    }
 }
-
+pub(super) fn reconcile(app: &mut App) -> bool {
+    codetether_tui_tick::approval::reconcile(&mut Native(app))
+}
 #[cfg(test)]
 #[path = "approval_tests.rs"]
 mod tests;

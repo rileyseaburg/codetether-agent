@@ -14,8 +14,6 @@ mod tick_watchdog;
 mod worker_sync;
 
 pub(super) use worker_sync::before_draw;
-#[cfg(test)]
-use worker_sync::should_sync;
 pub(super) use {retry::check_and_retry, tick_watchdog::check};
 
 pub async fn refresh_audit(app: &mut App) {
@@ -27,7 +25,3 @@ pub async fn refresh_audit(app: &mut App) {
 pub async fn run(app: &mut App) {
     codetether_tui_tick::run(&mut host::Native(app));
 }
-
-#[cfg(test)]
-#[path = "tick_tests.rs"]
-mod tests;
