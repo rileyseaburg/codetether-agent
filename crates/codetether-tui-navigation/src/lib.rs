@@ -53,3 +53,5 @@ pub mod tab;
 
 /// Application-local state method declarations.
 pub mod state_binding;
+
+mod view_save_binding;

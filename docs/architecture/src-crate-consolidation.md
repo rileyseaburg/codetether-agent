@@ -24892,3 +24892,23 @@ file limits and whitespace checks passed. Unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-app-navigation-state/.
 No Cargo, rustc, Python, compiler expansion, provider calls, UI interactions or
 tests ran. Full consolidation remains active.
+
+### AppState cache and saved-view adapters moved into owning crates
+
+Moved fourteen methods into message-cache (full/frozen line caches),
+tui-navigation (saved scroll), and model-picker (model-store synchronization).
+The existing model declaration now includes its store methods. Removed native
+message_cache/frozen.rs and model_store_sync.rs while preserving the public
+model-store module path by re-export. Native cache tests remain in place.
+
+Expanded comparisons preserve cache validation inputs, take/restore behavior,
+frozen-prefix handling, saved viewport fields and model-store calls. The
+native test module imports its own Line type and remains at the same module
+path. The declaration audit now covers 45 calls, 46 Session methods and 95
+AppState methods without unbound variables or duplicate methods. Module and
+dependency scans cover 693 roots and 574 crates without missing modules or
+cycles. Direct dependency audit, direct rustfmt, file limits and whitespace
+checks passed. No dependencies changed; unrelated working changes remain
+untouched. Evidence: artifacts/consolidation-app-cache-state/.
+No Cargo, rustc, Python, compiler expansion, cache execution or tests ran. Full
+consolidation remains active.

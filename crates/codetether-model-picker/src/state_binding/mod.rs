@@ -1,6 +1,7 @@
 //! AppState model selection and asynchronous refresh bindings.
 pub mod navigation;
 mod refresh;
+pub mod store;
 pub use anyhow;
 pub use codetether_model_discovery::ModelRefreshSummary;
 /// Bind model navigation and refresh to the existing registry and model-view variant.
@@ -12,6 +13,7 @@ pub use codetether_model_discovery::ModelRefreshSummary;
 macro_rules! impl_app_models {
     ($state:ty, $registry:ty, $model_mode:path) => {
         $crate::__app_model_navigation!($state);
+        $crate::__app_model_store!($state);
         $crate::__app_model_refresh!($state, $registry, $model_mode);
     };
 }
