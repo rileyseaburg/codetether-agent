@@ -18,3 +18,7 @@ mod input;
 pub use controls::{Controls, toggle_recording};
 pub use drain::drain_voice_transcription;
 pub use input::Input;
+mod state;
+mod transcription_input;
+pub use state::RecordingState;
+pub use transcription_input::TranscriptionInput;

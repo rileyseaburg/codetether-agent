@@ -28061,3 +28061,21 @@ checks passed (725 module roots, 617 crates). Evidence:
 artifacts/consolidation-chat-sync-state/. No dependencies or unrelated working
 files changed. No Cargo, rustc, Python, compilation or runtime tests ran. Full
 consolidation remains active and incomplete.
+
+### Crate-owned recording state and transcription adapter
+
+Moved recording cancellation and the pending transcript slot from AppState into
+codetether-voice-capture::RecordingState. Removed the Input implementation on
+AppState; TranscriptionInput now owns that implementation in the voice-capture
+crate, borrowing recording/status state and accepting a composer callback.
+The root assembles the same six composer field borrows used by
+AppState::insert_text and invokes the unchanged nonblocking polling workflow.
+
+Static comparisons cover the two state fields/defaults, four adapter methods,
+the recording-controls projection and all six composer field mappings. Recording
+controls, worker creation, polling, and composer editing policy are unchanged.
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks passed (725 module roots, 617 crates). Evidence:
+artifacts/consolidation-voice-state/. No dependencies or unrelated working files
+changed. No Cargo, rustc, Python, audio capture, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.

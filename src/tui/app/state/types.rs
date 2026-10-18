@@ -1,7 +1,7 @@
 //! Core TUI state containers.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, atomic::AtomicBool};
+use std::sync::Arc;
 use std::time::Instant;
 
 use tokio::sync::Notify;
@@ -19,8 +19,6 @@ type PendingPaste = crate::tui::app::input::pasted_text::PendingTextPaste;
 type WatchdogNotice = Option<crate::tui::app::watchdog::WatchdogNotification>;
 type PendingOkr = Option<crate::tui::app::okr_gate::PendingOkrApproval>;
 type TurnCancel = Option<Arc<Notify>>;
-type VoiceStopFlag = Option<Arc<AtomicBool>>;
-type VoiceTextSlot = Option<Arc<Mutex<Option<String>>>>;
 
 /// Root container for the interactive TUI.
 ///
@@ -64,7 +62,7 @@ pub struct AppState {
     pub stream_recovery: codetether_stream_recovery::StreamRecoveryState,
     pub chat_sync: codetether_chat_sync::ChatSyncState,
     pub autochat: crate::tui::app::autochat::state::AutochatState, pub file_picker: crate::tui::app::file_picker::FilePickerState, pub workspace: crate::tui::models::WorkspaceSnapshot, pub goal_prompt: Option<crate::tui::app::goal_prompt::GoalPromptState>, pub(crate) answer_review_yes: bool, pub fuzzy_find: Option<crate::tui::app::fuzzy_find::FuzzyFindState>, pub chat_layout_mode: crate::tui::ui::webview::layout_mode::ChatLayoutMode,
-    pub recording_stop_flag: VoiceStopFlag, pub pending_voice_text: VoiceTextSlot, pub saved_scroll: codetether_tui_navigation::view_state::SavedScroll, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool, pub shell: codetether_chat_shell::State,
+    pub recording: codetether_voice_capture::RecordingState, pub saved_scroll: codetether_tui_navigation::view_state::SavedScroll, pub forage: crate::tui::forage_run::ForageState, pub needs_redraw: bool, pub shell: codetether_chat_shell::State,
     /// Active editor document and its viewport offsets.
     pub editor: codetether_editor::EditorState, pub(crate) goal_editor: Option<crate::tui::app::input::goal_answer::editor::Draft>, pub(crate) approval_edit: Option<crate::tui::app::state::approval_queue::edit_session::ApprovalEditSession>, pub chat_hit: crate::tui::ui::chat_view::hit::ChatHit,
     /// Editor LSP state: shared manager and transient hover/JSDoc popup.
