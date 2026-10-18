@@ -28,7 +28,7 @@ impl codetether_new_session::View for NewView<'_> {
         self.0.state.processing = false;
     }
     fn clear_request_timing(&mut self) {
-        self.0.state.clear_request_timing();
+        self.0.state.request_timing.clear_request_timing();
     }
     fn scroll_to_bottom(&mut self) {
         self.0.state.scroll_to_bottom();

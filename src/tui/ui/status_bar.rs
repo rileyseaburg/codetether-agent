@@ -31,7 +31,9 @@ pub fn latency_badge_spans(app: &App) -> Option<Vec<Span<'static>>> {
         last_first_token_ms: app.state.request_timing.last_request_first_token_ms,
         last_last_token_ms: app.state.request_timing.last_request_last_token_ms,
     };
-    codetether_chat_status::latency_badge_spans(timings, || app.state.current_request_elapsed_ms())
+    codetether_chat_status::latency_badge_spans(timings, || {
+        app.state.request_timing.current_request_elapsed_ms()
+    })
 }
 /// Return a temporary model label while processing.
 pub fn session_model_label(state: &crate::tui::app::state::AppState) -> Option<String> {

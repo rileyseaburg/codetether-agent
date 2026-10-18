@@ -15,11 +15,12 @@ macro_rules! __impl_tool_event_view {
                 self.app.state.reset_tool_preview_scroll();
             }
             fn start_pending_tool(&mut self, name: String) {
-                self.app.state.start_pending_tool(name);
+                self.app.state.tool_timing.start_pending_tool(name);
             }
             fn note_tool_completed(&mut self, name: String, duration_ms: u64, success: bool) {
                 self.app
                     .state
+                    .tool_timing
                     .note_tool_completed(name, duration_ms, success);
             }
             fn set_status(&mut self, status: String) {

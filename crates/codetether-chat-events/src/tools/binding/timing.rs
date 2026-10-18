@@ -16,7 +16,10 @@ macro_rules! __impl_tool_event_timing {
                     .is_some()
             }
             fn begin_request_timing(&mut self) {
-                self.app.state.begin_request_timing();
+                self.app
+                    .state
+                    .request_timing
+                    .begin_with_activity(&mut self.app.state.watchdog.last_event_at);
             }
             fn streaming_started(&self) -> bool {
                 self.app.state.streaming.streaming_start.is_some()

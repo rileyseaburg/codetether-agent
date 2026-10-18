@@ -40,7 +40,10 @@ macro_rules! __frontend_retry_host {
                     self.slot.refresh_view();
                 }
                 fn begin_timing(&mut self) {
-                    self.app.state.begin_request_timing();
+                    self.app
+                        .state
+                        .request_timing
+                        .begin_with_activity(&mut self.app.state.watchdog.last_event_at);
                 }
                 async fn submit(&mut self, prompt: &str, provider: &Self::Provider) {
                     super::submission::submit(self.slot, prompt, self.runtime, provider).await;

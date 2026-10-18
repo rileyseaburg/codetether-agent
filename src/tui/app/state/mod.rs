@@ -51,7 +51,7 @@ pub use codetether_chat_model as streaming;
 pub use codetether_composer_view::state_binding::completion as slash_suggest;
 pub use codetether_slash_command as slash_commands;
 pub use codetether_slash_command as slash_hints;
-pub mod timing;
+pub use codetether_telemetry as timing;
 pub mod types;
 pub mod view_save;
 pub use codetether_tui_worker as worker_bridge;

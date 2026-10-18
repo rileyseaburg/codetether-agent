@@ -25,10 +25,12 @@ macro_rules! __frontend_watchdog_ui {
                         .clear_streaming_text(&mut self.state.streaming);
                 }
                 fn clear_timing(&mut self) {
-                    self.state.clear_request_timing();
+                    self.state.request_timing.clear_request_timing();
                 }
                 fn begin_timing(&mut self) {
-                    self.state.begin_request_timing();
+                    self.state
+                        .request_timing
+                        .begin_with_activity(&mut self.state.watchdog.last_event_at);
                 }
                 fn scroll(&mut self) {
                     self.state.scroll_to_bottom();

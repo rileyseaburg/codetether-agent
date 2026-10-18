@@ -22,7 +22,10 @@ macro_rules! __prompt_dispatch_services {
                     $started(self.app, self.worker_bridge).await;
                 }
                 fn begin_timing(&mut self) {
-                    self.app.state.begin_request_timing();
+                    self.app
+                        .state
+                        .request_timing
+                        .begin_with_activity(&mut self.app.state.watchdog.last_event_at);
                 }
                 fn state(&mut self) -> State<'_> {
                     State {

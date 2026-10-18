@@ -16,7 +16,7 @@ impl codetether_session_events::completion::failure::Host for Native<'_> {
             .await;
     }
     fn complete_timing(&mut self) {
-        self.app.state.complete_request_timing();
+        self.app.state.request_timing.complete_request_timing();
     }
     fn reconnect(&mut self, error: &str) {
         crate::tui::app::background::stream_reconnect::schedule(self.app, error);

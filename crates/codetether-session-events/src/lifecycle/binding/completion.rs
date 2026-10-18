@@ -15,7 +15,7 @@ macro_rules! __impl_event_completion {
                     .clear_streaming_text(&mut self.app.state.streaming);
             }
             fn complete_turn_timing(&mut self) {
-                self.app.state.complete_turn_timing();
+                self.app.state.request_timing.complete_turn_timing();
             }
             fn clear_streaming_start(&mut self) {
                 self.app.state.streaming.streaming_start = None;

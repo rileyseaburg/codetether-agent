@@ -12,7 +12,7 @@ macro_rules! __impl_chat_stream {
                 self.0.state.scroll_to_bottom();
             }
             fn note_text_token(&mut self) {
-                self.0.state.note_text_token();
+                self.0.state.request_timing.note_text_token();
             }
             fn replace_streaming_text(&mut self, text: String) {
                 self.0

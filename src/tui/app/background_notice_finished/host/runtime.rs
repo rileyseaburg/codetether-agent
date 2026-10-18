@@ -30,7 +30,7 @@ impl Host for Native<'_> {
             .await;
     }
     fn clear_timing(&mut self) {
-        self.app.state.clear_request_timing();
+        self.app.state.request_timing.clear_request_timing();
     }
     fn restore(&mut self, session: Session) {
         self.slot.restore(session);

@@ -15,7 +15,7 @@ pub(super) fn build_uncached(
         separator_width,
         panel_width,
         app.state.tool_viewport.tool_preview_scroll,
-        app.state.pending_tool_snapshot(),
+        app.state.tool_timing.pending_tool_snapshot(),
         formatter,
         palette,
         || crate::tui::app::state::approval_queue::active().map(|item| item.tool),

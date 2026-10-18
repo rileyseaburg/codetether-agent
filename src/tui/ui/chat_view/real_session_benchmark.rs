@@ -22,7 +22,7 @@ fn profiles_real_saved_session() {
 
     let cold = timed(&mut app, &formatter, &palette);
     let cached = timed(&mut app, &formatter, &palette);
-    app.state.start_pending_tool("benchmark".into());
+    app.state.tool_timing.start_pending_tool("benchmark".into());
     let pending = timed(&mut app, &formatter, &palette);
     println!(
         "provider={} chat={} cold={:?} cached={:?} pending={:?}",

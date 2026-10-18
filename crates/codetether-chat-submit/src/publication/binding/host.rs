@@ -16,7 +16,7 @@ macro_rules! __frontend_publication_host {
                     $stopped(self.app, self.bridge).await;
                 }
                 fn clear_timing(&mut self) {
-                    self.app.state.clear_request_timing();
+                    self.app.state.request_timing.clear_request_timing();
                 }
                 fn push(&mut self, message: ChatMessage) {
                     self.app.state.messages.push(message);

@@ -16,5 +16,5 @@ use ratatui::text::Span;
 /// # }
 /// ```
 pub fn elapsed_badge(state: &AppState) -> Span<'static> {
-    codetether_chat_status::elapsed_badge(state.current_request_elapsed_ms())
+    codetether_chat_status::elapsed_badge(state.request_timing.current_request_elapsed_ms())
 }

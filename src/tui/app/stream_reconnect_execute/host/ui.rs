@@ -13,6 +13,9 @@ impl Native<'_> {
         crate::tui::app::background::stream_reconnect::push_reconnect_banner(self.app);
     }
     pub(super) fn begin_timing(&mut self) {
-        self.app.state.begin_request_timing();
+        self.app
+            .state
+            .request_timing
+            .begin_with_activity(&mut self.app.state.watchdog.last_event_at);
     }
 }

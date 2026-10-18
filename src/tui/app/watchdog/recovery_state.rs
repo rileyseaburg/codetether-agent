@@ -17,10 +17,11 @@ impl Ui for AppState {
         self.message_cache.clear_streaming_text(&mut self.streaming);
     }
     fn clear_timing(&mut self) {
-        self.clear_request_timing();
+        self.request_timing.clear_request_timing();
     }
     fn begin_timing(&mut self) {
-        self.begin_request_timing();
+        self.request_timing
+            .begin_with_activity(&mut self.watchdog.last_event_at);
     }
     fn scroll(&mut self) {
         self.scroll_to_bottom();

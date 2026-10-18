@@ -33,6 +33,6 @@ pub fn push_streaming_preview(
         &state.streaming.streaming_text,
         separator_width,
         formatter,
-        || state.current_request_elapsed_ms(),
+        || state.request_timing.current_request_elapsed_ms(),
     );
 }

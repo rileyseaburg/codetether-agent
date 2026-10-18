@@ -28370,3 +28370,21 @@ production-scope, formatting, whitespace and file-limit checks pass (724 roots,
 617 crates). Evidence: artifacts/consolidation-streaming-methods/.
 No dependencies or unrelated working files changed. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active and incomplete.
+
+### Direct telemetry methods and synchronized request start
+
+Removed the root timing.rs declaration and its nine generated AppState methods.
+Eight operations now call the existing RequestTimingState or ToolTimingState
+methods directly. RequestTimingState::begin_with_activity owns the remaining
+coordination: one captured start instant resets request timing and updates the
+watchdog activity slot, preserving exact timestamp equality.
+
+Static comparisons cover all 24 changed caller/registration files and the
+synchronized-start body. Request completion, token timing and tool timing
+implementations are unchanged. The first verifier log records rustfmt's added
+closure braces; that normalization was checked before the passing comparison.
+Declaration, module/dependency, production-scope, formatting, whitespace and
+file-limit checks pass (724 roots, 617 crates). Evidence:
+artifacts/consolidation-timing-methods/. No dependencies or unrelated working
+files changed. No Cargo, rustc, Python, compilation or runtime tests ran.
+Full consolidation remains active and incomplete.

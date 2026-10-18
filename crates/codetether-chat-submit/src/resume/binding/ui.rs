@@ -32,7 +32,7 @@ macro_rules! __frontend_continuation_ui {
                         .clear_streaming_text(&mut self.app.state.streaming);
                 }
                 fn clear_timing(&mut self) {
-                    self.app.state.clear_request_timing();
+                    self.app.state.request_timing.clear_request_timing();
                 }
                 fn status(&mut self, message: String) {
                     self.app.state.status = message;

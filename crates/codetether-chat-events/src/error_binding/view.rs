@@ -11,7 +11,7 @@ macro_rules! __impl_error_view {
                     $settle(self.app, Err(error));
                 }
                 fn complete_request_timing(&mut self) {
-                    self.app.state.complete_request_timing();
+                    self.app.state.request_timing.complete_request_timing();
                 }
                 fn schedule_retry(&mut self, error: &str) {
                     super::smart_switch::schedule(self.app, self.slot, error);

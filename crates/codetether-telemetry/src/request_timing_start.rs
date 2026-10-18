@@ -3,6 +3,23 @@
 
 use std::time::Instant;
 impl crate::RequestTimingState {
+    /// Start a request and synchronize its activity timestamp.
+    /// # Arguments
+    /// * `last_activity` — Watchdog or other observer's last-activity slot.
+    /// # Returns
+    /// Resets request timing and stores the exact same start instant in the slot.
+    /// # Examples
+    /// ```
+    /// let mut timing = codetether_telemetry::RequestTimingState::default();
+    /// let mut activity = None;
+    /// timing.begin_with_activity(&mut activity);
+    /// assert_eq!(activity, timing.processing_started_at);
+    /// ```
+    pub fn begin_with_activity(&mut self, last_activity: &mut Option<Instant>) {
+        let now = self.begin_request_timing();
+        *last_activity = Some(now);
+    }
+
     /// Start a request and reset its current token timings.
     ///
     /// # Returns
