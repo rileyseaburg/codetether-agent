@@ -9651,3 +9651,20 @@ crate file has 44 code lines. Six original classification tests moved without
 execution. Evidence is in `artifacts/consolidation-stream-outcome/`. Compilation
 and runtime tests were not run. No Cargo, rustc, Python or worker commands ran.
 Full workspace consolidation remains active.
+
+### Dedicated stream-drain crate
+
+Moved bounded text/thinking/tool accumulation, opaque reasoning signatures,
+chunk dispatch, idle keepalives, termination classification and single-drain
+collection into `crates/codetether-stream-drain`. Nineteen modules separate
+collector responsibilities and original regression cases. Generic shared
+session events carry previews/activity; native restart orchestration uses a
+thin drain adapter and retains its existing API.
+
+Thirty-one static comparisons cover accumulators, stop ordering, terminal Done,
+keepalive timing, shared outcome assembly, native adapters and unchanged restart
+callers. Module/dependency graphs, file budgets and whitespace checks passed;
+the largest crate file has 44 code lines. Nine original collector/keepalive
+tests moved without execution. Evidence is in `artifacts/consolidation-stream-drain/`.
+Compilation and runtime tests were not run. No Cargo, rustc, Python or worker
+commands ran. Full workspace consolidation remains active.

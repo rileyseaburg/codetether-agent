@@ -20,16 +20,9 @@ use anyhow::Result;
 use futures::stream::BoxStream;
 
 mod accept;
-#[cfg(test)]
-mod drain_end_tests;
-mod drain_state;
-mod finalize;
-mod idle_drain;
 mod idle_fault;
-mod idle_keepalive;
 mod idle_timeout;
 mod outcome;
-mod reasoning;
 mod restart;
 #[cfg(test)]
 mod restart_checkpoint_tests;
@@ -47,10 +40,6 @@ mod restart_tests;
 mod stall_restart_tests;
 #[cfg(test)]
 mod stall_test_provider;
-mod text_acc;
-#[cfg(test)]
-mod thinking_tests;
-mod tool_acc;
 #[cfg(test)]
 mod transient_fault_restart_tests;
 
@@ -109,6 +98,5 @@ pub async fn collect_stream_completion_with_events(
     stream: BoxStream<'static, StreamChunk>,
     event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
 ) -> Result<crate::provider::CompletionResponse> {
-    let outcome = idle_timeout::drain(stream, event_tx).await;
-    accept::accept(outcome, 0)
+    codetether_stream_drain::collect_stream_completion_with_events(stream, event_tx).await
 }

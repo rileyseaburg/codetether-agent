@@ -1,5 +1,8 @@
-use super::super::collect_stream_completion_with_events;
-use crate::provider::{ContentPart, StreamChunk};
+//! Original single-drain regression case.
+use super::collect_stream_completion_with_events;
+
+use codetether_provider_core::{ContentPart, StreamChunk};
+
 use futures::stream;
 
 #[tokio::test]

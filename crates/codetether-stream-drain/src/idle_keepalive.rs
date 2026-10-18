@@ -15,8 +15,8 @@
 
 use std::time::Duration;
 
-use crate::provider::StreamChunk;
-use crate::session::SessionEvent;
+use codetether_provider_core::StreamChunk;
+use codetether_session_events::SessionEvent;
 use futures::StreamExt;
 use futures::stream::BoxStream;
 use tokio::time::Instant;
@@ -35,9 +35,9 @@ pub(super) enum Next {
 /// Await the next chunk, emitting `Thinking` keepalives every [`KEEPALIVE_TICK`].
 ///
 /// Returns once a chunk arrives, the stream ends, or `budget` is exhausted.
-pub(super) async fn next_with_keepalive(
+pub(super) async fn next_with_keepalive<S>(
     stream: &mut BoxStream<'static, StreamChunk>,
-    event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
+    event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent<S>>>,
     budget: Duration,
 ) -> Next {
     // `tokio::time::Instant` shares tokio's clock with `timeout` below, so the
@@ -63,5 +63,5 @@ pub(super) async fn next_with_keepalive(
 }
 
 #[cfg(test)]
-#[path = "idle_keepalive_tests.rs"]
+#[path = "tests/keepalive.rs"]
 mod tests;

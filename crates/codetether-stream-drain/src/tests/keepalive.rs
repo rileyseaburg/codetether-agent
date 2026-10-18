@@ -1,6 +1,14 @@
 //! Tests for [`super::next_with_keepalive`].
 
-use super::*;
+use super::{BoxStream, Duration, Next, StreamChunk};
+type SessionEvent = codetether_session_events::SessionEvent<()>;
+async fn next_with_keepalive(
+    stream: &mut BoxStream<'static, StreamChunk>,
+    tx: Option<&tokio::sync::mpsc::Sender<SessionEvent>>,
+    budget: Duration,
+) -> Next {
+    super::next_with_keepalive(stream, tx, budget).await
+}
 use futures::stream;
 
 impl std::fmt::Debug for Next {

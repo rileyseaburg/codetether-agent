@@ -1,7 +1,7 @@
 //! Accumulated state for one transactional stream drain.
 
-use super::finalize::ToolAccumulator;
-use crate::provider::{ContentPart, Usage};
+use codetether_provider_core::{ContentPart, Usage};
+use codetether_stream_outcome::ToolAccumulator;
 use std::collections::HashMap;
 
 pub(super) struct DrainState {
@@ -27,8 +27,13 @@ impl DrainState {
         }
     }
 
-    pub(super) fn finish(self) -> (crate::provider::CompletionResponse, Vec<ContentPart>) {
-        let response = super::finalize::build_response(
+    pub(super) fn finish(
+        self,
+    ) -> (
+        codetether_provider_core::CompletionResponse,
+        Vec<ContentPart>,
+    ) {
+        let response = codetether_stream_outcome::build_response(
             self.thinking,
             self.reasoning_signature,
             self.text,
