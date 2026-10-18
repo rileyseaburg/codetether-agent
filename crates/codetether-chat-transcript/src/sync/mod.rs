@@ -5,6 +5,7 @@
 mod host;
 mod metrics;
 mod service;
+pub mod session;
 mod window;
 pub use host::View;
 pub use metrics::Metrics;

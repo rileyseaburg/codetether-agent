@@ -23892,3 +23892,23 @@ history_page::source references. All view method bodies remain unchanged.
 Direct rustfmt, source file limits and whitespace checks passed. Evidence:
 artifacts/consolidation-history-source-reference/. No Cargo, rustc, Python,
 compilation or tests ran. Full consolidation remains active.
+
+### Session-to-transcript synchronization moved into the transcript crate
+
+Moved both session synchronization entry points into
+codetether-chat-transcript::sync::session. They read the existing session-store
+Snapshot interface and forward the same history, absolute message count, source
+identity and older-history flag to transcript projection. Native TUI code keeps
+its View implementation and reexports both functions. Added a direct
+chat-transcript -> session-store dependency without a cycle.
+
+Static comparisons preserve both bodies after substituting existing snapshot
+accessors. The native Snapshot returns the same message buffer/storage fields,
+and the count still uses the identical State::message_count operation. The
+native transcript regression remains unchanged. Module/dependency scans cover
+691 roots and 572 crates without missing modules or cycles. Direct rustfmt,
+source file limits and whitespace checks passed. Only the required lockfile
+entry is staged; unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-transcript-session/. No Cargo, rustc, Python,
+compilation, transcript operations or tests ran. Full consolidation remains
+active.

@@ -7433,6 +7433,7 @@ dependencies = [
  "codetether-util",
  "codetether-telemetry",
  "codetether-view-retention",
+ "codetether-session-store",
 ]
 
 [[package]]
