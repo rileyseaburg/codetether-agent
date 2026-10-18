@@ -1,8 +1,9 @@
-//! Native server startup services with application-owned HTTP routing.
+//! Native server startup and routing services.
 //!
 //! [`Host`] constructs cognition, installs tools and assembles request state for
-//! the existing server startup sequence. [`Routes`] supplies application A2A and
-//! session routing. `EMPTY_STATE` preserves the caller's explicit test policy.
+//! the existing server startup sequence. [`ApplicationRoutes`] binds A2A and
+//! HTTP routing to application sessions and package identity; [`Routes`] also
+//! supports custom routing. `EMPTY_STATE` preserves the caller's explicit test policy.
 use axum::Router;
 use codetether_a2a_core::AgentCard;
 use codetether_application_registry::{Application, ToolRegistry};
@@ -43,3 +44,6 @@ pub use router::build_router;
 
 mod realtime;
 pub use realtime::{RealtimeHost, RealtimeSession};
+
+mod routing;
+pub use routing::{ApplicationRoutes, PackageIdentity};

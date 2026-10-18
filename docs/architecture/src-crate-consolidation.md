@@ -26466,3 +26466,21 @@ positive was corrected, not worked around by changing a manifest. Evidence:
 artifacts/consolidation-production-dependencies/. Node syntax and whitespace
 checks pass. No Cargo, rustc, Python, compilation or Rust tests ran. This improves
 verification of ongoing extractions; the full consolidation goal remains active.
+
+### Native server startup route composition
+
+Moved the remaining A2A startup-router and HTTP router composition into
+native-server::ApplicationRoutes. Its generic session retains the same A2A,
+realtime, goal, fork and recovery contracts. The root selects the session and
+tool catalog, supplies package name/version through PackageIdentity and passes
+its explicit cfg!(test) state policy. Application identity remains the root
+package's identity, not native-server's library version.
+
+Static comparisons preserve both routing calls and all builder arguments.
+The new production dependency-scope check passes alongside declaration,
+module/dependency, standalone formatting, file-limit and whitespace checks.
+Module graphs cover 729 roots and 616 crates without missing modules, cycles
+or undeclared dependencies. No manifest or lockfile changes are needed.
+Evidence: artifacts/consolidation-native-startup-routing/. Unrelated working
+files remain unchanged. No Cargo, rustc, Python, compilation or runtime tests
+ran. Full consolidation remains active and incomplete.
