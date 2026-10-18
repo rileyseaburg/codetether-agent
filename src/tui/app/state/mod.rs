@@ -25,9 +25,9 @@ pub mod agent_tree;
 pub mod approval_queue;
 #[path = "latency/chat.rs"]
 pub mod chat_latency;
-pub mod context_health;
+pub use codetether_context_health as context_health;
 pub mod default_impl;
-pub mod git_state;
+pub use codetether_git_view as git_state;
 pub mod history;
 pub mod history_page;
 pub mod input_cursor;
@@ -36,25 +36,25 @@ pub mod input_replace;
 #[path = "../interlude.rs"]
 pub(crate) mod interlude;
 pub mod message_cache;
-pub mod model_filter;
+pub use codetether_model_picker as model_filter;
 pub mod model_picker;
 pub mod model_picker_nav;
-pub mod model_store;
+pub use codetether_model_store as model_store;
 pub mod model_store_sync;
 pub mod pending_tool;
-pub mod profile_defs;
+pub use codetether_agent_identity as profile_defs;
 pub mod prompt_queue;
 pub mod scroll;
 pub mod scroll_page;
-pub mod session_fuzzy;
+pub use codetether_util::fuzzy as session_fuzzy;
 #[cfg(test)]
 mod session_fuzzy_tests;
 pub mod session_nav;
 #[cfg(test)]
 mod session_test_fixtures;
 pub mod settings_nav;
-pub mod slash_commands;
-pub mod slash_hints;
+pub use codetether_slash_command as slash_commands;
+pub use codetether_slash_command as slash_hints;
 pub mod slash_suggest;
 pub mod streaming;
 pub mod timing;

@@ -1,8 +1,8 @@
 //! Native bindings for shared workspace finder and embedded editor opening.
 mod editor_host;
-pub mod scan;
-pub mod state;
 use crate::tui::app::state::App;
+pub use codetether_fuzzy_finder as scan;
+pub use codetether_fuzzy_finder as state;
 pub use state::{FuzzyEntry, FuzzyFindState};
 use std::path::Path;
 /// Open the shared workspace finder using native view bindings.

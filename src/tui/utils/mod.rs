@@ -1,5 +1,5 @@
 pub mod helpers;
-pub mod workspace;
-pub mod workspace_entries;
-pub mod workspace_helpers;
-pub mod workspace_types;
+pub use codetether_workspace_snapshot as workspace;
+pub use codetether_workspace_snapshot as workspace_entries;
+pub use codetether_workspace_snapshot as workspace_helpers;
+pub use codetether_workspace_snapshot as workspace_types;

@@ -23425,3 +23425,24 @@ unrelated working changes remain unchanged. Evidence:
 artifacts/consolidation-rlm-facades/.
 No bus events, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### TUI facade cleanup across shared state and rendering crates
+
+Replaced seventy-three native TUI re-export files with direct aliases in
+fourteen parent modules. Chat models, retained payloads, styling, previews,
+file picking, task tracking, session picking, view state and render helpers
+now resolve directly to their existing owning crates. All 161 previously
+exported symbol paths retain their original crate/module targets.
+
+The candidate audit selected only files containing a single public re-export,
+with no implementation or tests, no path attributes and no wildcard imports
+of their module names. Token comparisons confirm that each changed parent
+contains only the corresponding declaration-to-alias replacements. The diff
+scope check excludes all unrelated rendering, event and application logic.
+Two deleted facade roots were removed from the graph inventory; 695 roots
+and 571 crates remain covered with no missing modules or cycles. Direct
+rustfmt, file-size limits and whitespace checks passed. No manifests or
+lockfiles changed, and unrelated working changes remain untouched. Evidence:
+artifacts/consolidation-tui-facades/.
+No UI runtime, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

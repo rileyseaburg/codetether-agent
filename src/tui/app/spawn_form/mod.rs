@@ -6,7 +6,7 @@
 
 pub mod keys;
 pub mod render;
-pub mod state;
+pub use codetether_spawn_form as state;
 pub mod submit;
 
 pub(crate) use keys::handle_spawn_form_key;

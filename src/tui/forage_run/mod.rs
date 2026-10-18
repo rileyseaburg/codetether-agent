@@ -8,7 +8,7 @@ mod command;
 mod drain;
 mod host;
 pub mod spawn;
-pub mod state;
+pub use codetether_forage_interactive as state;
 
 pub use args::build_tui_forage_args;
 pub use command::handle_forage_command;

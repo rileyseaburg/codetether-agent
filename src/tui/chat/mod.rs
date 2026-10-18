@@ -2,7 +2,7 @@
 
 pub(crate) mod copy;
 pub mod mermaid;
-pub mod message;
-pub mod payload;
-pub mod strip;
-pub mod sync;
+pub use codetether_chat_model as message;
+pub use codetether_chat_model::payload;
+pub use codetether_chat_sync as sync;
+pub use codetether_terminal_text as strip;

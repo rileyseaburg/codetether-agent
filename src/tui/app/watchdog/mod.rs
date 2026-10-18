@@ -3,7 +3,7 @@
 pub mod detector;
 pub mod handler;
 pub mod notification;
-pub mod state;
+pub use codetether_watchdog as state;
 
 #[cfg(test)]
 mod tests;
