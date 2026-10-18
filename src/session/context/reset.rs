@@ -29,7 +29,7 @@ pub(super) async fn derive_reset(
     let hooks = codetether_context_legacy::Hooks {
         apply: crate::session::helper::experimental::apply_all,
         repair: crate::session::helper::experimental::pairing::repair_orphans,
-        resolver: crate::session::helper::rlm_background::resolve_model,
+        resolver: crate::session::helper::rlm_background::Background::resolve_model,
     };
     codetether_reset_derivation::derive_reset(
         session,

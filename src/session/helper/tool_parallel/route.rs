@@ -12,7 +12,7 @@ pub(super) fn route(
     provider: Arc<dyn Provider>,
     out: &codetether_tool_parallel::Output,
 ) -> String {
-    let routed = rlm_background::route_or_defer(
+    let routed = rlm_background::Background::route_or_defer(
         &out.content,
         &out.tool_name,
         &out.tool_input,

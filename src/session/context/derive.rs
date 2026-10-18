@@ -42,7 +42,7 @@ pub async fn derive_context(
     let hooks = codetether_context_legacy::Hooks {
         apply: crate::session::helper::experimental::apply_all,
         repair: crate::session::helper::experimental::pairing::repair_orphans,
-        resolver: crate::session::helper::rlm_background::resolve_model,
+        resolver: crate::session::helper::rlm_background::Background::resolve_model,
     };
     codetether_context_legacy::derive_context(
         session,

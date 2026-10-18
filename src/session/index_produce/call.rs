@@ -42,7 +42,7 @@ pub async fn produce_summary(
         _subcall_provider,
         _subcall_model,
         _observability,
-        crate::session::helper::rlm_background::resolve_model,
+        crate::session::helper::rlm_background::Background::resolve_model,
     )
     .await
 }

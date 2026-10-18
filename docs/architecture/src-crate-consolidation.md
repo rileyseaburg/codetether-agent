@@ -22975,3 +22975,27 @@ unrelated working lockfile remains byte-identical. Evidence:
 comparison against unrelated unstaged spawn changes.
 No introduction sends, ledger operations, tests, Cargo, rustc or Python ran;
 compilation and runtime results remain unverified. Full consolidation is active.
+
+### Background RLM application bindings owned by the provider crate
+
+Moved configured background context/tool routing, boxed model resolution and
+session progress conversion into codetether-application-providers::background.
+Background<H, S> binds provider policy and session snapshot type without a
+native Session dependency. The native helper retains only Background/Notify
+type aliases and the shared pending-summary re-export. Three native
+implementation files were deleted; seven caller files now name the shared
+associated functions explicitly.
+
+Token comparisons preserve routing arguments and their order, the configured
+provider resolver, progress wrapping and all seven caller bodies apart from
+the binding path. The underlying background worker and model-selection
+implementation remain unchanged. The module scan covers 699 roots and the
+dependency scan covers 571 crates, with no missing modules or cycles. An
+initial module scan caught a source file accidentally recreated by the caller
+rewrite; the file was removed and the corrected scan passed. Direct rustfmt,
+file-size limits and whitespace checks passed. Only the two new direct
+provider-crate dependency edges were staged in Cargo.lock; the working
+lockfile and unrelated native A2A changes remain unchanged.
+Evidence: artifacts/consolidation-background-application/.
+No background jobs, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.

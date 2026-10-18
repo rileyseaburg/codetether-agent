@@ -54,6 +54,8 @@ pub mod routing;
 /// Search orchestration using the application provider and memory policies.
 pub mod search;
 
+/// Background RLM routing with application model policy and session progress.
+pub mod background;
 /// Morph editing through the application's cached provider registry.
 pub mod editing;
 /// Provider-backed embedding resolution for source indexes.

@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 /// Routes oversized tool output through the configured recursive model.
 pub(super) fn route(runner: &Runner<'_>, call: &Call, content: &str) -> String {
     let notify = runner.inner.events.as_ref().map(notifier);
-    super::super::super::rlm_background::route_or_defer(
+    super::super::super::rlm_background::Background::route_or_defer(
         content,
         &call.name,
         &call.input,
