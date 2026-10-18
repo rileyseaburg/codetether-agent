@@ -1,0 +1,16 @@
+[package]
+name = "codetether-approval-review"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bounded approval reviewer execution and process runtime state"
+
+[dependencies]
+anyhow = "1"
+codetether-approval-core = { path = "../codetether-approval-core", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
+tokio = { version = "1", features = ["time"] }
+uuid = { version = "1", features = ["v4"] }

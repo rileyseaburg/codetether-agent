@@ -1562,6 +1562,7 @@ dependencies = [
  "codetether-agent-core",
  "codetether-application-mcp",
  "codetether-approval-core",
+ "codetether-approval-review",
  "codetether-audit",
  "codetether-autochat-core",
  "codetether-avatar-tool",
@@ -1876,6 +1877,19 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "codetether-slash-command",
+]
+
+[[package]]
+name = "codetether-approval-review"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "codetether-approval-core",
+ "codetether-config",
+ "codetether-provider-core",
+ "codetether-swarm-core",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

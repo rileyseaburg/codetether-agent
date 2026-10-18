@@ -16,6 +16,7 @@
 //! assert_eq!(verdict.outcome, ReviewOutcome::Approve);
 //! ```
 
+mod host;
 mod parse;
 pub mod prompt;
 mod run;

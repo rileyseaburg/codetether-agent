@@ -18005,3 +18005,26 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-verifier-runtime/`.
 - No Cargo, rustc, Python, verifier/model calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Approval reviewer execution and runtime state
+
+Moved approval-review orchestration from `src/review/run.rs` to
+`crates/codetether-approval-review/src/run.rs`: model fallback, unavailable-model
+escalation, read-only tool initialization, reviewer ID generation, configured
+step/time caps, the five-second outer timeout margin and verdict parsing.
+The new crate separates execution inputs (`request.rs`), native operations
+(`host.rs`) and installed state (`runtime.rs`). The generic `RuntimeStore`
+owns the original mutex-protected configuration/registry snapshot and enabled
+filter, while the application retains its process-wide store instance.
+
+`src/review/{run,runtime}.rs` now delegate; `host.rs` binds the existing provider
+registry, read-only tool policy and unchanged agent loop. Existing scripted
+reviewer and read-only-tool integration tests remain connected to these native
+bindings. No production tool permissions or approval decisions changed.
+
+Validation: token-normalized comparisons of the full original reviewer flow,
+all native loop arguments and runtime state operations; unchanged integration
+test/policy/loop source; module resolution and workspace dependency-cycle scans;
+changed-source file limits and whitespace checks. Evidence is in
+`artifacts/consolidation-approval-review/`. No Cargo, rustc, Python, reviewer
+execution or Rust tests were run; compilation and test status remain unverified.
