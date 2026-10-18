@@ -23783,3 +23783,22 @@ whitespace checks passed. Only the required lockfile entry is staged; unrelated
 working changes remain untouched. Evidence: artifacts/consolidation-tui-cli/.
 No Cargo, rustc, Python, compilation, TUI launch or runtime tests ran. Full
 consolidation remains active.
+
+### MCP action dispatch moved from main into its command crate
+
+Moved subprocess-command resolution and the serve/client branch from main into
+codetether-mcp-cli::dispatch. The native MCP binding selects the same client and
+stdio server hosts. Removed src/mcp_serve.rs and its host file after consolidating
+the server type alias into src/mcp_cli.rs. Main supplies the same control-plane
+URL/token, project and explicit-project flag. No dependencies changed.
+
+Static comparison preserves the dispatch body after path and parameter
+substitution, including command resolution before branch selection. The source
+verifier formats function-wrapped bodies to handle optional block syntax;
+initial comparison/formatting failures are retained. The module checker had an
+explicit root for the removed wrapper; that obsolete entry was removed after
+its failure was recorded. Scans cover 691 roots and 572 crates with no missing
+modules or cycles. Direct rustfmt, source file limits and whitespace checks
+passed. Unrelated working changes are preserved. Evidence:
+artifacts/consolidation-mcp-dispatch/. No Cargo, rustc, Python, compilation,
+MCP operations or runtime tests ran. Full consolidation remains active.

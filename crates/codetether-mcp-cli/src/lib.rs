@@ -4,6 +4,8 @@
 pub mod application;
 mod call;
 mod connect;
+mod dispatch;
+pub use dispatch::dispatch;
 mod list_tools;
 mod reply;
 mod resolve;

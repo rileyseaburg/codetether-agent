@@ -23,7 +23,6 @@ mod worker_cli;
 use codetether_worktree_cli as worktree_cli;
 
 mod mcp_cli;
-mod mcp_serve;
 mod ralph_cli;
 
 #[tokio::main(worker_threads = 8)]
@@ -76,24 +75,14 @@ async fn dispatch(cli: Cli) -> anyhow::Result<()> {
             codetether_ralph_cli::execute::<ralph_cli::NativeHost>(args).await
         }
         Some(Command::Mcp(args)) => {
-            // Resolve the target MCP server command from either `--command "cmd args"`
-            // (flag form) or trailing positional args (e.g. `connect npx -y @x/foo /path`).
-            let resolved_command = codetether_mcp_cli::resolve_command(&args);
-            match args.action.as_str() {
-                "serve" => {
-                    mcp_serve::serve(
-                        &args,
-                        &mcp_control_plane_url,
-                        &mcp_control_plane_token,
-                        &mcp_project_root,
-                        mcp_project_was_explicit,
-                    )
-                    .await
-                }
-                _ => {
-                    codetether_mcp_cli::execute::<mcp_cli::NativeHost>(args, resolved_command).await
-                }
-            }
+            codetether_mcp_cli::dispatch::<mcp_cli::NativeHost, mcp_cli::ServerHost>(
+                args,
+                &mcp_control_plane_url,
+                &mcp_control_plane_token,
+                &mcp_project_root,
+                mcp_project_was_explicit,
+            )
+            .await
         }
         Some(Command::Stats(args)) => codetether_telemetry_cli::execute(args),
         Some(Command::Benchmark(args)) => {
