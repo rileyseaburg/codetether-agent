@@ -62,6 +62,6 @@ mod validation;
 pub use state::BedrockProvider;
 
 /// Default AWS region when none is configured.
-pub const DEFAULT_REGION: &str = "us-east-1";
+pub use codetether_bedrock_auth::DEFAULT_REGION;
 #[cfg(test)]
 mod tests;

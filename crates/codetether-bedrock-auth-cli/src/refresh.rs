@@ -1,12 +1,12 @@
 //! `codetether auth bedrock --refresh` — silently re-mint the Bedrock key.
 //!
 //! Delegates to the shared provider-layer silent-refresh machinery
-//! ([`crate::provider::bedrock::sso_refresh`]), which runs a browser-free
+//! ([`codetether_bedrock_refresh`]), which runs a browser-free
 //! OIDC `refresh_token` grant + `GetRoleCredentials`, re-mints the bearer
 //! token, and (when saving) writes it back preserving stored SSO metadata.
 
-use crate::provider::bedrock::{sso_refresh, token_gen};
 use anyhow::Result;
+use {codetether_bedrock_auth::token_gen, codetether_bedrock_refresh as sso_refresh};
 
 use super::{args::BedrockAuthArgs, refresh_emit, validate};
 

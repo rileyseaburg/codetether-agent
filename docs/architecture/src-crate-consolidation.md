@@ -10674,3 +10674,21 @@ file budgets and whitespace checks passed; modules have at most 30 code lines.
 Evidence is in `artifacts/consolidation-config-cli/`. Compilation and runtime
 tests were not run. No Cargo, rustc, Python, configuration mutation or trust
 operation ran. Full workspace consolidation remains active.
+
+### Bedrock authentication CLI extracted
+
+Moved AWS credential/profile selection, CLI/native SSO login, bearer-token
+mint/validation orchestration, masked/raw output, expiry clamping, Vault
+persistence and refresh metadata into `crates/codetether-bedrock-auth-cli`.
+Thirty-nine modules use the existing Bedrock auth/refresh, secrets and provider
+HTTP crates. Login-mode definitions, device prompt output and SSO metadata
+attachment each own separate modules. The shared default AWS region now lives
+in the Bedrock auth crate and the native provider re-exports it.
+
+Forty-three static comparisons/checks cover original modules, split functions,
+credential/output gates, shared default and native export. All eight existing
+tests moved. Module/dependency graphs, file budgets and whitespace checks
+passed; new modules have at most 44 code lines. Evidence is in
+`artifacts/consolidation-bedrock-auth-cli/`. Compilation and runtime tests were
+not run. No Cargo, rustc, Python, credential lookup, AWS/SSO request, token
+minting or credential-storage operation ran. Full consolidation remains active.

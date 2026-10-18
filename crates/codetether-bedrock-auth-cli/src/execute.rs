@@ -3,12 +3,27 @@
 //! Holds the multi-step credential→token→emit pipeline so [`super`] stays a
 //! thin module table within the 50-line file budget.
 
-use crate::provider::bedrock::token_gen;
 use anyhow::{Result, bail};
+use codetether_bedrock_auth::token_gen;
 
 use super::{args::BedrockAuthArgs, creds, mode, native_resolve, output, select, validate};
 
 /// Resolve credentials, mint, validate, and emit/save the bearer token.
+///
+/// # Arguments
+/// * `args` - Credential selection, login, output and persistence options.
+/// # Returns
+/// Unit after the requested credential operation and output complete.
+/// # Errors
+/// Returns option, credential, login, validation or persistence errors.
+/// # Examples
+/// ```no_run
+/// # async fn example() -> anyhow::Result<()> {
+/// use clap::Parser;
+/// let args = codetether_bedrock_auth_cli::BedrockAuthArgs::parse_from(["bedrock", "--no-login"]);
+/// codetether_bedrock_auth_cli::execute(args).await
+/// # }
+/// ```
 pub async fn execute(args: BedrockAuthArgs) -> Result<()> {
     if args.save_only && !args.save {
         bail!("--save-only requires --save");

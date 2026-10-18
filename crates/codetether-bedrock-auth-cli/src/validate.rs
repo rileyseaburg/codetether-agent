@@ -24,7 +24,7 @@ pub(super) async fn output_token(token: String, region: &str, skip: bool) -> Res
 /// Validate the bearer token against Bedrock's management API in `region`.
 async fn live_token(token: &str, region: &str) -> Result<()> {
     let url = format!("https://bedrock.{region}.amazonaws.com/foundation-models");
-    let resp = crate::provider::shared_http::shared_client()
+    let resp = codetether_provider_core::shared_http::shared_client()
         .get(&url)
         .bearer_auth(token)
         .header("accept", "application/json")

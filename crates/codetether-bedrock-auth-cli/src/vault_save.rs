@@ -1,9 +1,9 @@
 //! Vault persistence for minted Bedrock API keys.
 
 use super::{BedrockAuthArgs, vault_extra};
-use crate::secrets::{self, ProviderSecrets};
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
+use codetether_secrets::{self as secrets, ProviderSecrets};
 
 /// Store the token as the `bedrock` provider api_key in Vault.
 pub(super) async fn save(

@@ -8,8 +8,8 @@
 use super::aws_cli;
 use super::exported::Exported;
 use super::login::LoginMode;
-use crate::provider::bedrock::AwsCredentials;
 use anyhow::Result;
+use codetether_bedrock_auth::AwsCredentials;
 
 /// Resolve AWS credentials, logging in when requested or required.
 pub(super) async fn resolve(profile: Option<&str>, mode: LoginMode) -> Result<Exported> {

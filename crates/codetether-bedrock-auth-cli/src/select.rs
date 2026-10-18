@@ -1,8 +1,8 @@
 //! Profile and region selection for Bedrock auth.
 
 use super::{BedrockAuthArgs, LoginMode, sso, sso_default};
-use crate::provider::bedrock::DEFAULT_REGION;
 use anyhow::Result;
+use codetether_bedrock_auth::DEFAULT_REGION;
 
 /// Select the AWS SSO profile implied by the CLI arguments.
 pub(super) fn profile(args: &BedrockAuthArgs, mode: LoginMode) -> Result<Option<sso::SsoProfile>> {

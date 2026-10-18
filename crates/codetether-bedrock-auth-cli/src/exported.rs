@@ -1,8 +1,8 @@
 //! Parsing for `aws configure export-credentials --format process` output.
 
-use crate::provider::bedrock::AwsCredentials;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
+use codetether_bedrock_auth::AwsCredentials;
 use serde::Deserialize;
 
 /// JSON shape of `aws configure export-credentials --format process`.

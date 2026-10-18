@@ -4,20 +4,8 @@
 //! the device-code prompt is visible. `Auto` only logs in when export fails;
 //! explicit browser/device-code modes force a fresh login before export.
 
+pub use super::login_mode::LoginMode;
 use anyhow::{Context, Result, bail};
-
-/// How to perform `aws sso login` when requested or required.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
-pub enum LoginMode {
-    /// Browser when a GUI is detected, else device-code.
-    Auto,
-    /// Force the interactive browser redirect flow (GFE).
-    Browser,
-    /// Force the device-code flow (personal laptop / headless / SSH).
-    DeviceCode,
-    /// Never auto-login; fail with a hint instead.
-    Off,
-}
 
 /// Run `aws sso login` for `profile` using the resolved mode.
 pub(super) async fn run(profile: &str, mode: LoginMode) -> Result<()> {

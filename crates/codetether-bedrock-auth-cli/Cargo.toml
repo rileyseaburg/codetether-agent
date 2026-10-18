@@ -1,0 +1,23 @@
+[package]
+name = "codetether-bedrock-auth-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Bedrock CLI authentication, SSO credential selection and token output"
+
+[dependencies]
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.6.6", features = ["derive", "env"] }
+codetether-bedrock-auth = { path = "../codetether-bedrock-auth", version = "0.1.0" }
+codetether-bedrock-refresh = { path = "../codetether-bedrock-refresh", version = "0.1.0" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+directories = "6"
+open = "5"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["process", "time", "rt"] }
+tracing = "0.1"

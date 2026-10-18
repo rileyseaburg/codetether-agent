@@ -4,7 +4,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use serde::Deserialize;
 
 use super::super::exported::Exported;
-use crate::provider::bedrock::AwsCredentials;
+use codetether_bedrock_auth::AwsCredentials;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

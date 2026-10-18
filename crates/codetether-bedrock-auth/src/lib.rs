@@ -10,3 +10,6 @@ pub mod sigv4;
 pub mod token_gen;
 pub use credentials::AwsCredentials;
 pub use mode::BedrockAuth;
+
+/// Default signing region when no AWS region is configured.
+pub const DEFAULT_REGION: &str = "us-east-1";

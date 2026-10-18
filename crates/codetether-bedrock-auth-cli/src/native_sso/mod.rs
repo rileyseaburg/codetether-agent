@@ -36,7 +36,7 @@ pub(super) async fn login(args: NativeSsoArgs<'_>) -> Result<Exported> {
     let auth =
         oidc_register::start_device_authorization(&http, args.region, &client, args.start_url)
             .await?;
-    prompt_user(&auth);
+    prompt::prompt_user(&auth);
     let token = oidc_poll::poll_for_token(&http, args.region, &client, &auth).await?;
     role_creds::get_role_credentials(
         &http,
@@ -48,13 +48,4 @@ pub(super) async fn login(args: NativeSsoArgs<'_>) -> Result<Exported> {
     .await
 }
 
-/// Print the verification URL/code and attempt to open the browser.
-fn prompt_user(auth: &oidc_types::DeviceAuthorization) {
-    let url = auth
-        .verification_uri_complete
-        .as_deref()
-        .unwrap_or(&auth.verification_uri);
-    eprintln!("To authorize, open: {url}");
-    eprintln!("Then enter the code: {}", auth.user_code);
-    let _ = open::that_detached(url);
-}
+mod prompt;

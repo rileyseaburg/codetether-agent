@@ -1237,6 +1237,7 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-bedrock-auth-cli",
  "codetether-config-cli",
  "codetether-vault-cli",
  "codetether-approval-cli",
@@ -5437,6 +5438,26 @@ dependencies = [
  "clap",
  "codetether-config",
  "toml 1.1.5+spec-1.1.0",
+]
+
+[[package]]
+name = "codetether-bedrock-auth-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "codetether-bedrock-auth",
+ "codetether-bedrock-refresh",
+ "codetether-provider-core",
+ "codetether-secrets",
+ "directories 6.0.0",
+ "open",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

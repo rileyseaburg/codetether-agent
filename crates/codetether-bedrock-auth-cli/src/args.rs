@@ -1,10 +1,17 @@
 //! CLI arguments for `codetether auth bedrock`.
 
 use super::LoginMode;
-use crate::provider::bedrock::token_gen;
 use clap::Parser;
+use codetether_bedrock_auth::token_gen;
 
-/// Arguments for `codetether auth bedrock`.
+/// Arguments for minting, refreshing and exporting a Bedrock credential.
+///
+/// # Examples
+/// ```
+/// use clap::Parser;
+/// let args = codetether_bedrock_auth_cli::BedrockAuthArgs::parse_from(["bedrock", "--no-login"]);
+/// assert!(args.no_login);
+/// ```
 #[derive(Parser, Debug)]
 pub struct BedrockAuthArgs {
     /// AWS SSO portal URL; auto-selects a matching AWS CLI profile
