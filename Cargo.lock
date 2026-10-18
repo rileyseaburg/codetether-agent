@@ -1383,6 +1383,7 @@ dependencies = [
  "codetether-tui-worker",
  "codetether-worker-events",
  "codetether-workspace-snapshot",
+ "codetether-workspace-view",
  "codetether-git-view",
  "codetether-protocol-view",
  "codetether-chat-sync",
@@ -15903,3 +15904,11 @@ version = "0.9.2"
 [[patch.unused]]
 name = "tetherscript"
 version = "0.1.0-alpha.16"
+[[package]]
+name = "codetether-workspace-view"
+version = "0.1.0"
+dependencies = [
+ "codetether-util",
+ "codetether-workspace-snapshot",
+ "ratatui",
+]

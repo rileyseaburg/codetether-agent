@@ -17556,3 +17556,20 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-recent-sessions/`.
 - No Cargo, rustc, Python, rendering actions, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Workspace snapshot presentation and sidebar geometry
+
+- Moved the complete workspace panel renderer and entry icons into the dedicated
+  `codetether-workspace-view` crate. It depends on snapshot data, text utilities
+  and ratatui; it does not depend on native application state or filesystem scans.
+- Moved sidebar rectangle allocation and its existing height test into
+  `codetether-chat-layout::webview`. Native modules now only project the snapshot
+  and compose the two panel renderers.
+- Verification: token comparisons of full renderer/icons/geometry/test bodies,
+  native projections, unchanged snapshot types and consumers, lexical module and
+  dependency graphs, direct rustfmt, file limits and whitespace checks. Root
+  manifest wires the new crate; staged lock changes are restricted to the new
+  package and root dependency, preserving unrelated working-copy lock changes.
+  Evidence: `artifacts/consolidation-workspace-view/`.
+- No Cargo, rustc, Python, UI actions, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

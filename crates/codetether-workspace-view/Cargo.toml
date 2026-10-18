@@ -1,0 +1,12 @@
+[package]
+name = "codetether-workspace-view"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Terminal presentation of workspace snapshots"
+
+[dependencies]
+codetether-workspace-snapshot = { path = "../codetether-workspace-snapshot", version = "0.1.0" }
+codetether-util = { path = "../codetether-util", version = "0.1.0" }
+ratatui = { version = "0.30.2", default-features = false }

@@ -11,3 +11,6 @@ pub use body::{is_webview, show_inspector, show_sidebar, webview_body_chunks};
 pub use main::{MainChunks, compute};
 pub use mode::ChatLayoutMode;
 pub use status::status_height;
+
+mod sidebar;
+pub use sidebar::sidebar_chunks;
