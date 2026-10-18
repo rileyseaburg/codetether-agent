@@ -10,10 +10,10 @@ macro_rules! __frontend_steering_input {
             use $steering as SteeringInput;
             impl $crate::steering::Input for Native<'_> {
                 fn images(&self) -> Vec<ImageAttachment> {
-                    self.app.state.pending_images.clone()
+                    self.app.state.attachments.images.clone()
                 }
                 fn expand(&self, prompt: &str) -> String {
-                    $expand(prompt, &self.app.state.pending_text_pastes)
+                    $expand(prompt, &self.app.state.attachments.text)
                 }
                 fn steer(&self, expanded: String, images: Vec<ImageAttachment>) -> bool {
                     self.runtime

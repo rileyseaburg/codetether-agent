@@ -33,7 +33,7 @@ fn drain_attaches_image_and_keeps_caption() {
     app.state.composer.cursor = app.state.composer.input.chars().count();
     let n = drain_embedded_images(&mut app);
     assert_eq!(n, 1);
-    assert_eq!(app.state.pending_images.len(), 1);
+    assert_eq!(app.state.attachments.images.len(), 1);
     assert_eq!(app.state.composer.input, "describe");
 }
 
@@ -43,6 +43,6 @@ fn drain_handles_pure_image_paste() {
     app.state.composer.input = png_data_url();
     let n = drain_embedded_images(&mut app);
     assert_eq!(n, 1);
-    assert_eq!(app.state.pending_images.len(), 1);
+    assert_eq!(app.state.attachments.images.len(), 1);
     assert!(app.state.composer.input.is_empty());
 }

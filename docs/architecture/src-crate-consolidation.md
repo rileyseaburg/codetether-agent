@@ -28612,3 +28612,23 @@ file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
 Evidence: artifacts/consolidation-status-providers/. No dependencies or unrelated
 working files changed. Cargo, rustc, Python, compilation, doc tests and runtime
 tests were not run. Full consolidation remains active and incomplete.
+
+### Crate-owned draft attachment state
+
+Moved pending image and text-sidecar ownership from two root AppState fields
+into codetether-paste-buffer::AttachmentState. The component also owns attaching
+text, taking each buffer at submission, and clearing both after steering. Existing
+paste, clipboard, file-picker, recovery, submission and display bindings borrow
+its images/text buffers. No manifest dependencies changed.
+
+Static comparison covers all 23 changed existing Rust files and the component's
+four lifecycle methods. Buffer ordering, text placeholder allocation, separate
+submission takes and image-before-text clearing are preserved. Existing tests
+only change their attachment field paths. The unrelated preexisting formatting
+in app/tests.rs is retained and excluded from whole-file formatting validation.
+
+Declaration, module/dependency, production-dependency, dependency-audit,
+file-limit, formatting and whitespace checks pass (724 roots, 617 crates).
+Evidence: artifacts/consolidation-attachment-state/. Unrelated working files are
+unchanged. Cargo, rustc, Python, compilation, doc tests and runtime tests were
+not run. Full consolidation remains active and incomplete.

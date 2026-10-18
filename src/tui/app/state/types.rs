@@ -3,7 +3,6 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::session::ImageAttachment;
 use crate::tui::chat::message::ChatMessage;
 use crate::tui::symbol_search::SymbolSearchState;
 use crate::tui::{audit_view::AuditViewState, bus_log::BusLogState};
@@ -11,7 +10,6 @@ use crate::tui::{ralph_view::RalphViewState, swarm_view::SwarmViewState};
 
 use super::{context_health, git_state};
 
-type PendingPaste = crate::tui::app::input::pasted_text::PendingTextPaste;
 type PendingOkr = Option<crate::tui::app::okr_gate::PendingOkrApproval>;
 
 /// Root container for the interactive TUI.
@@ -49,7 +47,7 @@ pub struct AppState {
     pub help: codetether_help_view::HelpState, pub model_picker: codetether_model_picker::ModelPickerState,
     pub streaming: codetether_chat_model::StreamingState, pub request_timing: codetether_telemetry::RequestTimingState, pub last_completion: codetether_telemetry::CompletionSummary,
     pub context_health: context_health::ContextHealthState, pub tool_timing: codetether_telemetry::ToolTimingState,
-    pub pending_images: Vec<ImageAttachment>, pub pending_text_pastes: Vec<PendingPaste>, pub preferences: codetether_settings_policy::persistence::Preferences, pub settings_panel: codetether_settings_policy::panel::PanelState, pub last_key_at: Option<Instant>,
+    pub attachments: codetether_paste_buffer::AttachmentState, pub preferences: codetether_settings_policy::persistence::Preferences, pub settings_panel: codetether_settings_policy::panel::PanelState, pub last_key_at: Option<Instant>,
     pub mcp_registry: Arc<crate::tui::app::mcp::TuiMcpRegistry>, pub agent_tree: codetether_agent_tree::AgentTreeState<crate::session::Session>, pub message_cache: codetether_message_cache::RenderedLineCache,
     pub watchdog: codetether_watchdog::WatchdogState, pub okr_repository: Option<Arc<crate::okr::OkrRepository>>, pub pending_okr_approval: PendingOkr, pub retry_state: codetether_model_failover::RetryState,
     pub stream_recovery: codetether_stream_recovery::StreamRecoveryState,

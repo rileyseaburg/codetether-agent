@@ -161,7 +161,7 @@ async fn slash_image_supported_extension_attaches() {
     )
     .await;
 
-    assert_eq!(app.state.pending_images.len(), 1);
+    assert_eq!(app.state.attachments.images.len(), 1);
     assert!(app.state.status.contains("Attached"));
     assert!(matches!(
         app.state.messages.last().map(|msg| &msg.message_type),
@@ -184,7 +184,7 @@ async fn slash_image_empty_arg_shows_usage() {
     .await;
 
     assert!(app.state.status.contains("Usage: /image"));
-    assert!(app.state.pending_images.is_empty());
+    assert!(app.state.attachments.images.is_empty());
 }
 
 #[tokio::test]
@@ -201,7 +201,7 @@ async fn slash_image_missing_file_shows_error() {
     )
     .await;
 
-    assert!(app.state.pending_images.is_empty());
+    assert!(app.state.attachments.images.is_empty());
     assert!(matches!(
         app.state.messages.last().map(|msg| &msg.message_type),
         Some(MessageType::System)
@@ -228,7 +228,7 @@ async fn slash_image_unsupported_extension_shows_error() {
     )
     .await;
 
-    assert!(app.state.pending_images.is_empty());
+    assert!(app.state.attachments.images.is_empty());
     let last_msg = app.state.messages.last().unwrap();
     assert!(last_msg.content.contains("Unsupported image format"));
 }

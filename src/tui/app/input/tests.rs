@@ -63,7 +63,7 @@ mod tests {
     async fn enter_with_pending_image_sends_even_without_text() {
         let mut app = App::default();
         app.state.view.mode = ViewMode::Chat;
-        app.state.pending_images.push(ImageAttachment {
+        app.state.attachments.images.push(ImageAttachment {
             data_url: "data:image/png;base64,Zm9v".to_string(),
             mime_type: Some("image/png".to_string()),
         });
@@ -82,7 +82,7 @@ mod tests {
             app.state.messages.get(1).map(|m| &m.message_type),
             Some(MessageType::Image { .. })
         ));
-        assert!(app.state.pending_images.is_empty());
+        assert!(app.state.attachments.images.is_empty());
     }
 
     #[test]

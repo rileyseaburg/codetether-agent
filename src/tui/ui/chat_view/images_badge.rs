@@ -16,5 +16,5 @@ use ratatui::text::Span;
 /// # }
 /// ```
 pub fn pending_images_badge(app: &App) -> Option<Span<'static>> {
-    codetether_chat_status::images_badge::pending_images_badge(app.state.pending_images.len())
+    codetether_chat_status::images_badge::pending_images_badge(app.state.attachments.images.len())
 }

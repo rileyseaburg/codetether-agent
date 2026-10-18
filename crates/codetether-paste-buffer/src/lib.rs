@@ -9,12 +9,14 @@ mod entry;
 mod expand;
 mod raw;
 mod size;
+mod state;
 mod summarize;
 pub use attach::attach_paste;
 pub use entry::PendingTextPaste;
 pub use expand::expand_paste_placeholders;
 pub use raw::expand_placeholders_raw;
 pub use size::format_size;
+pub use state::AttachmentState;
 pub use summarize::should_summarize;
 #[cfg(test)]
 mod tests;

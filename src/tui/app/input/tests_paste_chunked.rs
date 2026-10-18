@@ -39,11 +39,11 @@ mod tests {
         recover_pasted_images(&mut app);
 
         assert_eq!(
-            app.state.pending_images.len(),
+            app.state.attachments.images.len(),
             1,
             "image lost: input_len={} sidecar_pastes={} status={:?}",
             app.state.composer.input.len(),
-            app.state.pending_text_pastes.len(),
+            app.state.attachments.text.len(),
             app.state.status,
         );
     }

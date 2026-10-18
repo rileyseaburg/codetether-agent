@@ -8,7 +8,7 @@ macro_rules! declare_frontend_text_paste {
         use $state as AppState;
         /// Attach pasted content to the application sidecar and return its placeholder.
         pub fn attach_paste(state: &mut AppState, content: String) -> String {
-            $crate::attach_paste(&mut state.pending_text_pastes, content)
+            state.attachments.attach_text(content)
         }
     };
 }

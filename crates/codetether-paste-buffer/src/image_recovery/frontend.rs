@@ -10,12 +10,12 @@ macro_rules! declare_frontend_image_recovery {
         pub(crate) fn recover_pasted_images(app: &mut App) -> usize {
             let mut state = $crate::image_recovery::State {
                 composer: ComposerState {
-                    images: &mut app.state.pending_images,
+                    images: &mut app.state.attachments.images,
                     input: &mut app.state.composer.input,
                     cursor: &mut app.state.composer.cursor,
                     status: &mut app.state.status,
                 },
-                pastes: &mut app.state.pending_text_pastes,
+                pastes: &mut app.state.attachments.text,
             };
             $crate::image_recovery::recover_pasted_images(&mut state)
         }

@@ -27,7 +27,7 @@ macro_rules! declare_frontend_image_paste {
 
         fn state(app: &mut App) -> $crate::paste::State<'_> {
             $crate::paste::State {
-                images: &mut app.state.pending_images,
+                images: &mut app.state.attachments.images,
                 input: &mut app.state.composer.input,
                 cursor: &mut app.state.composer.cursor,
                 status: &mut app.state.status,

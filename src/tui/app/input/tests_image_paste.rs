@@ -20,12 +20,12 @@ mod tests {
         handle_paste(&mut app, &text).await;
 
         assert_eq!(app.state.composer.input, "draft");
-        assert_eq!(app.state.pending_images.len(), 1);
+        assert_eq!(app.state.attachments.images.len(), 1);
         assert_eq!(
-            app.state.pending_images[0].mime_type.as_deref(),
+            app.state.attachments.images[0].mime_type.as_deref(),
             Some("image/png")
         );
-        assert_eq!(app.state.pending_images[0].data_url, text);
+        assert_eq!(app.state.attachments.images[0].data_url, text);
         assert_eq!(
             app.state.status,
             "Attached pasted image. Press Enter to send, or add text first."

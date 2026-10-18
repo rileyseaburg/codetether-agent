@@ -9,8 +9,7 @@ macro_rules! __frontend_steering_view {
             use $message as ChatMessage;
             impl $crate::steering::View for Native<'_> {
                 fn clear_attachments(&mut self) {
-                    self.app.state.pending_images.clear();
-                    self.app.state.pending_text_pastes.clear();
+                    self.app.state.attachments.clear();
                 }
                 fn messages(&mut self) -> &mut Vec<ChatMessage> {
                     &mut self.app.state.messages

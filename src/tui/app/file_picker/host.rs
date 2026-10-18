@@ -22,7 +22,7 @@ impl codetether_file_picker::interactive::View for Native<'_> {
         self.0.state.status = status;
     }
     fn push_image(&mut self, image: ImageAttachment) {
-        self.0.state.pending_images.push(image);
+        self.0.state.attachments.images.push(image);
     }
     fn push_system(&mut self, text: String) {
         self.0

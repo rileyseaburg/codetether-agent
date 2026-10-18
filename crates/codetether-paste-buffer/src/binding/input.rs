@@ -29,7 +29,7 @@ macro_rules! __frontend_paste_input {
                     self.state.status = status;
                 }
                 fn pending_pastes(&mut self) -> &mut Vec<PendingTextPaste> {
-                    &mut self.state.pending_text_pastes
+                    &mut self.state.attachments.text
                 }
             }
         }

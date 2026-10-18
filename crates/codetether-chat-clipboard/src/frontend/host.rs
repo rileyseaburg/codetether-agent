@@ -14,7 +14,7 @@ macro_rules! __frontend_chat_clipboard_host {
                     &self.0.state.messages
                 }
                 fn pending_images(&mut self) -> &mut Vec<ImageAttachment> {
-                    &mut self.0.state.pending_images
+                    &mut self.0.state.attachments.images
                 }
                 fn set_status(&mut self, status: String) {
                     self.0.state.status = status;

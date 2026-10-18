@@ -16,8 +16,8 @@ macro_rules! declare_frontend_image_attachment {
         struct ImageView<'a>(&'a mut App);
         impl View for ImageView<'_> {
             fn push_image(&mut self, image: ImageAttachment) -> usize {
-                self.0.state.pending_images.push(image);
-                self.0.state.pending_images.len()
+                self.0.state.attachments.images.push(image);
+                self.0.state.attachments.images.len()
             }
             fn set_status(&mut self, message: String) {
                 self.0.state.status = message;

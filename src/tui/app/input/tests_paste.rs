@@ -100,9 +100,9 @@ mod tests {
         assert!(!app.state.composer.input.contains("epsilon"));
 
         // Sidecar holds the real content, keyed by id 1.
-        assert_eq!(app.state.pending_text_pastes.len(), 1);
-        assert_eq!(app.state.pending_text_pastes[0].id, 1);
-        assert_eq!(app.state.pending_text_pastes[0].content, pasted);
+        assert_eq!(app.state.attachments.text.len(), 1);
+        assert_eq!(app.state.attachments.text[0].id, 1);
+        assert_eq!(app.state.attachments.text[0].content, pasted);
 
         // Status surfaces the line / size summary.
         assert!(
@@ -136,8 +136,7 @@ mod tests {
         assert!(!display_prompt.contains("four"));
 
         // What the agent will receive.
-        let agent_prompt =
-            expand_paste_placeholders(&display_prompt, &app.state.pending_text_pastes);
+        let agent_prompt = expand_paste_placeholders(&display_prompt, &app.state.attachments.text);
         assert!(agent_prompt.contains("--- Begin pasted text #1"));
         assert!(agent_prompt.contains("four\nfive\nsix"));
         assert!(agent_prompt.contains("--- End pasted text #1 ---"));
@@ -155,9 +154,9 @@ mod tests {
         handle_paste(&mut app, "a\nb\nc\nd\ne\nf").await;
         handle_paste(&mut app, "g\nh\ni\nj\nk\nl").await;
 
-        assert_eq!(app.state.pending_text_pastes.len(), 2);
-        assert_eq!(app.state.pending_text_pastes[0].id, 1);
-        assert_eq!(app.state.pending_text_pastes[1].id, 2);
+        assert_eq!(app.state.attachments.text.len(), 2);
+        assert_eq!(app.state.attachments.text[0].id, 1);
+        assert_eq!(app.state.attachments.text[1].id, 2);
         assert!(app.state.composer.input.contains("[Pasted text #1:"));
         assert!(app.state.composer.input.contains("[Pasted text #2:"));
     }
@@ -171,7 +170,7 @@ mod tests {
         app.state.view.mode = ViewMode::Chat;
         handle_paste(&mut app, "alpha\nbeta").await;
         assert_eq!(app.state.composer.input, "alpha\nbeta");
-        assert!(app.state.pending_text_pastes.is_empty());
+        assert!(app.state.attachments.text.is_empty());
     }
 
     #[tokio::test]

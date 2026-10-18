@@ -7,7 +7,7 @@ use crate::tui::app::state::App;
 fn incomplete_image_chunk_is_retained_for_reassembly() {
     let mut app = App::default();
     assert!(!try_attach_data_url(&mut app, "data:image/png;base64,A"));
-    assert!(app.state.pending_images.is_empty());
+    assert!(app.state.attachments.images.is_empty());
 }
 
 #[test]
@@ -20,7 +20,7 @@ fn oversized_image_paste_reports_error_and_is_consumed() {
         try_attach_data_url(&mut app, &huge),
         "rejected image must be consumed, not passed to the paste sidecar"
     );
-    assert!(app.state.pending_images.is_empty());
+    assert!(app.state.attachments.images.is_empty());
     assert!(
         app.state.status.contains("too large"),
         "status should explain the failure, got {:?}",

@@ -12,10 +12,10 @@ macro_rules! __prompt_finish_attachments {
                 type Image = ImageAttachment;
                 type TextPastes = Vec<PendingTextPaste>;
                 fn take_images(&mut self) -> Vec<Self::Image> {
-                    std::mem::take(&mut self.app.state.pending_images)
+                    self.app.state.attachments.take_images()
                 }
                 fn take_text(&mut self) -> Self::TextPastes {
-                    std::mem::take(&mut self.app.state.pending_text_pastes)
+                    self.app.state.attachments.take_text()
                 }
                 fn expand(&self, prompt: &str, text: &Self::TextPastes) -> String {
                     $expand(prompt, text)
