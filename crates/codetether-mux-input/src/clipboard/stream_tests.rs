@@ -7,9 +7,9 @@ fn keeps_large_bracketed_paste_chunks_unmodified() {
     let middle = b"second\nthird".to_vec();
     let end = b"\nfourth\x1b[201~".to_vec();
 
-    assert_eq!(resolver.resolve(start.clone()), start);
-    assert_eq!(resolver.resolve(middle.clone()), middle);
-    assert_eq!(resolver.resolve(end.clone()), end);
+    assert_eq!(resolver.resolve(start.clone(), || None), start);
+    assert_eq!(resolver.resolve(middle.clone(), || None), middle);
+    assert_eq!(resolver.resolve(end.clone(), || None), end);
 }
 
 #[test]
@@ -20,7 +20,7 @@ fn preserves_two_megabyte_bracketed_paste_across_reads() {
     let mut resolver = Resolver::default();
     let actual = paste
         .chunks(64 * 1024)
-        .flat_map(|chunk| resolver.resolve(chunk.to_vec()))
+        .flat_map(|chunk| resolver.resolve(chunk.to_vec(), || None))
         .collect::<Vec<_>>();
     assert_eq!(actual, paste);
 }
@@ -35,12 +35,12 @@ fn recognizes_markers_split_across_reads() {
     ];
     let actual = chunks
         .iter()
-        .flat_map(|chunk| resolver.resolve(chunk.to_vec()))
+        .flat_map(|chunk| resolver.resolve(chunk.to_vec(), || None))
         .collect::<Vec<_>>();
 
     assert_eq!(actual, b"\x1b[200~one\ntwo\x1b[201~");
     assert_eq!(
-        resolver.resolve(b"three\nfour".to_vec()),
+        resolver.resolve(b"three\nfour".to_vec(), || None),
         b"\x1b[200~three\nfour\x1b[201~"
     );
 }

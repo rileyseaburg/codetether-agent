@@ -4,8 +4,16 @@ pub(super) struct Detector {
     prefix: bool,
 }
 
-pub(super) struct Filtered {
+/// Forwardable terminal bytes and an attachment-detach decision.
+/// # Examples
+/// ```
+/// let filtered = codetether_mux_input::Filtered { data: b"ls".to_vec(), detach: false };
+/// assert!(!filtered.detach);
+/// ```
+pub struct Filtered {
+    /// Bytes to send to the server-owned terminal.
     pub data: Vec<u8>,
+    /// Whether this attachment should detach after sending the bytes.
     pub detach: bool,
 }
 
@@ -35,18 +43,6 @@ impl Detector {
         }
     }
 }
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn detects_split_detach_sequence() {
-        let mut value = Detector::new();
-        assert!(!value.filter(&[2]).detach);
-        assert!(value.filter(b"d").detach);
-    }
-    #[test]
-    fn forwards_non_detach_prefix() {
-        assert_eq!(Detector::new().filter(&[2, b'x']).data, vec![2, b'x']);
-    }
-}
+#[path = "detach_tests.rs"]
+mod tests;

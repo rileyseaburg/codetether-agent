@@ -1,0 +1,12 @@
+[package]
+name = "codetether-mux-input"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Mux detach and clipboard input filtering with bounded PTY forwarding"
+
+[dependencies]
+anyhow = "1"
+codetether-mux-client = { path = "../codetether-mux-client", version = "0.1.0" }
+codetether-mux-protocol = { path = "../codetether-mux-protocol", version = "0.1.0" }

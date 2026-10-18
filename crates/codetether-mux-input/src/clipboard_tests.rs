@@ -9,7 +9,7 @@ fn frames_content_as_one_terminal_paste() {
 fn leaves_existing_bracketed_paste_unchanged() {
     let mut resolver = Resolver::default();
     let paste = b"\x1b[200~one\ntwo\x1b[201~".to_vec();
-    assert_eq!(resolver.resolve(paste.clone()), paste);
+    assert_eq!(resolver.resolve(paste.clone(), || None), paste);
 }
 
 #[test]

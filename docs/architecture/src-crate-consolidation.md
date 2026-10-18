@@ -10317,3 +10317,19 @@ graphs, file budgets and whitespace checks passed; new files contain at most 29
 code lines. Evidence is in `artifacts/consolidation-mux-client-policy/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python, terminal
 output or program execution ran. Full workspace consolidation remains active.
+
+### Dedicated mux input pipeline
+
+Moved detach-sequence filtering, bracketed-paste state, clipboard substitution,
+multiline paste framing and bounded PTY input forwarding into
+`crates/codetether-mux-input`. Eleven modules separate state machines, framing,
+transport and original regressions. Native clipboard lookup remains a lazy
+callback, preserving platform access and the original lookup timing.
+
+Thirty-two static comparisons cover marker state, detach behavior, lazy clipboard
+resolution, exact framing, input chunk size, fifteen moved tests and native
+proxy/clipboard adapters. Module/dependency graphs, file budgets and whitespace
+checks passed; new files contain at most 42 code lines. Evidence is in
+`artifacts/consolidation-mux-input/`. Compilation and runtime tests were not run.
+No Cargo, rustc, Python, clipboard, terminal or network operations ran.
+Full workspace consolidation remains active.

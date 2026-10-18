@@ -1,6 +1,5 @@
 //! Event-driven proxy between a terminal and server-owned PTY.
 
-mod detach;
 mod input;
 mod output;
 mod presentation;
