@@ -13,3 +13,14 @@ pub use active::steer;
 pub use host::Host;
 pub use idle::queue_only;
 pub use route::Route;
+
+mod application_binding;
+
+/// Dependencies used by application communication declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow::Result;
+    pub use async_trait::async_trait;
+    pub use codetether_provider_core::Message;
+    pub use codetether_tool_core::ToolResult;
+}

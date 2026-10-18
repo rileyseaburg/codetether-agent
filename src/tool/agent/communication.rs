@@ -1,16 +1,11 @@
 //! Same-turn and queued delivery for inter-agent messages.
 
-#[path = "communication/active.rs"]
-mod active;
-#[path = "communication/host.rs"]
-mod host;
-#[path = "communication/idle.rs"]
-mod idle;
-use codetether_agent_communication as route;
-
-pub(crate) use active::steer;
-pub(crate) use idle::queue_only;
-pub(crate) use route::Route;
+codetether_agent_communication::declare_application_communication!(
+    pub(crate);
+    crate::session::Session,
+    crate::tool::agent::store,
+    crate::session::helper::steering,
+);
 
 #[cfg(test)]
 #[path = "communication/active_tests.rs"]

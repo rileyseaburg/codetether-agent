@@ -26712,3 +26712,20 @@ file-limit and whitespace checks pass for 730 module roots and 617 crates.
 No manifest/lock changes were required; unrelated working files remain untouched.
 Evidence: artifacts/consolidation-control-binding/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### Agent communication application binding
+
+Moved active steering, idle queueing and their session/registry host into
+codetether-agent-communication::declare_application_communication. Removed
+communication/{active,idle,host}.rs and communication/host/session.rs. The root
+selects its existing Session, live store and steering module. Session appends
+continue through add_human_message, persistence through save, and steering input
+construction remains unchanged. All ten expanded function bodies match their
+originals after explicit path substitution.
+
+Active-delivery and idle-persistence test sources are unchanged. Static declaration,
+module/dependency, native production-scope, standalone formatting, file-limit and
+whitespace checks pass; module scans cover 730 roots and 617 crates. No dependency
+or lock changes were needed. Unrelated working files remain untouched. Evidence:
+artifacts/consolidation-communication-binding/. No Cargo, rustc, Python, compilation
+or runtime tests ran. Full consolidation remains active.
