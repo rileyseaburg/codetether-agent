@@ -33,3 +33,6 @@ mod scroll_bounds;
 mod scroll_navigation;
 mod scroll_state;
 pub use scroll_state::ToolPreviewScrollState;
+
+/// Structured tool-error parsing and preview formatting.
+pub mod error;

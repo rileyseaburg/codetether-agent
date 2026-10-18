@@ -17128,3 +17128,17 @@ Full workspace consolidation remains active.
   `artifacts/consolidation-policy-recommendation/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Move structured tool-error previews into tool panel
+
+- Moved the unreferenced `src/tui/app/tool_error.rs` implementation into
+  `codetether-tool-panel::error`, with separate model, parser, preview and
+  test modules. The tool-panel crate already owns tool preview rendering.
+- Preserved the error envelope fields, optional-field handling, pretty JSON
+  examples and preview ordering; added public API documentation. Both original
+  tests moved unchanged. Runtime call sites remain unchanged.
+- Verification: complete struct/function/test comparisons, module/dependency
+  graphs, direct rustfmt, file limits and whitespace. No dependency changes.
+  Evidence: `artifacts/consolidation-tool-error/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.
