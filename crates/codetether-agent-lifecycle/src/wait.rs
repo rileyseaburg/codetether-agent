@@ -28,3 +28,7 @@ async fn wait(name: &str) {
 #[cfg(test)]
 #[path = "wait_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "interrupt_wait_tests.rs"]
+mod interrupt_tests;

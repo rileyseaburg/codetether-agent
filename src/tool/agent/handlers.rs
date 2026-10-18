@@ -1,5 +1,7 @@
 //! Focused legacy action handler exports.
 
+#[path = "handlers/host.rs"]
+mod host;
 #[path = "handlers/interrupt.rs"]
 mod interrupt;
 #[path = "handlers/kill.rs"]

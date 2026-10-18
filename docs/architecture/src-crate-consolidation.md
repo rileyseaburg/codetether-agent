@@ -8358,3 +8358,22 @@ contain at most 27 code lines. Evidence is in
 collision caught by the initial formatter parse. Compilation and runtime tests
 were not run; no child prompts were started. No Cargo, rustc or Python commands
 ran. The full consolidation goal remains active.
+
+### Shared permanent removal and active-turn interruption
+
+Moved kill sequencing, active-turn interruption and durable developer-marker
+persistence into `codetether-agent-lifecycle`. Six added Rust modules separate
+control operations, native storage/history contracts and marker handling.
+Interruption reuses the existing equivalent five-second notification wait;
+the original interruption deadline test now exercises that shared implementation.
+Native adapters retain owner-scoped lookup, mailbox clearing, persistence,
+normal message classification, and live trace cleanup.
+
+Twenty-four static preservation checks cover removal ordering, error exits,
+state publication, timeout behavior, idle behavior, exact marker text, save-before-
+update ordering and native effects. Three interruption integration tests remain
+unchanged. Module/dependency, file-budget and whitespace checks passed; added
+crate modules contain at most 38 code lines. Evidence is in
+`artifacts/consolidation-agent-control/`. Compilation and runtime tests were not
+run; no agent was interrupted or removed. No Cargo, rustc or Python commands ran.
+The full consolidation goal remains active.

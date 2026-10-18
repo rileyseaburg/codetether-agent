@@ -1,5 +1,5 @@
 use super::until_idle_with_timeout;
-use crate::tool::agent::execution_state;
+use codetether_collaboration_state::execution as execution_state;
 use std::time::Duration;
 
 #[tokio::test]

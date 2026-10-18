@@ -2609,6 +2609,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "codetether-agent-registry",
+ "codetether-provider-core",
  "codetether-collaboration-state",
  "codetether-collaboration-tools",
  "codetether-tool-core",
