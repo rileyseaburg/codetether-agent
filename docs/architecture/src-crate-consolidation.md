@@ -8413,3 +8413,22 @@ dependency checks, file budgets and whitespace checks passed; crate files contai
 at most 43 code lines. Evidence is in `artifacts/consolidation-peer-agent/`.
 Compilation and runtime tests were not run; no network calls were executed.
 No Cargo, rustc or Python commands ran. The full consolidation goal remains active.
+
+### Dedicated local and peer agent views
+
+Moved agent snapshot/origin types, local/peer projection, owner-scoped transcript
+and trace fallback, lookup, and legacy roster rendering into
+`crates/codetether-agent-view`. Eleven Rust modules separate data types, origin
+labels, local projection, remote projection, transcript/trace access and roster
+formatting. Native adapters retain live registry snapshots and extraction of
+tracked session messages. Public TUI bridge functions retain their existing
+names and result types through shared type re-exports.
+
+Twenty-one static preservation checks cover snapshot fields, origin labels,
+local-before-remote order, running-state lookup, scoped fallback, roster JSON,
+native session access and unchanged TUI fixtures/tests. Three TUI integration
+tests remain unchanged. Module/dependency, file-budget and whitespace checks
+passed; crate files contain at most 39 code lines. Evidence is in
+`artifacts/consolidation-agent-view/`. Compilation and runtime tests were not
+run. No Cargo, rustc or Python commands ran. The full consolidation goal remains
+active.
