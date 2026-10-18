@@ -247,6 +247,8 @@ members = [
     "crates/codetether-editor",
     "crates/codetether-editor-lsp",
     "crates/codetether-session-picker",
+    "crates/codetether-agent-identity",
+    "crates/codetether-tool-preview",
     "crates/codetether-command-prompt",
     "crates/codetether-tool-recovery",
     "crates/codetether-workspace-index",
@@ -559,6 +561,8 @@ codetether-codex-records = { path = "crates/codetether-codex-records", version =
 codetether-workspace-index = { path = "crates/codetether-workspace-index", version = "0.1.0" }
 codetether-tool-recovery = { path = "crates/codetether-tool-recovery", version = "0.1.0" }
 codetether-command-prompt = { path = "crates/codetether-command-prompt", version = "0.1.0" }
+codetether-agent-identity = { path = "crates/codetether-agent-identity", version = "0.1.0" }
+codetether-tool-preview = { path = "crates/codetether-tool-preview", version = "0.1.0" }
 codetether-session-picker = { path = "crates/codetether-session-picker", version = "0.1.0" }
 codetether-editor-lsp = { path = "crates/codetether-editor-lsp", version = "0.1.0" }
 codetether-editor = { path = "crates/codetether-editor", version = "0.1.0" }

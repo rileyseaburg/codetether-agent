@@ -1237,6 +1237,8 @@ dependencies = [
 name = "codetether-agent"
 version = "4.7.6-dev.38"
 dependencies = [
+ "codetether-agent-identity",
+ "codetether-tool-preview",
  "codetether-session-picker",
  "codetether-editor-lsp",
  "codetether-editor",
@@ -6037,6 +6039,18 @@ dependencies = [
  "codetether-theme",
  "codetether-util",
  "ratatui",
+]
+
+[[package]]
+name = "codetether-agent-identity"
+version = "0.1.0"
+
+[[package]]
+name = "codetether-tool-preview"
+version = "0.1.0"
+dependencies = [
+ "codetether-util",
+ "serde_json",
 ]
 
 [[package]]

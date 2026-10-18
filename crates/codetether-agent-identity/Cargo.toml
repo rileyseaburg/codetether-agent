@@ -1,0 +1,9 @@
+[package]
+name = "codetether-agent-identity"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Agent display identities and deterministic persona profiles"
+
+[dependencies]

@@ -1,7 +1,20 @@
+//! Pretty-print small tool calls and extract question text.
 //! Tool argument pretty-printing.
 
 /// Pretty-print tool call arguments when reasonably sized.
 #[allow(dead_code)]
+///
+/// # Arguments
+/// * `name` - Tool name, with special handling for questions.
+/// * `arguments` - JSON or literal arguments.
+///
+/// # Returns
+/// Pretty JSON, question text, or the original string when parsing is skipped.
+///
+/// # Examples
+/// ```
+/// assert_eq!(codetether_tool_preview::format_tool_call_arguments("tool", "literal"), "literal");
+/// ```
 pub fn format_tool_call_arguments(name: &str, arguments: &str) -> String {
     const MAX_BYTES: usize = 4096;
     if arguments.len() > MAX_BYTES {
@@ -16,16 +29,4 @@ pub fn format_tool_call_arguments(name: &str, arguments: &str) -> String {
         }
     }
     serde_json::to_string_pretty(&parsed).unwrap_or_else(|_| arguments.to_string())
-}
-
-/// Build a size-limited preview for tool arguments.
-#[allow(dead_code)]
-pub fn build_tool_arguments_preview(
-    tool_name: &str,
-    arguments: &str,
-    max_lines: usize,
-    max_bytes: usize,
-) -> (String, bool) {
-    let formatted = format_tool_call_arguments(tool_name, arguments);
-    super::text_preview::build_text_preview(&formatted, max_lines, max_bytes)
 }

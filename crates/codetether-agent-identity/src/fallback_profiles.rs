@@ -1,6 +1,6 @@
 //! Fallback profile constructors used when no named profile matches.
 
-use super::profiles::AgentProfile;
+use crate::AgentProfile;
 
 pub(crate) fn profile_navigator() -> AgentProfile {
     AgentProfile {

@@ -11735,3 +11735,23 @@ Full workspace consolidation remains active.
   file-limit ratchet and git diff --check passed.
 - Evidence: artifacts/consolidation-session-picker-state/. No Cargo, rustc,
   compilation or runtime tests ran. Full consolidation remains incomplete.
+
+### Agent identity and preview ownership
+
+- Moved persona metadata, recognized/fallback profile lookup, avatar hashing,
+  glyphs, identity summaries and relay labels into codetether-agent-identity.
+  Named profiles, fallback assignment and profile data have separate modules.
+- Moved general UTF-8 text excerpts into codetether-util::text_preview and tool
+  argument formatting into codetether-tool-preview. The preview crate depends
+  only on serde_json and the shared utility; identity has no dependencies.
+- The native agent_identity module now contains compatibility exports only;
+  native constants re-export the glyph palette. Preserved public names, avatar
+  order, hash arithmetic, role-match precedence, fallback personas, the 4096-byte
+  JSON cutoff, question-text handling and existing line/byte truncation behavior.
+- Verification: 26 source comparisons passed, including all moved function
+  bodies, profile fields, palette order and native constant substitution. Fifteen
+  moved/new modules contain at most 41 code lines each. Module reachability,
+  dependency-cycle checks, direct rustfmt, source line limits and git diff
+  --check passed. Evidence: artifacts/consolidation-agent-identity/.
+- No Cargo, rustc, compilation or runtime tests ran. Full consolidation remains
+  incomplete; these source checks do not establish runtime or type correctness.

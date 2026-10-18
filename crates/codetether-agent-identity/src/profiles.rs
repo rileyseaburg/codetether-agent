@@ -1,19 +1,21 @@
-//! Agent profile struct and per-agent profile lookup.
-
-use super::fallback_profiles::*;
-use super::named_profiles::*;
-
-/// Identity metadata for a named agent.
-#[derive(Debug, Clone)]
-pub struct AgentProfile {
-    pub codename: &'static str,
-    pub profile: &'static str,
-    pub personality: &'static str,
-    pub collaboration_style: &'static str,
-    pub signature_move: &'static str,
-}
+//! Recognized role-name lookup with deterministic fallback.
+use crate::AgentProfile;
+use crate::fallback_select::fallback_profile;
+use crate::named_delivery::*;
+use crate::named_planning::*;
 
 /// Return the [`AgentProfile`] for a known agent name, or a deterministic fallback.
+///
+/// # Arguments
+/// * `agent_name` - Name whose role keywords choose the persona.
+///
+/// # Returns
+/// Recognized persona metadata or a deterministic fallback.
+///
+/// # Examples
+/// ```
+/// assert_eq!(codetether_agent_identity::agent_profile("planner").codename, "Strategist");
+/// ```
 pub fn agent_profile(agent_name: &str) -> AgentProfile {
     let n = agent_name.to_ascii_lowercase();
     if n.contains("planner") {
@@ -41,23 +43,4 @@ pub fn agent_profile(agent_name: &str) -> AgentProfile {
         return profile_beacon();
     }
     fallback_profile(&n)
-}
-
-fn fallback_profile(name: &str) -> AgentProfile {
-    let profiles = [
-        profile_navigator(),
-        profile_vector(),
-        profile_signal(),
-        profile_kernel(),
-    ];
-    let hash = fnv1a(name);
-    profiles[hash as usize % profiles.len()].clone()
-}
-
-fn fnv1a(s: &str) -> u64 {
-    let mut h: u64 = 2_166_136_261;
-    for b in s.bytes() {
-        h = (h ^ u64::from(b)).wrapping_mul(16_777_619);
-    }
-    h
 }

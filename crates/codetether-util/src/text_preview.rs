@@ -4,6 +4,19 @@
 ///
 /// Returns `(preview_text, was_truncated)`.
 #[allow(dead_code)]
+///
+/// # Arguments
+/// * `text` - Source text.
+/// * `max_lines` - Maximum lines in the result.
+/// * `max_bytes` - Maximum UTF-8 bytes in the result.
+///
+/// # Returns
+/// The excerpt and whether any source content was omitted.
+///
+/// # Examples
+/// ```
+/// assert_eq!(codetether_util::text_preview::build_text_preview("hello", 1, 3), ("hel".into(), true));
+/// ```
 pub fn build_text_preview(text: &str, max_lines: usize, max_bytes: usize) -> (String, bool) {
     if max_lines == 0 || max_bytes == 0 || text.is_empty() {
         return (String::new(), !text.is_empty());

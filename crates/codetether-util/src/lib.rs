@@ -21,3 +21,6 @@ pub mod workspace_scan;
 pub mod fuzzy;
 #[cfg(test)]
 mod fuzzy_tests;
+
+/// UTF-8 safe text excerpts limited by line and byte budgets.
+pub mod text_preview;

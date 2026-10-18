@@ -1,8 +1,19 @@
 //! Avatar selection for agent names.
 
-use crate::tui::constants::AGENT_AVATARS;
+use crate::AGENT_AVATARS;
 
 /// Return a deterministic avatar glyph for the given agent name.
+///
+/// # Arguments
+/// * `agent_name` - Name hashed without ASCII case distinctions.
+///
+/// # Returns
+/// A stable glyph borrowed from the avatar palette.
+///
+/// # Examples
+/// ```
+/// assert_eq!(codetether_agent_identity::agent_avatar("NAME"), codetether_agent_identity::agent_avatar("name"));
+/// ```
 pub fn agent_avatar(agent_name: &str) -> &'static str {
     let mut hash: u64 = 2_166_136_261;
     for byte in agent_name.bytes() {
