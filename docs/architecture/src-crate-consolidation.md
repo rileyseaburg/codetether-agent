@@ -23465,3 +23465,21 @@ checks passed. No manifests or lockfiles changed; unrelated working changes
 remain untouched. Evidence: artifacts/consolidation-session-facades/.
 No session operations, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Tool facade paths resolve directly to owning crates
+
+Replaced thirty-five native tool re-export files with direct aliases in four
+parent modules. File/search tools, command input helpers, media tools,
+confirmation helpers, context reset, planning and task tools now resolve
+directly to their existing crate implementations. All fifty-one previously
+exported symbol paths retain their original targets.
+
+The candidate audit selected only single public re-export files and checked
+module declarations and wildcard imports. Parent token comparisons and a diff
+scope audit confirm that registry construction, approval policy and tool
+execution remain unchanged. Module/dependency scans cover 692 roots and 571
+crates without missing modules or cycles. Direct rustfmt, file-size limits and
+whitespace checks passed. No manifests or lockfiles changed; unrelated working
+changes remain untouched. Evidence: artifacts/consolidation-tool-facades/.
+No tool execution, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.
