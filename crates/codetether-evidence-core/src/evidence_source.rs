@@ -1,3 +1,4 @@
+//! Recognize concrete sources attached to verification claims.
 //! Concrete evidence-source detection for verification claims.
 
 const SOURCES: &[&str] = &[

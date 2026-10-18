@@ -1,5 +1,5 @@
 use super::apply;
-use crate::session::helper::evidence::gate_mode::GateMode;
+use crate::gate_mode::GateMode;
 
 #[test]
 fn warns_on_unlabeled_no_change_claim() {

@@ -1,3 +1,4 @@
+//! Collect artifact-path markers from text.
 use super::record::EvidenceRecord;
 
 pub(crate) fn collect(text: &str, out: &mut Vec<EvidenceRecord>) {

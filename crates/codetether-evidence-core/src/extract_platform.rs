@@ -1,3 +1,4 @@
+//! Collect platform-upload URL markers from text.
 use super::record::EvidenceRecord;
 
 pub(crate) fn collect(text: &str, out: &mut Vec<EvidenceRecord>) {

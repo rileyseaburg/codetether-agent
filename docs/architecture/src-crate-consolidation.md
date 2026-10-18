@@ -10069,3 +10069,20 @@ file budgets and whitespace checks passed; new modules contain at most 18 code
 lines. Evidence is in `artifacts/consolidation-request-policies/`.
 Compilation and runtime tests were not run. No Cargo, rustc, Python or tool
 execution ran. Full workspace consolidation remains active.
+
+### Dedicated evidence core
+
+Moved claim levels, claim classification, proof workflows, recovery actions,
+serializable observations, text evidence extraction and final-answer verification
+into `crates/codetether-evidence-core`. Sixteen modules preserve the existing
+marker precedence, labels and warning/strict rewriting behavior. Native evidence
+modules re-export the shared contracts; session storage, memory and prompt
+assembly retain their existing callers.
+
+Thirty-nine static comparisons cover original function bodies, enum/record fields,
+constants, methods, six existing tests and unchanged native consumers. Dependency
+and module graphs, file budgets and whitespace checks passed; new crate files
+contain at most 42 code lines. The native module graph records the pre-existing,
+unchanged orphan `evidence/digest.rs` explicitly. Evidence is in
+`artifacts/consolidation-evidence-core/`. Compilation and runtime tests were not
+run. No Cargo, rustc, Python or tool execution ran. Full consolidation remains active.

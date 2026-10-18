@@ -1,3 +1,4 @@
+//! Recognize verification statements without a level and concrete source.
 //! Detection of verification assertions lacking explicit evidence labels.
 
 const CLAIMS: &[&str] = &[
