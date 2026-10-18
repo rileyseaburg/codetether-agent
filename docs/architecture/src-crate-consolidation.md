@@ -14203,3 +14203,18 @@ Full workspace consolidation remains active.
 - No dependencies or lockfile entries changed. No Cargo, rustc, Rust tests,
   task operations or server startup ran. Full workspace consolidation remains
   unfinished.
+
+### Kubernetes HTTP route ownership
+
+- Moved Kubernetes management and connected-worker route groups into
+  codetether-k8s-api::http. Query and command adapters now live beside the
+  operations they expose; native state supplies manager/audit references and
+  the unchanged error mapper.
+- Preserves eight handler delegations, both worker-list aliases, all route
+  methods, audit behavior and outer authentication/policy layer order.
+- Verification: 13 static handler/route/state/expanded-server/size checks passed,
+  plus module reachability, dependency DAG, direct rustfmt, file-limit ratchet
+  and whitespace checks. Evidence: artifacts/consolidation-k8s-router/.
+- No dependency or lockfile changes. No Cargo, rustc, Rust tests, Kubernetes
+  operations or server startup ran. Full workspace consolidation remains
+  unfinished.

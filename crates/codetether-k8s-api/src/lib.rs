@@ -24,3 +24,6 @@ pub type ErrorMapper = fn(anyhow::Error) -> (axum::http::StatusCode, String);
 
 mod workers;
 pub use workers::list_connected_workers;
+
+/// HTTP route groups over existing Kubernetes and audit services.
+pub mod http;

@@ -5,6 +5,7 @@
 mod approval_routes;
 pub mod auth;
 mod config_status;
+mod k8s_http_state;
 mod models_catalog;
 mod openai_model_options;
 mod openai_stream;
@@ -56,7 +57,6 @@ use codetether_audit_http::AuditQuery;
 use codetether_authorization_policy::policy_middleware;
 use codetether_cognition_api::BeliefFilter;
 use codetether_event_replay::{list_session_event_files, replay_session_events};
-use codetether_k8s_api::{ScaleRequest, SpawnSubagentRequest};
 use codetether_openai_adapter::{
     OpenAiApiError, OpenAiApiResult, canonicalize_provider_name, convert_finish_reason,
     convert_openai_messages, convert_openai_tools, convert_response_message, make_openai_model_id,
@@ -246,16 +246,7 @@ pub async fn serve(args: ServeArgs) -> Result<()> {
         .route("/v1/audit/replay", get(replay_session_events))
         .route("/v1/audit/replay/index", get(list_session_event_files))
         // K8s self-deployment APIs
-        .route("/v1/k8s/status", get(get_k8s_status))
-        .route("/v1/k8s/scale", post(k8s_scale))
-        .route("/v1/k8s/restart", post(k8s_restart))
-        .route("/v1/k8s/pods", get(k8s_list_pods))
-        .route("/v1/k8s/actions", get(k8s_actions))
-        .route("/v1/k8s/subagent", post(k8s_spawn_subagent))
-        .route(
-            "/v1/k8s/subagent/{id}",
-            axum::routing::delete(k8s_delete_subagent),
-        )
+        .merge(codetether_k8s_api::http::router::<AppState>())
         // Plugin registry API
         .route("/v1/plugins", get(list_plugins))
         // Tool registry API
@@ -577,62 +568,10 @@ async fn list_audit_entries(
 ) -> Result<Json<Vec<audit::AuditEntry>>, (StatusCode, String)> {
     codetether_audit_http::list_audit_entries(&state.audit_log, query).await
 }
-
-// ── K8s self-deployment endpoints ──
-
-async fn get_k8s_status(
-    State(state): State<AppState>,
-) -> Result<Json<crate::k8s::K8sStatus>, (StatusCode, String)> {
-    codetether_k8s_api::get_k8s_status(&state.k8s).await
-}
-
-async fn k8s_scale(
-    State(state): State<AppState>,
-    Json(req): Json<ScaleRequest>,
-) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
-    codetether_k8s_api::k8s_scale(&state.k8s, &state.audit_log, req, internal_error).await
-}
-
-async fn k8s_restart(
-    State(state): State<AppState>,
-) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
-    codetether_k8s_api::k8s_restart(&state.k8s, &state.audit_log, internal_error).await
-}
-
-async fn k8s_list_pods(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<crate::k8s::PodInfo>>, (StatusCode, String)> {
-    codetether_k8s_api::k8s_list_pods(&state.k8s, internal_error).await
-}
-
-async fn k8s_actions(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<crate::k8s::DeployAction>>, (StatusCode, String)> {
-    codetether_k8s_api::k8s_actions(&state.k8s).await
-}
-
-async fn k8s_spawn_subagent(
-    State(state): State<AppState>,
-    Json(req): Json<SpawnSubagentRequest>,
-) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
-    codetether_k8s_api::k8s_spawn_subagent(&state.k8s, req, internal_error).await
-}
-
-async fn k8s_delete_subagent(
-    State(state): State<AppState>,
-    axum::extract::Path(id): axum::extract::Path<String>,
-) -> Result<Json<crate::k8s::DeployAction>, (StatusCode, String)> {
-    codetether_k8s_api::k8s_delete_subagent(&state.k8s, id, internal_error).await
-}
 async fn list_plugins(
     State(state): State<AppState>,
 ) -> Json<codetether_plugin_http::PluginListResponse> {
     codetether_plugin_http::list_plugins(&state.plugin_registry, &state.server_fingerprint).await
-}
-async fn list_connected_workers(
-    State(state): State<AppState>,
-) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    codetether_k8s_api::list_connected_workers(&state.k8s).await
 }
 async fn create_voice_session_rest(
     State(state): State<AppState>,

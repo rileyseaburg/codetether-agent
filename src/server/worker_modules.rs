@@ -13,8 +13,7 @@ pub(super) fn router() -> axum::Router<super::AppState> {
     use axum::routing::{get, post};
 
     axum::Router::new()
-        .route("/v1/worker/connected", get(super::list_connected_workers))
-        .route("/v1/agent/workers", get(super::list_connected_workers))
+        .merge(codetether_k8s_api::http::worker_routes::<super::AppState>())
         .route("/v1/worker/tasks/stream", get(worker_task_stream))
         .route("/v1/worker/tasks/claim", post(worker_task_claim))
         .route("/v1/worker/tasks/release", post(worker_task_release))
