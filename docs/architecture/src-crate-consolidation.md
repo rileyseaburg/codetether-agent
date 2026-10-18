@@ -17784,3 +17784,19 @@ Full workspace consolidation remains active.
   Evidence: `artifacts/consolidation-mcp-invocation/`.
 - No Cargo, rustc, Python, tool handler calls, Rust compilation or Rust tests ran.
   Full workspace consolidation remains incomplete.
+
+### Fallback MCP command translation and result handling
+
+- Moved fallback command approval/translation/result sequencing, argument and
+  timeout helpers, and canonical policy-name mapping into `codetether-mcp-fallback`.
+- Native code retains only the existing synchronous bridge into sandboxed
+  BashTool execution. The shared command handler checks policy before argument
+  translation or execution and preserves its text-only result/error conversion.
+- Moved all five existing translation/policy tests. Verified complete pipeline,
+  execution block, helper and result-conversion bodies, metadata keys, tests,
+  native bindings and unchanged policy execution. Module/dependency graphs,
+  direct rustfmt, file limits and whitespace passed. Added only the existing
+  tool-core dependency to the fallback package's staged lock entry.
+  Evidence: `artifacts/consolidation-mcp-command/`.
+- No Cargo, rustc, Python, shell/tool execution, Rust compilation or Rust tests ran.
+  Full workspace consolidation remains incomplete.

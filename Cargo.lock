@@ -15989,6 +15989,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-mcp-core",
+ "codetether-tool-core",
  "serde_json",
  "tracing",
 ]

@@ -1,16 +1,17 @@
 //! Native command, search and policy operations for fallback tools.
 use anyhow::Result;
 use codetether_mcp_core::types::CallToolResult;
+use codetether_tool_core::ToolResult;
 use serde_json::Value;
 /// Native operations retained by a fallback MCP catalog.
 /// # Implementors
 /// Applications bind sandboxed commands, existing search implementations and
 /// their current write-approval check. Handlers outlive catalog registration.
 pub trait Host: 'static {
-    /// Run a command through the application's existing policy and sandbox.
+    /// Execute translated BashTool arguments through the existing sandbox.
     /// # Errors
     /// Returns argument or execution errors from the native adapter.
-    fn run_command(args: Value) -> Result<CallToolResult>;
+    fn execute_bash(args: Value) -> Result<ToolResult>;
     /// Search file names using the application's existing adapter.
     /// # Errors
     /// Returns the existing search errors.
@@ -19,6 +20,6 @@ pub trait Host: 'static {
     /// # Errors
     /// Returns the existing search errors.
     fn grep_search(args: Value) -> Result<CallToolResult>;
-    /// Check approval before a write; return a blocking result when required.
+    /// Check approval before a command or write; return a blocking result when required.
     fn blocked(name: &str, args: &Value) -> Option<CallToolResult>;
 }

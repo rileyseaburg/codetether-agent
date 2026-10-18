@@ -27,7 +27,7 @@ pub(super) async fn register<H: Host>(server: &ServerCatalog) {
                 },
                 "required": ["command"]
             }),
-            Arc::new(H::run_command),
+            Arc::new(super::command::call::<H>),
         )
         .await;
 }

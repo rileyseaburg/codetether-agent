@@ -4,8 +4,8 @@ use codetether_mcp_core::types::CallToolResult;
 use serde_json::Value;
 pub(super) struct Native;
 impl codetether_mcp_fallback::Host for Native {
-    fn run_command(args: Value) -> Result<CallToolResult> {
-        crate::mcp::fallback_run_command::call(args)
+    fn execute_bash(args: Value) -> Result<crate::tool::ToolResult> {
+        crate::mcp::fallback_run_command::execute(args)
     }
     fn search_files(args: Value) -> Result<CallToolResult> {
         crate::mcp::fallback_search::search_files(args)

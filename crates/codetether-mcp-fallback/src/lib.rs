@@ -41,3 +41,7 @@ pub async fn register<H: Host>(server: &ServerCatalog) {
     grep_search::register::<H>(server).await;
     tracing::info!(target: "codetether_agent::mcp::server", "Registered {} MCP tools", server.tools().read().await.len());
 }
+
+mod command;
+/// Canonical runtime policy aliases for fallback tool names.
+pub mod policy;

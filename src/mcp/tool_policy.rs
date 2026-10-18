@@ -4,8 +4,7 @@ use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;
 
-#[path = "tool_policy_names.rs"]
-mod names;
+use codetether_mcp_fallback::policy as names;
 
 pub(super) fn call_registered(
     name: String,
