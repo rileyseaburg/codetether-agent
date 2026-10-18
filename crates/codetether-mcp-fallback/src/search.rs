@@ -1,15 +1,15 @@
-//! Native fallback MCP search adapters.
+//! Native-search execution and MCP text-result conversion.
 
-use super::types::{CallToolResult, ToolContent};
 use anyhow::Result;
+use codetether_mcp_core::types::{CallToolResult, ToolContent};
 use serde_json::Value;
 
 pub(super) fn search_files(args: Value) -> Result<CallToolResult> {
-    text(super::fallback_search_files::run(&args)?, false)
+    text(codetether_search::native::search_files(&args)?, false)
 }
 
 pub(super) fn grep_search(args: Value) -> Result<CallToolResult> {
-    text(super::fallback_grep::run(&args)?, false)
+    text(codetether_search::native::grep(&args)?, false)
 }
 
 fn text(output: String, is_error: bool) -> Result<CallToolResult> {

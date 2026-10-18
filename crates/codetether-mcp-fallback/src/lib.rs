@@ -18,6 +18,7 @@ mod list_directory_handler;
 mod read_file;
 mod read_file_handler;
 mod run_command;
+mod search;
 mod search_files;
 mod write_file;
 mod write_file_handler;

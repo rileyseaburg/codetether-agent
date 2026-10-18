@@ -21883,3 +21883,20 @@ file-size limits and whitespace checks passed. Staged lock changes contain
 only the new package and root dependency; the unrelated working lock is intact.
 Evidence: `artifacts/consolidation-mcp-client/`. No Cargo, rustc or Python ran;
 compilation and runtime tests remain unverified. Full consolidation stays active.
+
+### Fallback MCP search ownership
+
+Moved native filename/content search adapters and MCP text-result conversion
+into `codetether-mcp-fallback::search`, removing three native implementation
+files. Existing `Host` search methods now default to these implementations and
+remain overridable; the native host retains only command and approval bindings.
+The owning fallback crate now depends directly on `codetether-search`.
+
+Source comparisons preserve the underlying search calls, success envelopes,
+error propagation and both tool schemas. Native command and blocking policy
+bodies are unchanged. Module/dependency checks cover 693 roots and 565 crates
+without missing modules or cycles. Direct rustfmt, file-size and whitespace
+checks passed. Only the fallback package's search dependency edge is staged
+in the lockfile; unrelated working changes remain intact. Evidence:
+`artifacts/consolidation-mcp-fallback-search/`. No Cargo, rustc or Python ran;
+compilation and runtime tests remain unverified. Full consolidation is active.

@@ -7,6 +7,7 @@ license = "MIT"
 description = "Fallback MCP tool catalog and file handlers with native policy bindings"
 
 [dependencies]
+codetether-search = { path = "../codetether-search", version = "0.1.0" }
 anyhow = "1"
 codetether-mcp-core = { path = "../codetether-mcp-core", version = "0.1.0" }
 serde_json = "1"
