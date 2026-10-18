@@ -11,3 +11,8 @@ mod subscribe;
 pub use bus::SessionBus;
 pub use codetether_session_events::SessionEvent;
 pub use sink::SharedSink;
+
+mod durable_bus;
+mod durable_sink;
+pub use durable_bus::DurableSessionBus;
+pub use durable_sink::{DurableSink, NoopSink};

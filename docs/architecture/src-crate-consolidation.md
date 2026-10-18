@@ -21560,3 +21560,24 @@ checks passed. No dependency or lockfile changes. Evidence:
 `artifacts/consolidation-checkpoint-persistence/`. No Cargo, rustc, or Python
 commands ran; compilation and runtime tests remain unverified. Full workspace
 consolidation remains active.
+
+### Shared typed durable session bus
+
+Moved the native durable-sink contract, no-op sink and typed bus facade into
+`codetether-session-bus`. The native module now selects the existing `Session`
+snapshot type through a `DurableSessionBus<Session>` alias. The lower-level
+callback-based `SessionBus<S>` remains available for existing crate consumers.
+No concrete native durable-sink implementations existed elsewhere in the repo.
+
+The moved sink trait is generic over snapshot type: external implementations
+now name `DurableSink<S>`. This makes the ownership boundary explicit without
+requiring the shared crate to depend on native sessions. Methods retain the
+same sink callback adaptation, legacy forwarding, subscriptions and emission
+behavior. Full token comparisons permit only the generic type and owning-path
+changes. The underlying transport ordering implementation is unchanged.
+
+Source/dependency graphs across 698 roots and 564 crates, direct rustfmt,
+native file-size limits, and whitespace checks passed. No dependency or lockfile
+changes. Evidence: `artifacts/consolidation-durable-session-bus/`. No Cargo,
+rustc, or Python commands ran; compilation and runtime tests remain unverified.
+Full consolidation remains active.

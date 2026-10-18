@@ -5,9 +5,9 @@
 //! expected to buffer or persist the event before returning; the bus
 //! guarantees no durable event is silently dropped.
 //!
-//! [`SessionEvent::is_durable`]: crate::session::SessionEvent::is_durable
+//! [`SessionEvent::is_durable`]: crate::SessionEvent::is_durable
 
-use crate::session::SessionEvent;
+use crate::SessionEvent;
 
 /// A write-ahead sink for durable [`SessionEvent`]s.
 ///
@@ -28,10 +28,10 @@ use crate::session::SessionEvent;
 ///
 /// ```rust
 /// use std::sync::{Arc, Mutex};
-/// use codetether_agent::session::{DurableSink, SessionEvent};
+/// use codetether_session_bus::{DurableSink, SessionEvent};
 ///
 /// struct Collector(Arc<Mutex<Vec<String>>>);
-/// impl DurableSink for Collector {
+/// impl DurableSink<()> for Collector {
 ///     fn write(&self, event: &SessionEvent) -> std::io::Result<()> {
 ///         self.0.lock().unwrap().push(format!("{event:?}"));
 ///         Ok(())
@@ -41,7 +41,7 @@ use crate::session::SessionEvent;
 /// let c = Collector(Arc::new(Mutex::new(Vec::new())));
 /// c.write(&SessionEvent::Done).unwrap();
 /// ```
-pub trait DurableSink: Send + Sync + 'static {
+pub trait DurableSink<S>: Send + Sync + 'static {
     /// Persist one durable event.
     ///
     /// # Errors
@@ -49,7 +49,7 @@ pub trait DurableSink: Send + Sync + 'static {
     /// Returns an `io::Error` if the underlying storage (file, network,
     /// object store) refused the write. Callers log and continue — a
     /// bus emit never panics on sink failure.
-    fn write(&self, event: &SessionEvent) -> std::io::Result<()>;
+    fn write(&self, event: &SessionEvent<S>) -> std::io::Result<()>;
 }
 
 /// A [`DurableSink`] that drops every event. Useful as a default when the
@@ -59,16 +59,16 @@ pub trait DurableSink: Send + Sync + 'static {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::session::{DurableSink, NoopSink, SessionEvent};
+/// use codetether_session_bus::{DurableSink, NoopSink, SessionEvent};
 ///
 /// let sink = NoopSink;
-/// sink.write(&SessionEvent::Done).unwrap();
+/// sink.write(&SessionEvent::<()>::Done).unwrap();
 /// ```
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopSink;
 
-impl DurableSink for NoopSink {
-    fn write(&self, _event: &SessionEvent) -> std::io::Result<()> {
+impl<S> DurableSink<S> for NoopSink {
+    fn write(&self, _event: &SessionEvent<S>) -> std::io::Result<()> {
         Ok(())
     }
 }
