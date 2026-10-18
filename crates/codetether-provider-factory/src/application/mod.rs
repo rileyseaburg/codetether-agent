@@ -7,20 +7,7 @@ use codetether_provider_copilot::application::Identity;
 use codetether_provider_core::Provider;
 use std::{marker::PhantomData, sync::Arc};
 mod implementation;
-/// Runtime-dependent local provider construction supplied by the application.
-/// # Implementors
-/// Applications bind their existing feature-selected local CUDA provider.
-pub trait LocalProvider {
-    /// Construct a local provider using the selected model.
-    fn create(model: String) -> anyhow::Result<Arc<dyn Provider>>;
-    /// Construct a local provider with explicit model and tokenizer artifacts.
-    fn create_with_paths(
-        model: String,
-        path: String,
-        tokenizer: Option<String>,
-        architecture: Option<String>,
-    ) -> anyhow::Result<Arc<dyn Provider>>;
-}
+pub use codetether_provider_local_cuda::construction::LocalProvider;
 /// Provider factory using caller identity and a local runtime constructor.
 /// # Examples
 /// ```no_run

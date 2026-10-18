@@ -7,6 +7,7 @@ license = "MIT"
 description = "Provider secret dispatch and credential fallback policy"
 
 [dependencies]
+codetether-provider-local-cuda = { path = "../codetether-provider-local-cuda", version = "0.1.0" }
 anyhow = "1.0.104"
 tracing = "0.1"
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }

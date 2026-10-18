@@ -14,3 +14,6 @@ mod thinker;
 pub use codetether_provider_core::local::LocalCudaConfig;
 #[cfg(not(feature = "candle-cuda"))]
 pub use disabled::LocalCudaProvider;
+
+/// Boxed construction shared by enabled and disabled local providers.
+pub mod construction;

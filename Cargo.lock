@@ -8558,6 +8558,7 @@ dependencies = [
  "codetether-provider-google",
  "codetether-provider-stepfun",
  "codetether-provider-openrouter",
+ "codetether-provider-local-cuda",
  "codetether-provider-moonshot",
  "codetether-provider-zai",
  "codetether-provider-deepseek",

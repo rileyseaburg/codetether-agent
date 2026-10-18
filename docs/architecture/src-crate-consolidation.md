@@ -23025,3 +23025,23 @@ artifacts/consolidation-cognition-application/.
 No cognition loops, model initialization, storage operations, tests, Cargo,
 rustc or Python ran. Compilation and runtime behavior remain unverified.
 Full consolidation remains active.
+
+### Local provider constructors owned by the local CUDA crate
+
+Moved the LocalProvider constructor contract from provider-factory into
+provider-local-cuda::construction, retaining its original factory re-export.
+The enabled LocalCudaProvider<R> and disabled LocalCudaProvider now implement
+the same boxed constructors in feature-gated modules. Native factory selection
+binds directly to its existing feature-selected local provider alias, removing
+the native Local adapter and both constructor method implementations.
+
+Static token comparisons preserve both method bodies for each feature branch,
+including argument order, Arc boxing and error propagation. The trait signatures,
+original feature wiring, underlying constructor implementations and native
+provider aliases remain unchanged. Module/dependency scans cover 699 roots and
+571 crates with no missing modules or cycles. Direct rustfmt, native file-size
+limits and whitespace checks passed. Only the factory-to-local-provider edge
+was staged in Cargo.lock; unrelated working changes were preserved. Evidence:
+artifacts/consolidation-local-provider-construction/.
+No CUDA construction, inference, tests, Cargo, rustc or Python ran. Compilation
+and runtime behavior remain unverified. Full consolidation remains active.
