@@ -70,3 +70,6 @@ pub mod legacy_executor;
 
 /// Router-backed executor preserving the root application compatibility API.
 pub mod router_executor;
+
+/// Host-loaded provider resolution for configured RLM model choices.
+pub mod model_resolution;

@@ -15538,3 +15538,18 @@ Full workspace consolidation remains active.
   No dependency changes. Evidence: `artifacts/consolidation-session-workspace/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
   remains incomplete.
+
+### Shared RLM model resolution
+
+- Moved configured/scored model-resolution orchestration from the native session
+  helper into `codetether-rlm::model_resolution`. The native helper now supplies
+  its cached Vault loader and a registry lookup implementation.
+- Preserved score-driven selection, the no-load path when the caller model is
+  retained, dedicated-model logging, registry-error fallback and lookup-error
+  fallback to the exact caller provider/model pair.
+- Verification: expanded bodies matched both original entry points; checked
+  cached-loader and registry forwarding, unchanged background callers and
+  dependencies, module/dependency graphs, direct rustfmt, file budgets and diff
+  whitespace. Evidence: `artifacts/consolidation-rlm-resolution/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full consolidation
+  remains unfinished.

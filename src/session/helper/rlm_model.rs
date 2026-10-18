@@ -3,7 +3,9 @@
 use std::sync::Arc;
 
 use crate::provider::{Provider, ProviderRegistry};
-use crate::rlm::{RlmConfig, RlmModelPurpose, select_rlm_model};
+use crate::rlm::{RlmConfig, RlmModelPurpose};
+#[path = "rlm_model/registry.rs"]
+mod registry;
 
 /// Resolve the configured RLM model for a call surface.
 pub(crate) async fn resolve(
@@ -12,7 +14,14 @@ pub(crate) async fn resolve(
     config: &RlmConfig,
     purpose: RlmModelPurpose,
 ) -> (Arc<dyn Provider>, String) {
-    resolve_with_score(caller_provider, caller_model, config, purpose, |_| None).await
+    codetether_rlm::model_resolution::resolve(
+        caller_provider,
+        caller_model,
+        config,
+        purpose,
+        ProviderRegistry::shared_from_vault,
+    )
+    .await
 }
 
 /// Resolve an RLM model using optional host scoring signals.
@@ -23,30 +32,13 @@ pub(crate) async fn resolve_with_score(
     purpose: RlmModelPurpose,
     score: impl Fn(&str) -> Option<f64>,
 ) -> (Arc<dyn Provider>, String) {
-    let choice = select_rlm_model(config, purpose, caller_model, score);
-    if choice.model == caller_model {
-        return (caller_provider, caller_model.to_string());
-    }
-    let Ok(registry) = ProviderRegistry::shared_from_vault().await else {
-        tracing::warn!("RLM: provider registry unavailable; falling back to caller model");
-        return (caller_provider, caller_model.to_string());
-    };
-    match registry.resolve_model(&choice.model) {
-        Ok((provider, model)) => {
-            tracing::info!(
-                rlm_model = %model,
-                source = ?choice.source,
-                "RLM: selected dedicated model"
-            );
-            (provider, model)
-        }
-        Err(error) => {
-            tracing::warn!(
-                rlm_model = %choice.model,
-                error = %error,
-                "RLM: model resolution failed; falling back to caller model"
-            );
-            (caller_provider, caller_model.to_string())
-        }
-    }
+    codetether_rlm::model_resolution::resolve_with_score(
+        caller_provider,
+        caller_model,
+        config,
+        purpose,
+        score,
+        ProviderRegistry::shared_from_vault,
+    )
+    .await
 }
