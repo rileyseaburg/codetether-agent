@@ -27122,3 +27122,19 @@ formatting, file-limit and whitespace checks pass for 725 roots and 617 crates.
 No dependency/lock changes were needed; unrelated working files remain untouched.
 Evidence: artifacts/consolidation-event-leaf-bindings/. No Cargo, rustc, Python,
 compilation or runtime tests ran. Full consolidation remains active.
+
+### TUI undo and fork command bindings
+
+Moved undo/fork session and view implementations plus their command entry points
+into the owning turn-undo and session-fork crates. Removed four root implementation
+files. The command module now selects App, Session, chat view mode and the existing
+system-message callback. History/page updates, timestamps, saves, metadata access,
+bus attachment and frontend notices retain their current operations.
+
+All twenty-five expanded function bodies match the originals after explicit path
+substitution. Command function names and signatures remain compatible, and test
+sources are untouched. Declaration, module/dependency, native production-scope,
+standalone formatting, file-limit and whitespace checks pass for 725 roots and
+617 crates. No dependency/lock changes were needed; unrelated working files remain
+untouched. Evidence: artifacts/consolidation-history-commands/. No Cargo, rustc,
+Python, compilation or runtime tests ran. Full consolidation remains active.

@@ -5,10 +5,6 @@ use std::sync::Arc;
 
 #[path = "commands/a2a.rs"]
 mod a2a;
-#[path = "commands/fork_session.rs"]
-mod fork_session;
-#[path = "commands/fork_view.rs"]
-mod fork_view;
 #[path = "commands/go_host.rs"]
 mod go_host;
 #[path = "commands/goal/mod.rs"]
@@ -24,10 +20,6 @@ mod session_ops;
 #[path = "commands/settings_command.rs"]
 mod settings_command;
 use codetether_settings_policy::command::Setting;
-#[path = "commands/undo_session.rs"]
-mod undo_session;
-#[path = "commands/undo_view.rs"]
-mod undo_view;
 use open_editor::open_editor;
 #[path = "commands/context_host.rs"]
 mod context_host;
@@ -62,28 +54,17 @@ fn handle_context_command(app: &mut App, rest: &str) {
     codetether_context_health::command::execute(app, rest);
 }
 
-/// Undo the last `n` user turns in both the TUI and the persisted session.
-///
-/// `rest` may be empty (undo 1 turn) or a positive integer.
-/// Each "turn" is one user message plus all assistant / tool messages that
-/// followed it. Trailing system notices (e.g. a previous "Undid…" line) are
-/// ignored when locating the cut point.
-async fn handle_undo_command(app: &mut App, session: &mut Session, rest: &str) {
-    codetether_turn_undo::command::execute(&mut undo_view::CommandView(app), session, rest).await;
-}
-
-/// Fork the current session: create a new session with a copy of the current
-/// conversation (optionally truncated), switch the TUI to it, and leave the
-/// original session untouched on disk.
-///
-/// Usage:
-/// - `/fork` — fork at the current point (copy everything).
-/// - `/fork N` — fork keeping only the first (total - N) turns (i.e. undo N
-///   turns in the *fork* while leaving the parent intact).
-async fn handle_fork_command(app: &mut App, _cwd: &Path, session: &mut Session, rest: &str) {
-    codetether_session_fork::interactive::execute(&mut fork_view::CommandView(app), session, rest)
-        .await;
-}
+codetether_turn_undo::declare_undo_command!(
+    crate::tui::app::state::App,
+    crate::session::Session,
+    crate::tui::app::commands::push_system_message,
+);
+codetether_session_fork::declare_fork_command!(
+    crate::tui::app::state::App,
+    crate::session::Session,
+    crate::tui::models::ViewMode,
+    crate::tui::app::commands::push_system_message,
+);
 
 /// Parse and dispatch a `/ralph ...` subcommand.
 ///

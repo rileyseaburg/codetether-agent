@@ -13,3 +13,14 @@ pub use turn_undo::truncate_last_turns;
 mod turn_undo_mismatch_tests;
 #[cfg(test)]
 mod turn_undo_tests;
+
+mod application_binding;
+/// Types used by frontend command declarations.
+#[doc(hidden)]
+pub mod __private {
+    pub use anyhow;
+    pub use chrono::{DateTime, Utc};
+    pub use codetether_chat_model::ChatMessage;
+    pub use codetether_context_policy::pages::PageKind;
+    pub use codetether_provider_core::Message;
+}
