@@ -26542,3 +26542,21 @@ standalone formatting, file-limit and whitespace checks pass. Only native-agent
 service dependencies are staged in Cargo.lock; unrelated working changes remain
 untouched. Evidence: artifacts/consolidation-native-ephemeral/. No Cargo, rustc,
 Python, compilation or runtime tests ran. Full consolidation remains active.
+
+### Native durable mailbox storage ownership
+
+Moved child-mailbox load/save/remove adapters into native-agent::Mailbox,
+backed by the same agent-storage paths and atomic JSON functions. The root
+retains only the queued-item-to-tool-input execution callback and selects the
+native mailbox host. The separate root disk adapter is removed; shared mailbox
+queueing, acknowledgements and ownership code remain in their existing crate.
+
+Static comparisons preserve all storage bodies, empty-snapshot fallback and
+the complete application callback, including its existing AgentRunGuard and
+receipt identity. Module/dependency scans cover 730 roots and 617 crates with
+no missing modules, cycles or undeclared dependencies. Production dependency
+scope, declaration, standalone formatting, file-limit and whitespace checks
+pass. Only three native-agent dependencies are staged in Cargo.lock. Unrelated
+working files remain untouched. Evidence: artifacts/consolidation-native-mailbox/.
+No Cargo, rustc, Python, compilation or runtime tests ran. Full consolidation
+remains active and incomplete.

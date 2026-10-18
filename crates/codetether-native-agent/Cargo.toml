@@ -32,3 +32,6 @@ codetether-swarm-agent = { path = "../codetether-swarm-agent", version = "0.1.0"
 codetether-swarm-core = { path = "../codetether-swarm-core", version = "0.1.0" }
 codetether-swarm-tool = { path = "../codetether-swarm-tool", version = "0.1.0" }
 codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-agent-storage = { path = "../codetether-agent-storage", version = "0.1.0" }
+codetether-child-mailbox = { path = "../codetether-child-mailbox", version = "0.1.0" }
+codetether-collaboration-state = { path = "../codetether-collaboration-state", version = "0.1.0" }

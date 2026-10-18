@@ -1,6 +1,4 @@
 //! Application ownership and runtime bindings for the shared durable mailbox.
-#[path = "message_queue/disk.rs"]
-mod disk;
 #[path = "message_queue/host.rs"]
 mod host;
 use codetether_child_mailbox as item;

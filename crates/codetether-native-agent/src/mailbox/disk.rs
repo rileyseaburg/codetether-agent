@@ -1,7 +1,7 @@
 //! Mailbox snapshot persistence keyed by child session ID.
 
-use crate::tool::agent::persistence::{atomic, paths};
 use anyhow::Result;
+use codetether_agent_storage::{atomic, paths};
 use codetether_child_mailbox::Snapshot;
 
 pub(super) async fn load(child_id: &str) -> Result<Snapshot> {

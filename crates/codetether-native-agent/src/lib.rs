@@ -33,3 +33,6 @@ mod ephemeral;
 /// Shared provider registry cache for native agent-tool actions.
 pub mod provider_cache;
 pub use ephemeral::Ephemeral;
+
+mod mailbox;
+pub use mailbox::{Execution as MailboxExecution, Mailbox};
