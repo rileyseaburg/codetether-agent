@@ -7,7 +7,7 @@ use super::super::{
 use codetether_provider_core::Message;
 use codetether_swarm_core::agent_loop::tools::Completed;
 
-impl codetether_swarm_core::agent_loop::tools::Host for State {
+impl<H: crate::Host> codetether_swarm_core::agent_loop::tools::Host for State<H> {
     async fn ready(&mut self) -> anyhow::Result<()> {
         control::ready(self).await
     }

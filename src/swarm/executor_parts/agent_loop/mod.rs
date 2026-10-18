@@ -8,23 +8,12 @@
 //! returned tuple contains accumulated text, steps, tool calls, and exit reason.
 
 mod api;
-mod completion;
-mod control;
-mod driver;
-mod limits;
-mod output;
-mod request;
-mod runtime;
-mod state;
-mod thinking;
-mod tool_bus;
-mod tool_events;
-mod tool_input;
-mod tool_one;
-mod tool_output;
-mod tool_raw;
-mod tools;
+mod application;
 pub use api::run_agent_loop;
+#[cfg(test)]
+mod state;
+#[cfg(test)]
+use codetether_swarm_agent::{driver, tools};
 
 #[cfg(test)]
 mod control_goal_tests;

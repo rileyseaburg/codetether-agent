@@ -1797,6 +1797,7 @@ dependencies = [
  "codetether-session-recall",
  "codetether-session-runtime",
  "codetether-skill-tool",
+ "codetether-swarm-agent",
  "codetether-swarm-bus",
  "codetether-swarm-core",
  "codetether-swarm-cache",
@@ -5504,6 +5505,27 @@ dependencies = [
  "codetether-tool-core",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-swarm-agent"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-bus-core",
+ "codetether-context-policy",
+ "codetether-provider-core",
+ "codetether-provider-step",
+ "codetether-session-control",
+ "codetether-swarm-bus",
+ "codetether-swarm-core",
+ "codetether-swarm-output",
+ "codetether-tool-call-parser",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

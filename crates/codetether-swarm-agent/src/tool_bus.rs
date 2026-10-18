@@ -2,7 +2,7 @@
 
 use super::state::State;
 
-pub(super) fn publish(state: &State, name: &str, output: &str, success: bool) {
+pub(super) fn publish<H: crate::Host>(state: &State<H>, name: &str, output: &str, success: bool) {
     codetether_swarm_bus::agent::publish_tool_output(
         state.inner.bus.as_ref(),
         &state.inner.subtask_id,

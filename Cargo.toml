@@ -171,6 +171,7 @@ members = [
     "crates/codetether-swarm-git",
     "crates/codetether-swarm-delegation",
     "crates/codetether-swarm-runtime",
+    "crates/codetether-swarm-agent",
     "crates/codetether-swarm-tool",
     "crates/codetether-swarm-monitor",
     "crates/codetether-swarm-share",
@@ -715,6 +716,7 @@ codetether-swarm-local-stage = { path = "crates/codetether-swarm-local-stage", v
 codetether-swarm-git = { path = "crates/codetether-swarm-git", version = "0.1.0" }
 codetether-swarm-delegation = { path = "crates/codetether-swarm-delegation", version = "0.1.0" }
 codetether-swarm-runtime = { path = "crates/codetether-swarm-runtime", version = "0.1.0" }
+codetether-swarm-agent = { path = "crates/codetether-swarm-agent", version = "0.1.0" }
 codetether-swarm-share = { path = "crates/codetether-swarm-share", version = "0.1.0" }
 codetether-ralph-core = { path = "crates/codetether-ralph-core", version = "0.1.0" }
 codetether-ralph-agent = { path = "crates/codetether-ralph-agent", version = "0.1.0" }

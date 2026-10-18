@@ -6,11 +6,11 @@ use super::super::{
 use codetether_swarm_core::agent_loop::tools::raw::RawResult;
 use serde_json::Value;
 
-impl codetether_swarm_core::agent_loop::tools::call::Host for State {
+impl<H: crate::Host> codetether_swarm_core::agent_loop::tools::call::Host for State<H> {
     fn start(&mut self, call: &ToolCall) {
         self.inner.conversation.tool_calls += 1;
         tool_events::started(self, &call.name);
-        super::super::super::executor_trace::tool_call(
+        crate::executor_trace::tool_call(
             self.inner.conversation.steps,
             &call.id,
             &call.name,

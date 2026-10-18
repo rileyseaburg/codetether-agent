@@ -8,7 +8,7 @@ use codetether_swarm_core::{
     agent_retry::AgentLoopExit,
 };
 #[async_trait]
-impl AgentRuntime for State {
+impl<H: crate::Host> AgentRuntime for State<H> {
     async fn ready(&mut self) -> Result<()> {
         control::ready(self).await
     }
@@ -31,7 +31,7 @@ impl AgentRuntime for State {
         request::execute(self).await
     }
     fn normalize(&self, response: CompletionResponse) -> CompletionResponse {
-        crate::session::helper::markup::normalize_textual_tool_calls(response, &self.inner.tools)
+        codetether_tool_call_parser::normalize_textual_tool_calls(response, &self.inner.tools)
     }
     fn publish_thinking(&self, text: &str) {
         thinking::publish(self, text);

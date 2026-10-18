@@ -22244,3 +22244,24 @@ rustfmt, native file-size limits and whitespace checks passed. No manifest or
 lockfile changes. Evidence: `artifacts/consolidation-swarm-run-host/`.
 No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
 Full consolidation is active.
+
+### Dedicated swarm sub-agent runtime
+
+Moved sub-agent state binding, turn driving, controlled completion, request
+construction, normalization, output publication and the full tool-call lifecycle
+into `codetether-swarm-agent`. Twenty focused modules now own this integration;
+eighteen native implementation files were removed. The native public
+`run_agent_loop` signature remains and forwards all original arguments. Native
+host bindings retain registry lookup, runtime denial and parent-goal accounting.
+
+The original native cancellation, steering, parent-goal and image integration
+tests remain unchanged, using the shared state/driver/tool APIs through native
+bindings. Static source comparisons preserve the moved control flow and tool
+ordering, direct calls to the same shared normalizer and token-limit function,
+and the original trace log target. All eight native integration test/fixture
+files are byte-identical. Module/dependency checks cover 699 roots and 571 crates
+without missing modules or cycles. Direct rustfmt, native file-size limits and
+whitespace checks passed. Only the new package and root dependency are staged
+in the lockfile. Evidence: `artifacts/consolidation-swarm-agent/`.
+No Cargo, rustc or Python ran; compilation and runtime tests remain unverified.
+Full consolidation is active.

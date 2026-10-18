@@ -2,8 +2,8 @@
 
 use super::state::State;
 
-pub(super) async fn process(
-    state: &State,
+pub(super) async fn process<H: crate::Host>(
+    state: &State<H>,
     name: &str,
     output: &str,
     success: bool,
