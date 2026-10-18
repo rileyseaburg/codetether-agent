@@ -1,7 +1,8 @@
 //! Forage selected reporting.
 use super::*;
 impl RunEvents<'_> {
-    pub(in crate::forage) fn selected(
+    /// Publish the selection summary and notify the user through the bus.
+    pub fn selected(
         &self,
         cycle_task_id: &str,
         cycle: usize,

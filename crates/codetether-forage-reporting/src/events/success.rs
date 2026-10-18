@@ -1,7 +1,8 @@
 //! Forage success reporting.
 use super::*;
 impl RunEvents<'_> {
-    pub(in crate::forage) async fn success(
+    /// Publish completion and audit the opportunity execution evidence.
+    pub async fn success(
         &self,
         item: &ForageOpportunity,
         exec_task_id: &str,

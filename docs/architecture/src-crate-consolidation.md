@@ -18994,3 +18994,27 @@ shared dependencies and versions, minimal isolated lockfile delta, lexical
 module reachability, dependency-cycle checks, file-size ratchet, whitespace and
 direct formatting. Evidence: `artifacts/consolidation-forage-execution/`. No Cargo,
 rustc, Python or Rust tests ran; compilation and runtime remain unverified.
+
+### Forage lifecycle reporting
+
+Moved forage lifecycle publication, correlated audit records, bounded observer
+output, human-readable cycle rendering and quiet-state ownership into
+`codetether-forage-reporting`. Event methods remain split by lifecycle action;
+console state, entry rendering, observer draining and audit initialization remain
+separate modules. The native tree retains re-exports and a forwarding macro for
+the original public forage_println path.
+
+The TUI and shared reporters now reference the same moved atomic quiet flag.
+Human output remains gated; JSON cycle output follows its original direct path.
+Bus payloads, topic names, task states, ordering, diagnostic targets, audit
+correlation fields and the audit-sink initialization policy are unchanged.
+Inspection corrected the audit crate alias while moving the original audit::
+calls to their direct shared dependency.
+
+Validation: 18 complete function-body comparisons, unchanged macro gating and
+atomic operations, native macro forwarding and unchanged callers, removed native
+implementations, dependency declarations and versions, isolated lockfile delta,
+lexical module reachability, dependency-cycle checks, file-size ratchet,
+whitespace and direct formatting. Evidence:
+`artifacts/consolidation-forage-reporting/`. No Cargo, rustc, Python, Rust tests,
+audit writes or live bus publication ran; compilation and runtime remain unverified.

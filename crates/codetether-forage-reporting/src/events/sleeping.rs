@@ -1,12 +1,8 @@
 //! Forage sleeping reporting.
 use super::*;
 impl RunEvents<'_> {
-    pub(in crate::forage) fn sleeping(
-        &self,
-        cycle: usize,
-        interval_secs: u64,
-        cycle_task_id: &str,
-    ) {
+    /// Publish the sleeping state and interval before the next cycle.
+    pub fn sleeping(&self, cycle: usize, interval_secs: u64, cycle_task_id: &str) {
         tracing::info!(target: "codetether_agent::forage",
             cycle,
             interval_secs,

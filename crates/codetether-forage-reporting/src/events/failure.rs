@@ -1,12 +1,8 @@
 //! Forage failure reporting.
 use super::*;
 impl RunEvents<'_> {
-    pub(in crate::forage) async fn failure(
-        &self,
-        item: &ForageOpportunity,
-        exec_task_id: &str,
-        err: &anyhow::Error,
-    ) {
+    /// Publish and audit a failed opportunity execution.
+    pub async fn failure(&self, item: &ForageOpportunity, exec_task_id: &str, err: &anyhow::Error) {
         let error_message = format!("{err:#}");
         let _ = self.bus_handle.send_task_update(
             exec_task_id,

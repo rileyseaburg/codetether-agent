@@ -1,12 +1,8 @@
 //! Forage cycle reporting.
 use super::*;
 impl RunEvents<'_> {
-    pub(in crate::forage) async fn cycle(
-        &self,
-        cycle: usize,
-        top: usize,
-        selected: &[ForageOpportunity],
-    ) {
+    /// Record the number of opportunities selected in the cycle audit.
+    pub async fn cycle(&self, cycle: usize, top: usize, selected: &[ForageOpportunity]) {
         log_audit(
             AuditCategory::Cognition,
             "forage.cycle",

@@ -1,7 +1,8 @@
 //! Forage start reporting.
 use super::*;
 impl RunEvents<'_> {
-    pub(in crate::forage) async fn start(&self) {
+    /// Announce readiness and audit the initial run options.
+    pub async fn start(&self) {
         let _ = self.bus_handle.announce_ready(vec![
             "okr-governance".to_string(),
             "business-prioritization".to_string(),

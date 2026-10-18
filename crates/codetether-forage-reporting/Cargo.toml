@@ -1,0 +1,20 @@
+[package]
+name = "codetether-forage-reporting"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Forage lifecycle events, audit correlation and quiet-mode console reporting"
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+uuid = "1"
+codetether-a2a-core = { path = "../codetether-a2a-core", version = "0.1.0" }
+codetether-audit = { path = "../codetether-audit", version = "0.1.0" }
+codetether-bus-core = { path = "../codetether-bus-core", version = "0.1.0" }
+codetether-cli-options = { path = "../codetether-cli-options", version = "0.1.0" }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-forage-core = { path = "../codetether-forage-core", version = "0.1.0" }

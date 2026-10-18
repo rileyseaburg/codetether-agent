@@ -3,11 +3,8 @@ use super::*;
 use serde::Serialize;
 
 impl RunEvents<'_> {
-    pub(in crate::forage) fn present(
-        &self,
-        cycle: usize,
-        selected: &[ForageOpportunity],
-    ) -> Result<()> {
+    /// Print the selected cycle as JSON or quiet-gated human output.
+    pub fn present(&self, cycle: usize, selected: &[ForageOpportunity]) -> Result<()> {
         if self.args.json {
             #[derive(Serialize)]
             struct CycleOutput {

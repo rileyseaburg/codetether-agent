@@ -6,7 +6,7 @@ use codetether_forage_core::seed::{
 use codetether_forage_core::{ForageOpportunity, MoonshotRubric};
 pub use codetether_forage_core::{ForageRunSummary, ForageSelectionSummary};
 
-use crate::bus::{AgentBus, BusHandle, BusMessage};
+use crate::bus::{AgentBus, BusHandle};
 use crate::cli::ForageArgs;
 use crate::okr::{Okr, OkrRepository};
 mod s3_health;
@@ -28,7 +28,7 @@ mod swarm_config;
 #[cfg(test)]
 use swarm_config::build_swarm_config;
 mod audit_adapter;
-use audit_adapter::{ensure_audit_log_initialized, log_audit};
+use audit_adapter::ensure_audit_log_initialized;
 mod observer;
 use observer::flush_bus_observer;
 mod opportunities;
@@ -37,7 +37,6 @@ use opportunities::{build_opportunities, load_moonshot_rubric};
 use opportunities::{collect_opportunities, collect_opportunities_with_rubric};
 mod clarify;
 pub mod console;
-mod console_entry;
 mod s3_optional;
 mod tetherscript_score;
 use anyhow::Result;

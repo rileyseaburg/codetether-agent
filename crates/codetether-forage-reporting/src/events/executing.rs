@@ -1,7 +1,8 @@
 //! Forage executing reporting.
 use super::*;
 impl RunEvents<'_> {
-    pub(in crate::forage) fn executing(&self, item: &ForageOpportunity) -> String {
+    /// Publish the working state and return the execution task ID.
+    pub fn executing(&self, item: &ForageOpportunity) -> String {
         tracing::info!(target: "codetether_agent::forage",
             okr_id = %item.okr_id,
             key_result_id = %item.key_result_id,
