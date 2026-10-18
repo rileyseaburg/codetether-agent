@@ -1283,6 +1283,7 @@ dependencies = [
  "codetether-task-queue",
  "codetether-task-ingest",
  "codetether-task-api",
+ "codetether-okr-cli",
  "codetether-telemetry-cli",
  "codetether-moltbook-cli",
  "codetether-rlm-cli",
@@ -6884,6 +6885,19 @@ dependencies = [
  "codetether-cli-options",
  "codetether-telemetry",
  "serde_json",
+]
+
+[[package]]
+name = "codetether-okr-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "codetether-cli-options",
+ "codetether-okr",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

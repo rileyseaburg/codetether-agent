@@ -13702,3 +13702,18 @@ Full workspace consolidation remains active.
 - Only the new package and root dependency were staged from Cargo.lock.
   No Cargo, rustc, Rust tests or telemetry command execution ran. Full workspace
   consolidation remains unfinished.
+
+### OKR command execution and reporting extraction
+
+- Moved the entire OKR command branch from src/main.rs into codetether-okr-cli.
+  Modules separate action handling from list/status/report rendering, including
+  key-result evidence and execution-run output.
+- Repository initialization still occurs before action dispatch. Existing
+  query order, creation behavior, optional filters, UUID/error handling,
+  output fields and text are preserved across all seven supported actions.
+- Verification: 25 static expanded-action/main-body/size checks passed, plus
+  module reachability, dependency DAG, direct rustfmt, file-limit ratchet and
+  whitespace checks. Evidence: artifacts/consolidation-okr-cli/.
+- Only the new package and root dependency were staged from Cargo.lock.
+  No Cargo, rustc, Rust tests or OKR repository operations ran. Full workspace
+  consolidation remains unfinished.
