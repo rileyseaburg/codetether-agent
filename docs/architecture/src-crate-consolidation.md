@@ -16151,3 +16151,18 @@ Full workspace consolidation remains active.
   and diff whitespace. Evidence: `artifacts/consolidation-active-control/`.
 - No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
   consolidation remains incomplete.
+
+### Shared accounted worker completion
+
+- Moved worker goal-prompt composition ordering, model temperature selection,
+  completion dispatch and durable usage-accounting sequencing into
+  `codetether-a2a-worker-core::session_protocol::completion::accounted`.
+- Native hooks retain goal lookup/composition, context-fallback execution and
+  usage storage. Preserved timer placement, temperature policy, saturating
+  token totals and propagation of completion/accounting failures.
+- Verification: complete body comparison, all four native hooks, native wrapper,
+  unchanged worker loop/context and temperature/fallback implementations,
+  module/dependency graphs, direct rustfmt, file budgets, isolated lock addition
+  and diff whitespace. Evidence: `artifacts/consolidation-worker-completion/`.
+- No Cargo, rustc, Python, Rust compilation or Rust tests ran. Full workspace
+  consolidation remains incomplete.

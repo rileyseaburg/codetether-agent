@@ -6,3 +6,6 @@ mod host;
 mod run;
 pub use host::CompletionHost;
 pub use run::complete_with_fallback;
+
+/// Goal-aware completion with model temperature and usage accounting.
+pub mod accounted;
