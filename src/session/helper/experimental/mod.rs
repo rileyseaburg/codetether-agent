@@ -59,15 +59,15 @@
 
 pub use codetether_context_policy::transforms::dedup;
 pub use codetether_context_policy::transforms::lingua;
-pub mod pairing;
+pub use codetether_context_policy::transforms::pairing;
 #[allow(dead_code)]
 pub use codetether_context_policy::transforms::snippet;
 #[allow(dead_code)]
 pub use codetether_context_policy::transforms::streaming_llm;
-pub mod tetherscript_repair;
 pub use codetether_context_policy::transforms::thinking_prune;
 #[allow(dead_code)]
 pub use codetether_context_policy::transforms::tool_call_dedup;
+pub use codetether_reasoning_repair as tetherscript_repair;
 
 use crate::provider::Message;
 pub use codetether_context_policy::transforms::ExperimentalStats;

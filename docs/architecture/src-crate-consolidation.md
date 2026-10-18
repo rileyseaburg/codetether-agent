@@ -23446,3 +23446,22 @@ lockfiles changed, and unrelated working changes remain untouched. Evidence:
 artifacts/consolidation-tui-facades/.
 No UI runtime, tests, Cargo, rustc or Python ran. Compilation and runtime
 behavior remain unverified. Full consolidation remains active.
+
+### Session facade cleanup for shared policy and storage APIs
+
+Replaced twenty-four native session re-export files with direct aliases in
+five parent modules. Derivation policy, history, parsing, request policy,
+stream bounds, evaluation, recall rendering, summary quality, replay oracles
+and thread stores now resolve directly to their existing owning crates.
+All sixty-eight previously exported symbol paths retain their crate targets.
+
+The audit selected only single-re-export files and checked wildcard imports;
+root provider globs were distinguished from the helper provider namespace.
+Token comparisons verify declaration-only changes in the parent modules, and
+the diff scope contains no session implementation changes. Three obsolete
+facade scan roots were removed; 692 roots and 571 crates remain covered with
+no missing modules or cycles. Direct rustfmt, file-size limits and whitespace
+checks passed. No manifests or lockfiles changed; unrelated working changes
+remain untouched. Evidence: artifacts/consolidation-session-facades/.
+No session operations, tests, Cargo, rustc or Python ran. Compilation and runtime
+behavior remain unverified. Full consolidation remains active.
