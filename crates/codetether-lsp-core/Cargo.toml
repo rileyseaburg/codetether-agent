@@ -6,6 +6,7 @@ description = "LSP protocol types, server configuration, and owned stdio transpo
 license = "MIT"
 
 [dependencies]
+codetether-diagnostics-bridge = { path = "../codetether-diagnostics-bridge", version = "0.1.0" }
 anyhow = "1.0.104"
 codetether-config = { path = "../codetether-config", version = "0.1.0" }
 lsp-types = "0.97.0"

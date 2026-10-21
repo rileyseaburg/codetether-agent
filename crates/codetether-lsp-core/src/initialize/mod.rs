@@ -48,5 +48,8 @@ pub async fn run(
     }
     transport.notify("initialized", None).await?;
     transport.set_initialized(true);
+    if let Some(root_uri) = config.root_uri.as_deref() {
+        transport.start_diagnostic_sharing(root_uri);
+    }
     Ok(())
 }

@@ -8,8 +8,10 @@ pub(super) fn start(
     diagnostics_clone: Arc<RwLock<HashMap<String, Vec<lsp_types::Diagnostic>>>>,
     diag_publish_seq_clone: Arc<AtomicU64>,
     response_tx: mpsc::Sender<String>,
+    alive: Arc<std::sync::atomic::AtomicBool>,
 ) {
     tokio::spawn(async move {
+        let _alive = ReaderAlive(alive);
         let mut reader = BufReader::new(stdout);
         let mut header_buf = String::new();
 
@@ -26,4 +28,11 @@ pub(super) fn start(
             .await;
         }
     });
+}
+
+struct ReaderAlive(Arc<std::sync::atomic::AtomicBool>);
+impl Drop for ReaderAlive {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
 }

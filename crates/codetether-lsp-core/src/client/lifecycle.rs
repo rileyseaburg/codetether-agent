@@ -30,6 +30,8 @@ impl LspClient {
     /// Shutdown the language server
     #[allow(dead_code)]
     pub async fn shutdown(&self) -> Result<()> {
+        self.transport.stop_diagnostic_sharing();
+        self.transport.set_initialized(false);
         let response = self.transport.request("shutdown", None).await?;
 
         if let Some(error) = response.error {

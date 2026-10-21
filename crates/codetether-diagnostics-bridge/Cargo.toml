@@ -1,0 +1,21 @@
+[package]
+name = "codetether-diagnostics-bridge"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Private atomic snapshots of native LSP diagnostics for editor consumers"
+
+[dependencies]
+anyhow = "1"
+dirs = "6"
+lsp-types = "0.97"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+url = "2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]

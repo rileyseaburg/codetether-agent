@@ -65,6 +65,10 @@ pub struct LspTransport {
     /// `textDocument/didChange` so stale cached diagnostics don't leak into
     /// post-edit validation.
     diag_publish_seq: Arc<AtomicU64>,
+    /// Lifetime-bound publisher for the existing diagnostic cache.
+    sharing: std::sync::Mutex<Option<sharing::Sharing>>,
+    /// End-of-stream liveness prevents refreshing a dead server's diagnostics.
+    reader_alive: Arc<std::sync::atomic::AtomicBool>,
 }
 
 mod diagnostics;
@@ -72,6 +76,7 @@ mod headers;
 mod notify;
 mod reader;
 mod request;
+mod sharing;
 mod spawn;
 mod state;
 mod stderr;

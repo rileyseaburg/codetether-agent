@@ -26,6 +26,7 @@ impl LspTransport {
         let recent_stderr = Arc::new(RwLock::new(Vec::new()));
         let diagnostics = Arc::new(RwLock::new(HashMap::new()));
         let diag_publish_seq = Arc::new(AtomicU64::new(0));
+        let reader_alive = Arc::new(std::sync::atomic::AtomicBool::new(true));
 
         writer::start(stdin, write_rx, Arc::clone(&pending));
         stderr::start(stderr, Arc::clone(&recent_stderr), command.to_string());
@@ -35,6 +36,7 @@ impl LspTransport {
             Arc::clone(&diagnostics),
             Arc::clone(&diag_publish_seq),
             write_tx.clone(),
+            Arc::clone(&reader_alive),
         );
 
         Ok(Self {
@@ -48,6 +50,8 @@ impl LspTransport {
             command: command.to_string(),
             diagnostics,
             diag_publish_seq,
+            sharing: std::sync::Mutex::new(None),
+            reader_alive,
         })
     }
 }
