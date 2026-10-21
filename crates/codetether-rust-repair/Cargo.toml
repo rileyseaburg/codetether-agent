@@ -1,0 +1,23 @@
+[package]
+name = "codetether-rust-repair"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Tool-free, snapshot-bounded Rust repair proposals"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6.6", features = ["derive"] }
+codetether-config = { path = "../codetether-config", version = "0.1.0" }
+codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
+codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
+codetether-secrets = { path = "../codetether-secrets", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["time", "io-util", "io-std", "macros", "rt"] }
+tracing = "0.1"
+
+[dev-dependencies]
+async-trait = "0.1"
+futures = "0.3"
