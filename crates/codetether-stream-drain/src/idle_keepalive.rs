@@ -6,10 +6,10 @@
 //! `SessionEvent`s, so without a keepalive it would cancel a healthy request.
 //!
 //! [`next_with_keepalive`] polls the stream on a short tick and emits a
-//! [`SessionEvent::Thinking`] keepalive between polls, so the *same* event
+//! [`SessionEvent::ProviderKeepalive`] between polls, so the *same* event
 //! stream the TUI watchdog already consumes reflects in-flight liveness. The
 //! caller's total idle budget ([`IDLE_TIMEOUT`]) is unchanged — keepalives only
-//! refresh the UI's activity clock, they do not reset the cold-stall budget.
+//! refresh the UI watchdog, not the displayed activity clock or cold-stall budget.
 //!
 //! [`IDLE_TIMEOUT`]: super::idle_timeout::IDLE_TIMEOUT
 
@@ -32,7 +32,7 @@ pub(super) enum Next {
     IdleTimeout,
 }
 
-/// Await the next chunk, emitting `Thinking` keepalives every [`KEEPALIVE_TICK`].
+/// Await the next chunk, emitting provider keepalives every [`KEEPALIVE_TICK`].
 ///
 /// Returns once a chunk arrives, the stream ends, or `budget` is exhausted.
 pub(super) async fn next_with_keepalive<S>(
@@ -55,7 +55,7 @@ pub(super) async fn next_with_keepalive<S>(
             Ok(chunk) => return Next::Chunk(chunk),
             Err(_) => {
                 if let Some(tx) = event_tx {
-                    let _ = tx.send(SessionEvent::Thinking).await;
+                    let _ = tx.send(SessionEvent::ProviderKeepalive).await;
                 }
             }
         }

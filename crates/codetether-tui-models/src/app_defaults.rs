@@ -17,6 +17,8 @@ impl ::core::default::Default for $state {
     fn default() -> Self {
         Self {
             last_activity_at: ::std::time::SystemTime::now(),
+            last_activity_kind: "startup",
+            activity_events: ::core::default::Default::default(),
             view: ::core::default::Default::default(),
             messages: ::std::vec![],
             composer: ::core::default::Default::default(),

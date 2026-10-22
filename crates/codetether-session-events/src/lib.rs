@@ -45,3 +45,4 @@ pub mod lifecycle;
 pub mod __private {
     pub use tokio::sync::mpsc;
 }
+pub mod activity;

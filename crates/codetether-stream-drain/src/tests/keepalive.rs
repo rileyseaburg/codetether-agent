@@ -36,8 +36,8 @@ async fn emits_keepalive_while_waiting_then_yields_chunk() {
         other => panic!("expected text chunk, got {other:?}"),
     }
     // Two 10s ticks elapsed before the 25s chunk → two keepalives.
-    assert!(matches!(rx.try_recv(), Ok(SessionEvent::Thinking)));
-    assert!(matches!(rx.try_recv(), Ok(SessionEvent::Thinking)));
+    assert!(matches!(rx.try_recv(), Ok(SessionEvent::ProviderKeepalive)));
+    assert!(matches!(rx.try_recv(), Ok(SessionEvent::ProviderKeepalive)));
     assert!(rx.try_recv().is_err());
 }
 

@@ -19,6 +19,7 @@
 //! - `settings_nav` - settings selection and view-mode switching
 //! - `message_cache` - render-line cache for performance
 
+pub(crate) mod activity_events;
 pub mod agent_profile;
 pub use codetether_agent_tree as agent_spawn_guard;
 pub use codetether_agent_tree as agent_tree;

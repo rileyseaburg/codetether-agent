@@ -5,14 +5,16 @@ use std::time::SystemTime;
 
 /// Render time since the newest runtime event or displayed message.
 pub(crate) fn badge(app: &App) -> Span<'static> {
-    let latest = app
+    let (latest, kind) = app
         .state
         .messages
         .last()
-        .map_or(app.state.last_activity_at, |message| {
-            message.timestamp.max(app.state.last_activity_at)
-        });
-    label(latest, SystemTime::now()).dim()
+        .filter(|message| message.timestamp > app.state.last_activity_at)
+        .map_or(
+            (app.state.last_activity_at, app.state.last_activity_kind),
+            |message| (message.timestamp, "message"),
+        );
+    format!("{} ({kind})", label(latest, SystemTime::now())).dim()
 }
 
 fn label(latest: SystemTime, now: SystemTime) -> String {

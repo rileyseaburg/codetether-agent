@@ -76,7 +76,30 @@ macro_rules! declare_event_pipeline {
             worker_bridge: &Option<$bridge>,
             evt: $event,
         ) {
+            app.state
+                .activity_events
+                .record($crate::activity::label(&evt));
+            app.state.message_cache.invalidate_streaming();
+            app.state.needs_redraw = true;
+            if matches!(evt, $crate::SessionEvent::ProviderKeepalive) {
+                app.state.watchdog.last_event_at = Some(::std::time::Instant::now());
+                return;
+            }
             app.state.last_activity_at = ::std::time::SystemTime::now();
+            app.state.last_activity_kind = match &evt {
+                $crate::SessionEvent::Thinking | $crate::SessionEvent::ThinkingComplete(_) => {
+                    "thinking"
+                }
+                $crate::SessionEvent::TextChunk(_) | $crate::SessionEvent::TextComplete(_) => {
+                    "message"
+                }
+                $crate::SessionEvent::ToolHeartbeat { .. } => "tool heartbeat",
+                $crate::SessionEvent::ToolCallStart { .. } => "tool start",
+                $crate::SessionEvent::ToolCallComplete { .. } => "tool complete",
+                $crate::SessionEvent::ToolOutputChunk { .. } => "tool output",
+                $crate::SessionEvent::Done => "turn complete",
+                _ => "event",
+            };
             $crate::pipeline::handle(
                 &mut host::Native {
                     app,

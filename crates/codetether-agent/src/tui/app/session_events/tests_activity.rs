@@ -33,5 +33,6 @@ async fn activity_age_resets_for_thinking_messages_and_tools() {
         let before = SystemTime::now();
         handle_session_event(&mut app, &mut slot, &None, event).await;
         assert!(app.state.last_activity_at >= before);
+        assert!(!app.state.activity_events.entries.is_empty());
     }
 }

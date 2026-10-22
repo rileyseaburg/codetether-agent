@@ -25,8 +25,8 @@ fn activity_age_resets_on_a_new_message() {
             codetether_chat_model::MessageType::User,
             "hello",
         ));
-    assert_eq!(badge(&app).content, "Last activity: 0s");
+    assert_eq!(badge(&app).content, "Last activity: 0s (message)");
     app.state.watchdog.last_event_at = Some(std::time::Instant::now());
     app.state.messages.clear();
-    assert_ne!(badge(&app).content, "Last activity: 0s");
+    assert_ne!(badge(&app).content, "Last activity: 0s (startup)");
 }
