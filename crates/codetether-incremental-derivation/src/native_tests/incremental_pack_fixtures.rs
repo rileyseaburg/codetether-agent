@@ -21,6 +21,14 @@ pub(super) fn prepared() -> (SummaryIndex, usize) {
             target_tokens: 512,
             granularity: Granularity::Phase,
             generation: 1,
+            provenance: Some(
+                codetether_context_policy::summary_index::SummaryProvenance::new(
+                    &transcript()[..2],
+                    "fixture",
+                    None,
+                )
+                .unwrap(),
+            ),
         },
     );
     (index, cost)

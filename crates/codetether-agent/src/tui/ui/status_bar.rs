@@ -2,6 +2,7 @@
 use crate::tui::app::state::App;
 pub use codetether_chat_status::{format_duration_ms, format_timestamp};
 use ratatui::{style::Color, text::Span};
+pub(crate) mod activity;
 fn bus_status(app: &App) -> codetether_chat_status::BusStatus {
     codetether_chat_status::BusStatus {
         connected: app.state.worker.a2a_connected,

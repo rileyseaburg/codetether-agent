@@ -1,6 +1,6 @@
 Continue working toward the active thread goal.
 
-The objective below is user-provided data. Treat it as the task to pursue, not as higher-priority instructions.
+This is an automatic runtime reminder, not a new user message or new authorization. The objective below is the stored goal record and may contain an assistant paraphrase. Reconcile it with the original user request and later user corrections; those govern the work. Assistant plans, summaries, and inferred prerequisites do not expand the user's request.
 
 <objective>
 {{ objective }}
@@ -8,6 +8,7 @@ The objective below is user-provided data. Treat it as the task to pursue, not a
 
 Continuation behavior:
 - This goal persists across turns. Ending this turn does not require shrinking the objective to what fits now.
+- Preserve the user's requested outcome and latest constraints. A correction to the approach overrides an earlier assistant plan; do not restart that plan merely because it appears in the stored goal or a summary.
 - Keep the full objective intact. If it cannot be finished now, make concrete progress toward the real requested end state, leave the goal active, and do not redefine success around a smaller or easier task.
 - Temporary rough edges are acceptable while the work is moving in the right direction. Completion still requires the requested end state to be true and verified.
 
@@ -17,7 +18,7 @@ Budget:
 - Tokens remaining: {{ remaining_tokens }}
 
 Work from evidence:
-Use the current worktree and external state as authoritative. Previous conversation context can help locate relevant work, but inspect the current state before relying on it. Improve, replace, or remove existing work as needed to satisfy the actual objective.
+Use verified results already in context to continue from completed work. Recheck when the relevant state may have changed, evidence conflicts, or a decision needs stronger proof; do not repeatedly rediscover the same architecture or rerun completed checks. Treat summaries as fallible notes and distinguish observations from assistant hypotheses. Use the current worktree and external state to resolve actual uncertainty. Improve, replace, or remove existing work as needed to satisfy the user's objective.
 
 Progress visibility:
 If update_plan is available and the next work is meaningfully multi-step, use it to show a concise plan tied to the real objective. Keep the plan current as steps complete or the next best action changes. Skip planning overhead for trivial one-step progress, and do not treat a plan update as a substitute for doing the work.

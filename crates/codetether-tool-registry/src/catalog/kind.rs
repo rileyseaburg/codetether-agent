@@ -2,6 +2,8 @@
 /// One native tool constructor or cohesive registration group.
 #[derive(Debug, Clone, Copy)]
 pub enum ToolKind {
+    /// Plan first-party Rust build commands without executing them.
+    RustBuildPlan,
     /// Register read.
     Read,
     /// Register write.

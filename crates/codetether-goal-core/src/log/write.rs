@@ -28,6 +28,7 @@ impl TaskLog {
             .with_context(|| format!("open {} for append", self.path.display()))?;
         file.write_all(line.as_bytes()).await?;
         file.flush().await?;
+        file.sync_data().await?;
         Ok(())
     }
 
@@ -52,6 +53,7 @@ impl TaskLog {
             .open(&self.path)
             .with_context(|| format!("open {} for append", self.path.display()))?;
         file.write_all(line.as_bytes())?;
+        file.sync_data()?;
         Ok(())
     }
 }

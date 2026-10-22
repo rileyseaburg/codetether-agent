@@ -4,7 +4,10 @@ use codetether_platform::capture::{MAX_PIXELS, bgra_to_png, pixel_bytes};
 #[test]
 fn allocation_limits_preserve_original_dimensions() {
     assert_eq!(pixel_bytes(3840, 2160).unwrap(), 33_177_600);
-    assert_eq!(pixel_bytes(MAX_PIXELS as i64, 1).unwrap(), MAX_PIXELS as usize * 4);
+    assert_eq!(
+        pixel_bytes(MAX_PIXELS as i64, 1).unwrap(),
+        MAX_PIXELS as usize * 4
+    );
     assert!(pixel_bytes(MAX_PIXELS as i64 + 1, 1).is_err());
     for (width, height) in [(0, 10), (-1, 20), (i64::MAX, 2), (100_000, 100_000)] {
         assert!(pixel_bytes(width, height).is_err());

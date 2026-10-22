@@ -16,9 +16,6 @@ impl Host for Native<'_> {
     fn queue_workers(&mut self) {
         super::super::worker_tasks::queue_worker_tasks(self.app, self.worker_bridge);
     }
-    fn display_worker(&mut self) {
-        super::super::worker_tasks::display_next_worker_task(self.app);
-    }
     async fn events(&mut self) {
         crate::tui::app::session_event_drain::drain_batch(
             self.app,

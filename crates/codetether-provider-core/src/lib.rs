@@ -26,6 +26,7 @@ mod message;
 mod model_info;
 pub mod retry;
 mod role;
+pub mod runtime_context;
 mod stream_chunk;
 mod tool_call;
 mod tool_definition;

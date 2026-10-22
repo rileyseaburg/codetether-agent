@@ -10,9 +10,6 @@ impl RunCheckpoint {
     /// and count; `messages` supplies the ordered transcript to inspect.
     /// # Returns
     /// A checkpoint with browser URL, action, blocker and next-action context.
-    /// # Panics
-    /// Existing byte-based text truncation may panic when its cutoff splits a
-    /// multibyte UTF-8 character.
     /// # Examples
     /// ```rust
     /// let cp = codetether_run_checkpoint::RunCheckpoint::from_session_messages(
@@ -28,7 +25,8 @@ impl RunCheckpoint {
         message_count: usize,
         messages: &[codetether_provider_core::Message],
     ) -> Self {
-        let extracted = checkpoint_state::extract(messages);
+        let extracted =
+            checkpoint_state::extract(messages, message_count.saturating_sub(messages.len()));
         checkpoint_assemble::assemble(
             objective,
             max_steps,

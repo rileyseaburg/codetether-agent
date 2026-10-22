@@ -2,7 +2,7 @@ use super::load;
 use chrono::Utc;
 use codetether_goal_core::{GoalSourceKind, TaskEvent, TaskLog};
 
-fn goal(objective: &str) -> TaskEvent {
+pub(super) fn goal(objective: &str) -> TaskEvent {
     TaskEvent::GoalSet {
         at: Utc::now(),
         goal_id: objective.into(),

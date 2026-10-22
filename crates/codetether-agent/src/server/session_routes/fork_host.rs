@@ -1,9 +1,8 @@
 //! Native session binding for shared edited-conversation branching.
 use crate::provider::Message;
 use crate::session::{Session, SessionMetadata};
-use codetether_session_fork::ForkSession;
 #[async_trait::async_trait]
-impl ForkSession for Session {
+impl codetether_session_fork::ForkSession for Session {
     async fn new() -> anyhow::Result<Self> {
         Session::new().await
     }
@@ -15,6 +14,15 @@ impl ForkSession for Session {
     }
     fn messages(&self) -> &[Message] {
         &self.messages
+    }
+    fn message_offset(&self) -> usize {
+        Session::message_offset(self)
+    }
+    fn page_kinds(&self) -> &[crate::session::pages::PageKind] {
+        &self.pages
+    }
+    fn replace_pages(&mut self, pages: Vec<crate::session::pages::PageKind>) {
+        self.pages = pages.into();
     }
     fn title(&self) -> Option<&str> {
         self.title.as_deref()

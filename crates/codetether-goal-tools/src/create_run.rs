@@ -11,6 +11,7 @@ use codetether_tool_core::ToolResult;
 /// * `args` - Objective and trusted session context.
 /// # Returns
 /// Current goal JSON or a validation/unfinished-goal refusal.
+/// Source lookup failures retain goal creation but record unverified provenance.
 /// # Errors
 /// Returns missing-session or journal/runtime errors.
 /// # Examples
@@ -33,6 +34,27 @@ pub async fn run<H: Host>(mut args: Args) -> Result<ToolResult> {
     }
     let now = Utc::now();
     let goal_id = uuid::Uuid::new_v4().to_string();
+    let source = match H::source(&session_id, &args.objective).await {
+        Ok(source) => source,
+        Err(error) => {
+            tracing::warn!(session_id = %session_id, %error, "Goal source unavailable; recording unverified provenance");
+            None
+        }
+    };
+    // A source link does not prove that a model's paraphrase preserves its scope.
+    let (source_turn_id, source_text_hash, source_kind, confidence) = match source {
+        Some(source) => (
+            source.turn_id,
+            source.text_hash,
+            if source.verbatim {
+                GoalSourceKind::UserProvided
+            } else {
+                GoalSourceKind::RawTurn
+            },
+            if source.verbatim { 1.0 } else { 0.5 },
+        ),
+        None => (String::new(), String::new(), GoalSourceKind::Inferred, 0.0),
+    };
     log.append(&TaskEvent::GoalSet {
         at: now,
         goal_id: goal_id.clone(),
@@ -40,10 +62,10 @@ pub async fn run<H: Host>(mut args: Args) -> Result<ToolResult> {
         success_criteria: Vec::new(),
         forbidden: Vec::new(),
         source_session_id: session_id.clone(),
-        source_turn_id: String::new(),
-        source_text_hash: String::new(),
-        source_kind: GoalSourceKind::UserProvided,
-        confidence: 1.0,
+        source_turn_id,
+        source_text_hash,
+        source_kind,
+        confidence,
     })
     .await?;
     log.append(&TaskEvent::GoalRuntime(GoalRuntimeUpdate {
@@ -57,6 +79,6 @@ pub async fn run<H: Host>(mut args: Args) -> Result<ToolResult> {
         continuation_delta: 0,
     }))
     .await?;
-    let (_, state) = H::current(&session_id).await?;
-    Ok(response::result(&state))
+    let (log, state) = H::current(&session_id).await?;
+    Ok(response::with_source(&state, &log.read_all().await?))
 }

@@ -18,3 +18,7 @@ uuid = { version = "1", features = ["v4"] }
 async-trait = "0.1"
 codetether-goal-verification = { path = "../codetether-goal-verification", version = "0.1.0" }
 tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt"] }

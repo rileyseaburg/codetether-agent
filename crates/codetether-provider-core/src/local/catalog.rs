@@ -27,7 +27,7 @@ pub const NVIDIA_MODELS: &[LocalModel] = &[LocalModel {
 /// # Examples
 ///
 /// ```rust
-/// use codetether_provider_core::local::catalog;
+/// use codetether_provider_core::local::catalog as local_catalog;
 ///
 /// let model = local_catalog::find("nemotron-nano-8b-v1").unwrap();
 /// assert_eq!(model.arch, "llama");

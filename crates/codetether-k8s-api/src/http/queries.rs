@@ -1,10 +1,6 @@
 //! queries over application-owned Kubernetes services.
 use super::HttpState;
-use axum::{
-    Json,
-    extract::State,
-    http::StatusCode,
-};
+use axum::{Json, extract::State, http::StatusCode};
 
 // ── K8s self-deployment endpoints ──
 

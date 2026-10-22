@@ -14,8 +14,6 @@ pub struct LoopState {
     pub max_steps: Option<usize>,
     /// Number of failed post-edit validation attempts.
     pub validation_retries: u8,
-    /// Guard against repeated edit-family invocations.
-    pub repeat_guard: codetether_repeat_guard::RepeatGuard,
     /// Exact tool invocations declined by the user during this turn.
     pub decline_guard: codetether_runtime_policy::decline::DeclineGuard,
     /// Consecutive code-search calls returning no matches.
@@ -24,8 +22,6 @@ pub struct LoopState {
     pub build_retries: u8,
     /// Retries after prose promised but omitted a native tool call.
     pub native_retries: u8,
-    /// Steps elapsed since the last file-writing tool call.
-    pub steps_since_write: u32,
     /// Correlation identifier used for agent-bus messages.
     pub turn_id: String,
     /// Baseline for durable goal elapsed-time accounting.

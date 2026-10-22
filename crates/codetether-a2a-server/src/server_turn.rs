@@ -12,13 +12,14 @@ pub(super) async fn execute_turn<H: Application>(
     from: &str,
     prompt: &str,
 ) -> Result<String> {
+    let prompt = codetether_a2a_http::inbound_turn::prompt(from, prompt);
     codetether_a2a_http::inbound_turn::execute_turn(
         tasks,
         task_id,
         context_id,
         from,
-        prompt,
-        headless::<H>(context_id, prompt),
+        &prompt,
+        headless::<H>(context_id, &prompt),
     )
     .await
 }

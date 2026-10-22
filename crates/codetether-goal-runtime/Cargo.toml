@@ -13,9 +13,18 @@ codetether-goal-core = { path = "../codetether-goal-core", version = "0.1.0" }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 codetether-session-control = { path = "../codetether-session-control", version = "0.1.0" }
 parking_lot = "0.12"
+serde_json = "1"
 tracing = "0.1"
 uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
+codetether-codex-protocol = { path = "../codetether-codex-protocol", version = "0.1.0" }
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt"] }
+async-trait = "0.1"
+futures = "0.3"
+codetether-context-request = { path = "../codetether-context-request", version = "0.1.0" }
+codetether-provider-anthropic = { path = "../codetether-provider-anthropic", version = "0.1.0" }
+codetether-provider-google = { path = "../codetether-provider-google", version = "0.1.0" }
+codetether-bedrock-protocol = { path = "../codetether-bedrock-protocol", version = "0.1.0" }

@@ -3,8 +3,6 @@
 /// # Implementors
 /// Frontends preserve their inbox, timing and watchdog field semantics.
 pub trait Completion {
-    /// Settle pending inbox entries from the current session.
-    fn settle_inbox(&mut self);
     /// Clear the live text preview.
     fn clear_streaming_text(&mut self);
     /// Promote current timing into the last completed request.

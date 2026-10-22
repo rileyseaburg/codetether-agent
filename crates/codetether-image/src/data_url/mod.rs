@@ -1,10 +1,10 @@
 //! Decode image data URLs with payload and MIME checks.
-use base64::Engine;
 use crate::ImageAttachment;
+use base64::Engine;
 mod limits;
 mod normalize;
-pub(crate) use limits::{MAX_BASE64_PAYLOAD_CHARS,MAX_IMAGE_DECODED_BYTES};
 use limits::IMAGE_MIME_TYPES;
+pub(crate) use limits::{MAX_BASE64_PAYLOAD_CHARS, MAX_IMAGE_DECODED_BYTES};
 use normalize::normalized_payload;
 
 /// True when `mime` is a supported image media type.

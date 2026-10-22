@@ -44,13 +44,15 @@ pub fn completion_request(model: String, snapshot: &RepairRequest) -> Result<Com
     })
 }
 
-/// Ask a provider exactly once and validate its text-only proposal.
+/// Ask a provider exactly once and validate its final-text proposal.
+/// Reasoning blocks are discarded, never included in the proposal or logged.
 /// # Arguments
 /// `provider` is an existing native provider; `model` is resolved; `snapshot` is immutable.
 /// # Returns
 /// A validated proposal; this function never executes model tools or edits files.
 /// # Errors
-/// Propagates provider errors and rejects timeouts, truncation, tools/nontext or invalid JSON.
+/// Propagates provider errors and rejects timeouts, truncation, tools, attachments
+/// or invalid/missing final JSON text. Reasoning metadata does not grant tool authority.
 /// # Examples
 /// ```no_run
 /// # async fn example(p: &dyn codetether_provider_core::Provider, r: &codetether_rust_repair::RepairRequest) -> anyhow::Result<()> {
@@ -86,10 +88,25 @@ pub async fn propose(
     );
     let mut text = String::new();
     for part in response.message.content {
-        let ContentPart::Text { text: value } = part else {
-            anyhow::bail!("repair response contains tool calls or nontext content")
+        let rejected = match part {
+            ContentPart::Text { text: value } => {
+                text.push_str(&value);
+                continue;
+            }
+            ContentPart::Thinking { .. } => continue,
+            ContentPart::ToolCall { .. } => "tool call",
+            ContentPart::ToolResult { .. } => "tool result",
+            ContentPart::Image { .. } => "image",
+            ContentPart::File { .. } => "file attachment",
         };
-        text.push_str(&value);
+        anyhow::bail!(
+            "repair response contains forbidden {rejected}: provider={}, resolved_model={model}",
+            provider.name()
+        );
     }
+    ensure!(
+        !text.trim().is_empty(),
+        "repair response has no final proposal text"
+    );
     parse_proposal(&text, snapshot)
 }

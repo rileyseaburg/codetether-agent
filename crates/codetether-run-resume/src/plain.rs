@@ -28,7 +28,7 @@ pub async fn execute_prompt_with_resume<S: crate::RunSession>(
     let mut prompt_text = message.to_string();
     let mut resumes_left = resume_attempts.unwrap_or(0);
     loop {
-        let before = session.messages().len();
+        let before = session.message_count();
         let result = session.prompt(&prompt_text).await?;
         if !codetether_step_limit::was_budget_exhausted() {
             codetether_run_checkpoint::storage::clear(session).await?;

@@ -17,10 +17,13 @@ pub(super) fn extract_browser_url(text: &str, url: &mut Option<String>) {
 /// Truncate text to the first non-empty line, capped at `max` chars.
 pub(super) fn truncate_to_line(text: &str, max: usize) -> String {
     let line = text.lines().find(|l| !l.trim().is_empty()).unwrap_or("");
-    if line.len() <= max {
+    if line.chars().count() <= max {
         line.to_string()
     } else {
-        format!("{}...", &line[..max.saturating_sub(3)])
+        format!(
+            "{}...",
+            line.chars().take(max.saturating_sub(3)).collect::<String>()
+        )
     }
 }
 

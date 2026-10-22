@@ -20,6 +20,8 @@ use codetether_cli_command::Command;
 /// ```
 pub async fn dispatch(command: &Option<Command>) -> Option<anyhow::Result<()>> {
     match command {
+        Some(Command::RustPropose(args)) => Some(codetether_rust_repair::run(args.clone()).await),
+        Some(Command::Rust(args)) => Some(codetether_rust_build::run(args.clone()).await),
         Some(Command::Windows(args)) => Some(codetether_windows_cli::run(args.clone()).await),
         Some(Command::Bonsai(args)) => Some(codetether_bonsai_cli::run(args.clone()).await),
         _ => None,

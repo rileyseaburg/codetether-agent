@@ -17,12 +17,12 @@ async fn session_goal_controls_persist_edits_atomically() {
     request.objective = Some("Updated objective".into());
     request.success_criteria = Some(vec!["New criterion".into()]);
     request.token_budget = Some(None);
-    let after = super::super::edit::apply(&log, request.clone())
+    let after = super::super::edit::apply_user(&log, request.clone())
         .await
         .unwrap();
     assert_eq!(after.goal.as_ref().unwrap().objective, "Updated objective");
     assert_eq!(after.goal.as_ref().unwrap().tokens_used, 37);
-    assert!(super::super::edit::apply(&log, request).await.is_err());
+    assert!(super::super::edit::apply_user(&log, request).await.is_err());
     let reloaded = TaskState::from_log(&log.read_all().await.unwrap());
     assert_eq!(reloaded.goal.unwrap().success_criteria, ["New criterion"]);
     assert!(

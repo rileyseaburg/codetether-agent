@@ -6,7 +6,8 @@ use codetether_rlm::RlmChunker;
 /// * `text` — Summary text to bound.
 /// * `target_tokens` — Requested approximate token budget.
 /// # Returns
-/// Original text when it fits, otherwise a bounded prefix and truncation marker.
+/// Original text when it fits, otherwise balanced section excerpts and a marker.
+/// Late sections such as blockers and next actions receive space independently.
 /// # Examples
 /// ```
 /// assert_eq!(codetether_summary_quality::clamp_tokens("short", 100), "short");
@@ -19,9 +20,7 @@ pub fn clamp_tokens(text: &str, target_tokens: usize) -> String {
     }
     let marker = "\n[summary clamped to requested token budget]";
     let keep = limit.saturating_sub(marker.len());
-    let end = (0..=keep)
-        .rev()
-        .find(|index| text.is_char_boundary(*index))
-        .unwrap_or(0);
-    format!("{}{}", text[..end].trim_end(), marker)
+    let sections = super::sections::split(text);
+    let bounded = codetether_rlm::text_budget::pack_sections(&sections, keep);
+    format!("{}{marker}", bounded.trim_end())
 }

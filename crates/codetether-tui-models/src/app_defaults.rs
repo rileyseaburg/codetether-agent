@@ -16,6 +16,7 @@ impl ::core::default::Default for $state {
     #[rustfmt::skip]
     fn default() -> Self {
         Self {
+            last_activity_at: ::std::time::SystemTime::now(),
             view: ::core::default::Default::default(),
             messages: ::std::vec![],
             composer: ::core::default::Default::default(),

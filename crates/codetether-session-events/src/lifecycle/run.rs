@@ -39,7 +39,8 @@ async fn thinking(host: &mut impl Host) {
 
 async fn done(host: &mut impl Host) {
     host.processing_stopped().await;
-    host.settle_inbox();
+    // Done precedes return of the owned session. Settle replies only after
+    // the completion notice restores that final session.
     host.clear_streaming_text();
     host.complete_turn_timing();
     host.clear_streaming_start();

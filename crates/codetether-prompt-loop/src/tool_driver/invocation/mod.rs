@@ -25,11 +25,15 @@ pub use host::Host;
 pub async fn execute(host: &mut impl Host, call: &Call) -> anyhow::Result<Outcome> {
     let input = host.enrich(call);
     let started = host.before_tool().await?;
-    let (input, blocked, warnings) = host.gate(call, input).await.into_checked_parts();
+    let gate = host.gate(call, input).await;
+    let feedback = gate.human_feedback().map(str::to_owned);
+    let (input, blocked, warnings) = gate.into_checked_parts();
     let tuple = match blocked {
         Some(blocked) => blocked,
         None => host.approved(call, &input, started).await,
     };
     let tuple = codetether_tool_approval::annotate(tuple, warnings);
-    Ok(host.render(call, &input, started, tuple).await)
+    let mut outcome = host.render(call, &input, started, tuple).await;
+    outcome.approval_feedback = feedback;
+    Ok(outcome)
 }

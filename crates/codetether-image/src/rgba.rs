@@ -1,7 +1,7 @@
 //! Convert raw RGBA pixels to a PNG attachment.
-use std::io::Cursor;
-use base64::Engine;
 use crate::ImageAttachment;
+use base64::Engine;
+use std::io::Cursor;
 /// Encode raw RGBA pixels as a PNG data-URL attachment.
 ///
 /// # Arguments
@@ -17,7 +17,11 @@ use crate::ImageAttachment;
 /// let image = codetether_image::attachment_from_rgba(1, 1, vec![0, 0, 0, 255]).unwrap();
 /// assert_eq!(image.mime_type.as_deref(), Some("image/png"));
 /// ```
-pub fn attachment_from_rgba(width: usize, height: usize, bytes: Vec<u8>) -> Option<ImageAttachment> {
+pub fn attachment_from_rgba(
+    width: usize,
+    height: usize,
+    bytes: Vec<u8>,
+) -> Option<ImageAttachment> {
     let buf: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> =
         image::ImageBuffer::from_raw(width as u32, height as u32, bytes)?;
     let mut png = Vec::new();

@@ -19,7 +19,9 @@ pub fn finish(
     estimate_request: impl Fn(&[Message]) -> usize,
     estimate_messages: impl Fn(&[Message]) -> usize,
 ) -> DerivedContext {
-    let mut plan = assemble::assemble(prepared, index, estimate_messages);
+    let mut validated = index.clone();
+    validated.retain_valid(&prepared.clone);
+    let mut plan = assemble::assemble(prepared, &validated, estimate_messages);
     let mut provenance = vec!["incremental".to_string()];
     let (final_dropped, tags) = clamp_and_recompute(
         &mut plan.messages,

@@ -6,5 +6,6 @@ mod required;
 
 codetether_incremental_derivation::impl_session_source!(
     Session,
-    crate::session::index_produce::proactive::prepared_index
+    crate::session::index_produce::proactive::prepared_index,
+    Session::message_offset
 );

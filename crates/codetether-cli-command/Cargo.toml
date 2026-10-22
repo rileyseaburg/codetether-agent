@@ -7,6 +7,8 @@ license = "MIT"
 description = "CodeTether top-level subcommand schema"
 
 [dependencies]
+codetether-rust-repair = { path = "../codetether-rust-repair", version = "0.1.0" }
+codetether-rust-build = { path = "../codetether-rust-build", version = "0.1.0" }
 clap = { version = "4.6.6", features = ["derive", "env"] }
 codetether-approval-cli = { path = "../codetether-approval-cli", version = "0.1.0" }
 codetether-auth-cli = { path = "../codetether-auth-cli", version = "0.1.0" }

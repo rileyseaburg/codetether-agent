@@ -13,6 +13,7 @@ macro_rules! impl_session_ingress {
         impl $session {
             /// Record trusted human policy updates before appending the message.
             pub(crate) fn add_human_message(&mut self, message: $crate::session_binding::Message) {
+                self.metadata.progress.human_input(&message);
                 $crate::trusted(&mut self.metadata, &self.messages, &message);
                 self.add_message(message);
             }

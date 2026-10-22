@@ -1,6 +1,6 @@
 //! OpenAI-compatible request tool wire contracts.
-use serde::Deserialize;
 use crate::defaults::{default_function_type, default_json_object};
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 /// OpenAI-compatible OpenAiRequestTool wire representation.

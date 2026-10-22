@@ -24,6 +24,7 @@ impl PageKind {
             PageKind::Preference => ResidencyLevel::Pointer,
             PageKind::Evidence => ResidencyLevel::Pointer,
             PageKind::Conversation => ResidencyLevel::Pointer,
+            PageKind::SupersededConstraint { .. } => ResidencyLevel::Pointer,
         }
     }
 
@@ -42,7 +43,10 @@ impl PageKind {
                 ResidencyLevel::Structured,
                 ResidencyLevel::Pointer,
             ],
-            PageKind::Preference | PageKind::Evidence | PageKind::Conversation => &[
+            PageKind::Preference
+            | PageKind::Evidence
+            | PageKind::Conversation
+            | PageKind::SupersededConstraint { .. } => &[
                 ResidencyLevel::Full,
                 ResidencyLevel::Compressed,
                 ResidencyLevel::Structured,

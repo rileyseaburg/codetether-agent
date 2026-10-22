@@ -1,6 +1,6 @@
 //! envelope wire representation.
-use serde::Deserialize;
 use super::*;
+use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub(crate) struct DsResponse {
     #[allow(dead_code)]

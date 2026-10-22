@@ -26,13 +26,15 @@ async fn worker_image_recording_preserves_success_and_failure() {
                 serde_json::json!({"success": success}),
             ),
         )
-        .await;
+        .await
+        .unwrap();
         let message = session.messages.last().unwrap();
         assert!(matches!(message.role, Role::Tool));
         assert_eq!(message.content.len(), 3);
         assert!(matches!(&message.content[0], ContentPart::ToolResult {
             tool_call_id, content
-        } if tool_call_id == &id && content == OUTPUT));
+        } if tool_call_id == &id && content.ends_with(OUTPUT)
+            && content.contains(if success { "- status: success" } else { "- status: failure" })));
         assert!(
             matches!(&message.content[1], ContentPart::Image { url, mime_type }
             if url == IMAGE && mime_type.as_deref() == Some("image/png"))

@@ -2,6 +2,7 @@
 //! Accepted receipts survive polling and rejected releases cannot replace them.
 
 use super::{queue, request};
+use crate::release::service;
 
 use codetether_bus_core::AgentBus;
 

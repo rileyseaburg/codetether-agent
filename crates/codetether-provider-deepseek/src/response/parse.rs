@@ -1,6 +1,6 @@
 //! Convert a decoded reply to provider contracts.
-use codetether_provider_core::{CompletionResponse, ContentPart, Message, Role, Usage};
 use super::{DsResponse, finish::finish};
+use codetether_provider_core::{CompletionResponse, ContentPart, Message, Role, Usage};
 pub(crate) fn parse(ds: DsResponse) -> anyhow::Result<CompletionResponse> {
     let choice = ds
         .choices

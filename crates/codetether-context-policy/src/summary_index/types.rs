@@ -66,6 +66,7 @@ pub enum Granularity {
 ///     target_tokens: 512,
 ///     granularity: Granularity::Turn,
 ///     generation: 1,
+///     provenance: None,
 /// };
 /// assert_eq!(node.content, "Discussed auth refactor");
 /// ```
@@ -79,6 +80,9 @@ pub struct SummaryNode {
     pub granularity: Granularity,
     /// Generation counter when this node was produced.
     pub generation: u64,
+    /// Exact source and policy identity. Legacy entries load but cannot be reused.
+    #[serde(default)]
+    pub provenance: Option<super::SummaryProvenance>,
 }
 
 /// Upper bound on cached summaries before LRU eviction kicks in.

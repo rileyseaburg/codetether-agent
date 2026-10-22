@@ -46,7 +46,7 @@ pub async fn execute<H: Host>(
                 usage: H::usage(session).clone(),
             });
         }
-        codetether_agent_replay::execute(host, session, tool_calls).await;
+        codetether_agent_replay::execute(host, session, tool_calls).await?;
     }
     bail!("Exceeded maximum steps ({max_steps})");
 }

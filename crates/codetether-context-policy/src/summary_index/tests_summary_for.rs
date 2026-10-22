@@ -9,6 +9,7 @@ fn node(text: &str) -> SummaryNode {
         target_tokens: 512,
         granularity: Granularity::Turn,
         generation: 0,
+        provenance: None,
     }
 }
 
@@ -40,6 +41,7 @@ async fn summary_for_cache_miss_calls_producer() {
                 target_tokens: 256,
                 granularity: Granularity::Turn,
                 generation: 0,
+                provenance: None,
             })
         })
         .await

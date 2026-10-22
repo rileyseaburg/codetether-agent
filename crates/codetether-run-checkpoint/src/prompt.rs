@@ -1,6 +1,7 @@
 //! Prompt construction for automatic checkpoint continuation.
 
 use crate::RunCheckpoint;
+use crate::bounded::{excerpt, list as list_or_default};
 
 /// Render instructions for resuming the existing checkpointed run.
 /// # Arguments
@@ -15,43 +16,44 @@ use crate::RunCheckpoint;
 /// assert!(codetether_run_checkpoint::auto_resume_prompt(&cp).contains("Review the project"));
 /// ```
 pub fn auto_resume_prompt(checkpoint: &RunCheckpoint) -> String {
-    let url = checkpoint
-        .current_browser_url
-        .as_deref()
-        .unwrap_or("unknown");
+    let url = excerpt(
+        checkpoint
+            .current_browser_url
+            .as_deref()
+            .unwrap_or("unknown"),
+        1024,
+    );
     let completed = list_or_default(&checkpoint.completed_actions, "none recorded");
+    let action_label = if checkpoint.evidence_version == 0 {
+        "Legacy action notes (unverified; may include failed attempts)"
+    } else {
+        "Explicitly successful tool executions"
+    };
+    let evidence = super::evidence_prompt::render(checkpoint);
     let blockers = list_or_default(&checkpoint.blockers, "none recorded");
     format!(
         "Continue this live CodeTether run from its structured checkpoint.\n\n\
 Original objective:\n{objective}\n\n\
 Session/workspace:\n- session_id: {session}\n- workspace: {workspace}\n- previous max-step budget: {budget}\n- message count at checkpoint: {messages}\n- current browser URL/tab: {url}\n\n\
-Completed actions:\n{completed}\n\n\
+{action_label}:\n{completed}\n\n\
 Blockers/risks:\n{blockers}\n\n\
-Next intended action:\n{next_action}\n\n\
+Inferred next action (check against latest user corrections):\n{next_action}\n{evidence}\n\
 Do not ask the user to reconstruct context. Resume from the existing session history and continue toward the original objective while preserving its constraints.",
-        objective = checkpoint.original_objective,
-        session = checkpoint.session_id,
-        workspace = checkpoint
-            .workspace
-            .as_ref()
-            .map(|p| p.display().to_string())
-            .unwrap_or_else(|| "unknown".to_string()),
+        objective = excerpt(&checkpoint.original_objective, 2048),
+        session = excerpt(&checkpoint.session_id, 256),
+        workspace = excerpt(
+            &checkpoint
+                .workspace
+                .as_ref()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|| "unknown".to_string()),
+            1024
+        ),
         budget = checkpoint.max_step_budget,
         messages = checkpoint.message_count,
         url = url,
         completed = completed,
         blockers = blockers,
-        next_action = checkpoint.next_intended_action,
+        next_action = excerpt(&checkpoint.next_intended_action, 1024),
     )
-}
-
-fn list_or_default(items: &[String], default_text: &str) -> String {
-    if items.is_empty() {
-        return format!("- {default_text}");
-    }
-    items
-        .iter()
-        .map(|item| format!("- {item}"))
-        .collect::<Vec<_>>()
-        .join("\n")
 }

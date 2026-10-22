@@ -1,6 +1,6 @@
 //! OpenAI-compatible response wire contracts.
-use serde::Serialize;
 use crate::{OpenAiChatCompletionMessage, OpenAiUsage};
+use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 /// OpenAI-compatible OpenAiChatCompletionResponse wire representation.

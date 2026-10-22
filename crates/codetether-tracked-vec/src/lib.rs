@@ -9,6 +9,7 @@ mod access;
 mod append;
 mod conversion;
 mod deserialize;
+mod indexing;
 mod iteration;
 pub mod tail_seed;
 mod tracking;
@@ -16,6 +17,8 @@ mod version;
 pub use deserialize::tail;
 
 /// A vector that records its earliest changed element.
+/// Indexed element and range writes mark only their affected suffix. Mutations
+/// through unrestricted mutable vector access conservatively mark the whole vector.
 ///
 /// # Examples
 /// ```

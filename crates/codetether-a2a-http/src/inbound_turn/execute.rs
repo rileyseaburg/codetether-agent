@@ -34,6 +34,7 @@ pub async fn execute_turn(
     prompt: &str,
     headless: impl Future<Output = Result<String>>,
 ) -> Result<String> {
+    let _reply = begin_reply(from);
     if live_inbox::is_attached() {
         return live(tasks, task_id, context_id, from, prompt).await;
     }

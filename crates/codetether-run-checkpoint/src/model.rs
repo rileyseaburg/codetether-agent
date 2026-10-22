@@ -15,6 +15,18 @@ use std::path::PathBuf;
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunCheckpoint {
+    /// Evidence format version; zero denotes legacy, unverified action notes.
+    #[serde(default)]
+    pub evidence_version: u32,
+    /// Source-linked tool attempts and their observed outcomes.
+    #[serde(default)]
+    pub actions: Vec<crate::ActionEvidence>,
+    /// Original user instructions and corrections in source order.
+    #[serde(default)]
+    pub user_context: Vec<crate::UserEvidence>,
+    /// Latest assistant text, retained as an unverified proposal or observation.
+    #[serde(default)]
+    pub assistant_context: Option<String>,
     /// Why execution stopped.
     pub reason: CheckpointReason,
     /// Original user objective to preserve on resumption.

@@ -2,7 +2,7 @@
 use codetether_session_metadata::SessionMetadata;
 pub(super) fn branch_metadata(source: &SessionMetadata, id: &str, agent: &str) -> SessionMetadata {
     let mut metadata = source.clone();
-    metadata.run_checkpoint = None;
+    reset_execution(&mut metadata);
     metadata.prior_context_turn_allowed = None;
     metadata.knowledge_snapshot = None;
     metadata.shared = false;
@@ -12,4 +12,9 @@ pub(super) fn branch_metadata(source: &SessionMetadata, id: &str, agent: &str) -
         id, agent,
     ));
     metadata
+}
+pub(super) fn reset_execution(metadata: &mut SessionMetadata) {
+    metadata.run_checkpoint = None;
+    metadata.run_checkpoint_cleared = true;
+    metadata.progress = Default::default();
 }

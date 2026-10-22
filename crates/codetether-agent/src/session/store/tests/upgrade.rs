@@ -22,7 +22,7 @@ async fn upgrades_v1_without_event_table_and_preserves_records() {
     let version: i64 = db
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .unwrap();
-    assert_eq!(version, 2);
+    assert_eq!(version, 3);
     let events: usize = db
         .query_row("SELECT count(*) FROM events", [], |r| r.get(0))
         .unwrap();

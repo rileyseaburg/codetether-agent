@@ -1,6 +1,7 @@
 //! Metadata fields inherited by the existing interactive fork command.
 use codetether_session_metadata::SessionMetadata;
 pub(super) fn copy(source: &SessionMetadata, target: &mut SessionMetadata) {
+    crate::metadata::reset_execution(target);
     target.auto_apply_edits = source.auto_apply_edits;
     target.allow_network = source.allow_network;
     target.slash_autocomplete = source.slash_autocomplete;

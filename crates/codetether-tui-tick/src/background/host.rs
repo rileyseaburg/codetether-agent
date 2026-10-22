@@ -11,8 +11,6 @@ pub trait Host {
     fn bus(&mut self);
     /// Queue worker tasks received from the bridge.
     fn queue_workers(&mut self);
-    /// Display the next queued worker task.
-    fn display_worker(&mut self);
     /// Drain a bounded batch of session events.
     fn events(&mut self) -> impl Future<Output = ()>;
     /// Take a ready completion notice without waiting.

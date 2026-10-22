@@ -1,48 +1,56 @@
-//! Memoized task-state folding keyed by log file identity.
-//!
-//! The TUI event loop checks the goal/answer-review hold after every
-//! session event. Re-reading and re-folding an append-only log that grows
-//! with every usage update made `/goal` sessions progressively slower and
-//! allocation-heavy. This cache re-folds only when the file length or
-//! modification time changes; append-only writes always change the length.
-
+//! Strict incremental journal replay with bounded least-recently-used caching.
+//! Append-only changes replay new bytes; replacement and truncation replay all.
+//! Malformed or partial events are errors, never discarded governance.
 use anyhow::Result;
 use codetether_goal_core::{TaskLog, TaskState};
-use parking_lot::Mutex;
-use std::{collections::HashMap, path::PathBuf, sync::LazyLock, time::SystemTime};
+#[path = "state_cache_entry.rs"]
+mod entry;
+#[path = "state_cache_replay.rs"]
+mod replay;
+#[path = "state_cache_store.rs"]
+mod store;
 
-const MAX_ENTRIES: usize = 64;
-
-type Stamp = (u64, SystemTime);
-static CACHE: LazyLock<Mutex<HashMap<PathBuf, (Stamp, TaskState)>>> = LazyLock::new(Mutex::default);
-
-/// Fold the log into state, reusing the last fold when the file is unchanged.
-///
+/// Fold a journal, replaying only appended events when its identity is unchanged.
+/// # Arguments
+/// * `log` — Append-only journal to inspect.
+/// # Returns
+/// Current state, or an empty state for a journal that has not been created.
 /// # Errors
-///
-/// Returns IO errors from reading an existing but unreadable log.
+/// Returns I/O, malformed-event and incomplete-tail errors without caching them.
+/// # Examples
+/// ```no_run
+/// let log = codetether_goal_core::TaskLog::at("session.tasks.jsonl");
+/// let state = codetether_goal_runtime::state_cache::load(&log)?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn load(log: &TaskLog) -> Result<TaskState> {
-    let Ok(meta) = std::fs::metadata(log.path()) else {
-        return Ok(TaskState::default());
+    let cell = store::get(log.path());
+    let mut cached = cell.lock();
+    let mut file = match std::fs::File::open(log.path()) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            anyhow::ensure!(
+                cached.is_none(),
+                "previously loaded goal journal is missing"
+            );
+            return Ok(TaskState::default());
+        }
+        Err(error) => return Err(error.into()),
     };
-    let Ok(modified) = meta.modified() else {
-        return Ok(TaskState::from_log(&log.read_all_blocking()?));
-    };
-    let stamp = (meta.len(), modified);
-    if let Some((cached, state)) = CACHE.lock().get(log.path())
-        && *cached == stamp
-    {
-        return Ok(state.clone());
-    }
-    let state = TaskState::from_log(&log.read_all_blocking()?);
-    let mut cache = CACHE.lock();
-    if cache.len() >= MAX_ENTRIES {
-        cache.clear();
-    }
-    cache.insert(log.path().to_path_buf(), (stamp, state.clone()));
+    let metadata = file.metadata()?;
+    anyhow::ensure!(metadata.is_file(), "goal journal is not a regular file");
+    let value = replay::read(&mut file, &metadata, cached.as_ref())?;
+    let state = value.state.clone();
+    *cached = Some(value);
     Ok(state)
 }
 
 #[cfg(test)]
+#[path = "state_cache_integrity_tests.rs"]
+mod integrity_tests;
+#[cfg(test)]
 #[path = "state_cache_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "state_cache_transitions_tests.rs"]
+mod transitions_tests;

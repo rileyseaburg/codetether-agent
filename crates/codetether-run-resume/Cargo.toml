@@ -16,3 +16,7 @@ codetether-run-checkpoint = { path = "../codetether-run-checkpoint", version = "
 codetether-session-events = { path = "../codetether-session-events", version = "0.1.0" }
 codetether-step-limit = { path = "../codetether-step-limit", version = "0.1.0" }
 tokio = { version = "1.53.1", features = ["sync"] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt"] }

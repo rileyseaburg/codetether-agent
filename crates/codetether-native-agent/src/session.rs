@@ -31,6 +31,12 @@ impl<S: SessionWrite, T: Send + Sync + 'static> SessionWrite for Host<S, T> {
     async fn new_session() -> anyhow::Result<Self::Session> {
         S::new_session().await
     }
+    async fn persist_session(session: &mut Self::Session) -> anyhow::Result<()> {
+        S::persist_session(session).await
+    }
+    async fn refresh_session(session: &mut Self::Session) -> anyhow::Result<()> {
+        S::refresh_session(session).await
+    }
     fn add_human(session: &mut Self::Session, message: Message) {
         S::add_human(session, message);
     }

@@ -10,7 +10,10 @@ mod create_validate;
 mod edit_run;
 mod edit_schema;
 mod host;
+mod source;
+pub use source::GoalSource;
 pub mod response;
+mod response_source;
 pub use create::Args as CreateArgs;
 pub use create_run::run as create;
 pub use edit_run::run as edit;
@@ -27,3 +30,6 @@ pub use get_tool::GetGoalTool;
 mod update;
 pub use update::{Args as UpdateArgs, Host as UpdateHost, UpdateGoalTool};
 pub use update::{run as update, run_with as update_with};
+
+#[cfg(test)]
+mod source_tests;

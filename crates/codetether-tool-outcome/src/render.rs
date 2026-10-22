@@ -51,6 +51,7 @@ pub async fn render(
         pending,
     );
     Outcome {
+        approval_feedback: None,
         rendered,
         success,
         metadata,

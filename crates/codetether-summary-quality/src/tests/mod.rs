@@ -1,4 +1,5 @@
 //! Existing summary quality and bounds regressions.
+mod continuation_sections;
 mod fixture;
 mod gate_0;
 mod gate_1;

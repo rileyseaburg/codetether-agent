@@ -20,6 +20,9 @@ pub trait Host: Send {
     fn route(&self, call: &Call, content: &str) -> String;
     /// Insert the resulting tool message.
     fn append(&mut self, message: Message);
+    /// Append and pin trusted human feedback after its denied tool result.
+    /// Retain the call identity and original text through context compression.
+    fn append_approval_feedback(&mut self, call_id: &str, feedback: String);
     /// Persist after tool-message insertion.
     /// # Errors
     /// Propagates the existing post-tool persistence failure.

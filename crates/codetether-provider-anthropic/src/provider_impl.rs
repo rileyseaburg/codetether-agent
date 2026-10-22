@@ -9,7 +9,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
 
-use codetether_provider_core::{CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk};
+use codetether_provider_core::{
+    CompletionRequest, CompletionResponse, ModelInfo, Provider, StreamChunk,
+};
 
 use super::AnthropicProvider;
 

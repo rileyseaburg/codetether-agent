@@ -14,7 +14,8 @@ async fn process<H: crate::Host>(snapshot: &mut Snapshot, host: &H) -> anyhow::R
         return Ok(());
     };
     while registry_status::is_current(&snapshot.session_id, snapshot.generation) {
-        let Some(delivery) = host.next(&snapshot.session_id, "rlm", 24).await? else {
+        let consumer = codetether_context_policy::summary_index::projection_name();
+        let Some(delivery) = host.next(&snapshot.session_id, &consumer, 24).await? else {
             break;
         };
         if H::message_count(&delivery.session) < 24 {

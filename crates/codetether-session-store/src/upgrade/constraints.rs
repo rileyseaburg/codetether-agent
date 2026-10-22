@@ -1,4 +1,4 @@
-//! One-time bounded-row backfill of protected excerpts during schema upgrade.
+//! Rebuild the constraint index from canonical full messages during upgrade.
 use anyhow::Result;
 use rusqlite::Transaction;
 pub fn backfill(tx: &Transaction<'_>) -> Result<()> {

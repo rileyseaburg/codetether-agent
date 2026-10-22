@@ -1,12 +1,19 @@
 //! Incremental context projection around a prepared summary index.
 //!
 //! [Source] supplies immutable messages, page classification and prepared
-//! summaries. [derive_incremental] protects required entries, packs available
-//! summaries and applies shared budget/repair policy.
+//! summaries. [derive_incremental] protects required entries, retains bounded
+//! direct-user excerpts, packs summaries and applies shared budget/repair policy.
 mod below_budget;
 mod clamp;
 mod derive;
+mod feedback_extract;
+mod feedback_reference;
+#[cfg(test)]
+mod feedback_reference_tests;
 mod pack;
+mod prepared;
+mod references;
+mod request_reference;
 mod required;
 mod source;
 pub use below_budget::try_pass_through;
@@ -20,5 +27,7 @@ pub use source::Source;
 #[doc(hidden)]
 pub mod session_binding;
 
+#[cfg(test)]
+mod local_summary_tests;
 #[cfg(test)]
 mod native_tests;

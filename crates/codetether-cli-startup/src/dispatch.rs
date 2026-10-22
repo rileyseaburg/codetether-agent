@@ -1,5 +1,7 @@
 //! Exhaustive top-level command routing with native handler bindings.
 pub use anyhow;
+pub use codetether_rust_build;
+pub use codetether_rust_repair;
 /// Declare CLI dispatch while retaining application-specific execution paths.
 ///
 /// Handlers receive the same arguments, ownership and await behavior as the
@@ -17,6 +19,12 @@ macro_rules! define_command_dispatch {
                 (cli.project.clone(), cli.project.is_some());
 
             match cli.command {
+                Some($command::RustPropose(args)) => {
+                    $crate::dispatch::codetether_rust_repair::run(args).await
+                }
+                Some($command::Rust(args)) => {
+                    $crate::dispatch::codetether_rust_build::run(args).await
+                }
                 Some($command::Bonsai(args)) => $bonsai(args).await,
                 Some($command::Windows(args)) => $windows(args).await,
                 Some($command::Tui(args)) => $tui(Some(args), cli.project, cli.yolo).await,

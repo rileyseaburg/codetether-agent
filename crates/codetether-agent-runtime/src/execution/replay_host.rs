@@ -5,6 +5,12 @@ use codetether_tool_core::ToolResult;
 #[async_trait::async_trait]
 impl<H: Host> codetether_agent_replay::Host for Agent<H> {
     type Session = H::Session;
+    async fn persist_session(session: &mut H::Session) -> anyhow::Result<()> {
+        H::persist_session(session).await
+    }
+    async fn refresh_session(session: &mut H::Session) -> anyhow::Result<()> {
+        H::refresh_session(session).await
+    }
     fn blocked(session: &H::Session, name: &str, arguments: &str) -> Option<ToolResult> {
         H::prior_blocked(session, name, arguments)
     }

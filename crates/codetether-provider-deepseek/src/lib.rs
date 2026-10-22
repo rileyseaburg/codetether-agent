@@ -11,10 +11,10 @@
 //! ).unwrap();
 //! assert!(provider.base_url.starts_with("https://"));
 //! ```
-mod state;
+mod catalog;
 mod provider_impl;
 mod request;
 mod response;
-mod catalog;
+mod state;
 mod transport;
 pub use state::DeepSeekProvider;

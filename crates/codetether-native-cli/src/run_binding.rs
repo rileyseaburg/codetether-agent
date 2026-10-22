@@ -17,6 +17,17 @@ macro_rules! impl_run_session {
             fn messages(&self) -> &[$crate::__private::Message] {
                 &self.messages
             }
+            fn message_count(&self) -> usize {
+                <$session>::message_count(self)
+            }
+            async fn build_checkpoint(
+                &self,
+                objective: &str,
+                max_steps: usize,
+                workspace: &::std::path::Path,
+            ) -> $crate::__private::Result<$crate::__private::RunCheckpoint> {
+                <$session>::build_run_checkpoint(self, objective, max_steps, workspace).await
+            }
             fn set_max_steps(&mut self, max_steps: Option<usize>) {
                 self.max_steps = max_steps;
             }

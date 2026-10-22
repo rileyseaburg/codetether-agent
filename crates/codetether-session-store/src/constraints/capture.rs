@@ -1,13 +1,13 @@
-//! Keep the bounded constraint prefix when acknowledged messages leave memory.
+//! Preserve full pinned sources when acknowledged messages leave memory.
 use super::super::state::Checkpoint;
 use codetether_context_policy::pages::PageKind;
 use codetether_provider_core::Message;
-/// Retain protected excerpts before acknowledged messages leave memory.
+/// Retain complete sources before acknowledged messages leave memory.
 /// # Arguments
-/// `state` retains at most eight excerpts; `messages` and `pages` are aligned;
+/// `state` retains full source records; `messages` and `pages` are aligned;
 /// `count` is the prefix being evicted.
 /// # Returns
-/// Unit after adding any eligible excerpts to the checkpoint.
+/// Unit after adding any eligible sources to the checkpoint.
 /// # Examples
 /// ```rust
 /// let mut state = codetether_session_store::Checkpoint::default();
@@ -16,13 +16,12 @@ use codetether_provider_core::Message;
 /// ```
 pub fn evicted(state: &mut Checkpoint, messages: &[Message], pages: &[PageKind], count: usize) {
     for (index, (message, page)) in messages.iter().zip(pages).take(count).enumerate() {
-        if state.constraints.len() == 8 {
-            break;
-        }
-        if *page == PageKind::Constraint
-            && let Some(text) = super::excerpt(message)
-        {
-            state.constraints.push((state.message_start + index, text));
+        let turn = state.message_start + index;
+        state
+            .constraints
+            .retain(|record| record.source_turn != turn);
+        if let Some(record) = super::ConstraintRecord::from_message(turn, message, *page) {
+            state.constraints.push(record);
         }
     }
 }

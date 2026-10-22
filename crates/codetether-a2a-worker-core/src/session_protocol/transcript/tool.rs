@@ -1,6 +1,6 @@
 use super::Host;
 
-/// Append a raw tool response with the shared tool-result message encoding.
+/// Append tool output and images with explicit execution status for future recovery.
 /// # Arguments
 /// `host` owns the transcript; `tool_call_id` identifies the call; `result`
 /// contains its output and status.
@@ -17,8 +17,13 @@ pub fn add_tool_result(
     tool_call_id: String,
     result: codetether_tool_core::ToolResult,
 ) {
-    host.append(codetether_tool_core::messages::raw_tool_result(
-        tool_call_id,
-        result,
-    ));
+    let status = if result.success { "success" } else { "failure" };
+    let mut message = codetether_tool_core::messages::raw_tool_result(tool_call_id, result);
+    if let Some(codetether_provider_core::ContentPart::ToolResult { content, .. }) =
+        message.content.first_mut()
+    {
+        // Keep original stdout whitespace and images; the standard renderer trims it.
+        *content = format!("Tool call feedback\n- status: {status}\n\nOutput:\n{content}");
+    }
+    host.append(message);
 }

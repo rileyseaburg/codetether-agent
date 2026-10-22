@@ -5,6 +5,7 @@
 //! [Source] supplies persisted constraints and offset information.
 mod api;
 mod execute;
+mod header_source;
 mod incremental;
 mod input;
 mod legacy;

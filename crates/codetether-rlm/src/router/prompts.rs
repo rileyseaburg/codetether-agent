@@ -1,4 +1,5 @@
 //! Query and system-prompt builders for RLM analysis.
+use super::prompts_context::context_compaction_prompt;
 
 /// Build a tool-specific analysis query.
 pub fn build_query_for_tool(tool_id: &str, args: &serde_json::Value) -> String {
@@ -22,21 +23,13 @@ pub fn build_query_for_tool(tool_id: &str, args: &serde_json::Value) -> String {
             format!("Summarize these web search results for query: \"{q}\". List the most relevant results with titles and URLs, and note why each is relevant. Be concise.")
         }
         "batch" => "Summarize the batch tool output. Group by sub-call, highlight failures/errors first, then key results. Keep actionable details: URLs, file paths, command outputs, and next steps.".into(),
-        "session_context" | "context_reset" => context_compaction_prompt(),
+        "session_context" | "context_reset" | "proactive_session_context" | "summary_index" => {
+            let prompt = context_compaction_prompt();
+            match args.get("target_tokens").and_then(serde_json::Value::as_u64) {
+                Some(target) => format!("{prompt}\n\nKeep the briefing within {target} tokens."),
+                None => prompt,
+            }
+        }
         _ => "Summarize this output concisely, extracting the most important information.".into(),
     }
-}
-
-fn context_compaction_prompt() -> String {
-    "You are a CONTEXT MEMORY SYSTEM. Create a BRIEFING for an AI assistant to continue this conversation.\n\n\
-     CRITICAL: The assistant will ONLY see your briefing - it has NO memory of the conversation.\n\n\
-     ## What to Extract\n\n\
-     1. **PRIMARY GOAL**: What is the user ultimately trying to achieve?\n\
-     2. **CURRENT STATE**: What has been accomplished? Current status?\n\
-     3. **LAST ACTIONS**: What just happened? (last 3-5 tool calls, their results)\n\
-     4. **ACTIVE FILES**: Which files were modified?\n\
-     5. **PENDING TASKS**: What remains to be done?\n\
-     6. **CRITICAL DETAILS**: File paths, error messages, specific values, decisions made\n\
-     7. **NEXT STEPS**: What should happen next?\n\n\
-     Be SPECIFIC with file paths, function names, error messages.".into()
 }

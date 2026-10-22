@@ -17,14 +17,16 @@ async fn worker_image_recording_denial_is_text_only() {
         &None,
         ("denied-image".into(), "write".into(), serde_json::json!({})),
     )
-    .await;
+    .await
+    .unwrap();
     assert_eq!(session.messages.len(), 1);
     let message = &session.messages[0];
     assert!(matches!(message.role, Role::Tool));
     assert_eq!(message.content.len(), 1);
     assert!(
         matches!(&message.content[0], ContentPart::ToolResult { tool_call_id, content }
-        if tool_call_id == "denied-image" && content ==
+        if tool_call_id == "denied-image" && content.ends_with(
         "Tool 'write' requires approval but auto-approve policy is None")
+        && content.contains("- status: failure"))
     );
 }

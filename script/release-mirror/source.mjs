@@ -24,11 +24,14 @@ export async function sourceRelease(tag) {
 }
 /** @param {SourceRelease} release @returns {Promise<Map<string, string>>} */
 export async function checksums(release) {
-  const name = `SHA256SUMS-${release.tag_name}.txt`;
+  const manifests = release.assets.filter(asset =>
+    asset.name === `SHA256SUMS-${release.tag_name}.txt` || asset.name === 'SHA256SUMS');
+  assert.equal(manifests.length, 1, 'Expected exactly one source checksum manifest');
+  const name = manifests[0].name;
   const bytes = await download(`${sourceRepo}/releases/download/${release.tag_name}/${name}`);
   const result = new Map([[name, digest(bytes)]]);
   for (const line of bytes.toString().trim().split(/\r?\n/)) {
-    const match = line.match(/^([a-f0-9]{64}) [ *]([A-Za-z0-9._-]+)$/i);
+    const match = line.match(/^([a-f0-9]{64})[ \t]+\*?([A-Za-z0-9._-]+)$/i);
     assert(match, 'Invalid checksum manifest');
     assert(!result.has(match[2]), 'Duplicate checksum entry');
     result.set(match[2], match[1].toLowerCase());

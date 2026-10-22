@@ -1,16 +1,16 @@
 //! Compression-safe formatting for hard-pinned constraints.
 //!
-//! [prepend_state_header] combines persisted prefix lines with live pin
-//! excerpts, retaining the original cap and source order.
+//! [prepend_state_header] combines complete persisted and live pinned sources.
+//! Supersession is explicit; active text is never truncated or silently dropped.
 use crate::pages::PageKind;
 use codetether_provider_core::{ContentPart, Message, Role};
 
-const MAX_CONSTRAINTS: usize = 8;
-
-const EXCERPT_CHARS: usize = 120;
 mod apply;
-pub use apply::prepend_state_header;
+pub use apply::{prepend_state_header, prepend_state_header_with_corrections};
+mod correction;
+pub use correction::ConstraintCorrection;
 mod constraints;
+mod corrected_text;
 use constraints::pinned_constraints;
-mod excerpt;
-use excerpt::first_text_excerpt;
+mod record;
+pub use record::ConstraintRecord;

@@ -28,7 +28,7 @@
 //! ## Examples
 //!
 //! ```rust
-//! use codetether_context_policy::delegation::skills;
+//! use codetether_context_policy::delegation::skills as delegation_skills;
 //!
 //! assert_eq!(delegation_skills::MODEL_CALL, "model_call");
 //! assert!(delegation_skills::ALL.contains(&"swarm_dispatch"));

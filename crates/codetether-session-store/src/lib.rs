@@ -13,6 +13,8 @@ pub mod events;
 pub mod id;
 pub mod identity;
 pub mod marker;
+pub mod pin_edits;
+mod pin_read;
 pub mod read;
 pub mod records;
 pub mod schema;
@@ -51,11 +53,15 @@ pub use restoration::{Restore, TailLoad, load, load_sync, restore_consumer};
 pub mod legacy;
 
 pub mod metadata;
+/// Read-only canonical user-message evidence for goal provenance.
+pub mod user_source;
 pub mod window;
 
+mod fold_messages;
 /// Persistence lifecycle and native indexing notifications.
 pub mod lifecycle;
 mod messages;
+pub use fold_messages::fold_messages;
 pub use messages::read_messages;
 /// Legacy-aware consumer snapshots from explicit or resolved session locations.
 pub mod consumer;

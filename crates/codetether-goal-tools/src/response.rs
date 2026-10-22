@@ -31,3 +31,15 @@ fn value(goal: &codetether_goal_core::Goal) -> Value {
         "successCriteria": goal.success_criteria, "forbidden": goal.forbidden,
     })
 }
+
+pub(crate) fn with_source(
+    state: &TaskState,
+    events: &[codetether_goal_core::TaskEvent],
+) -> ToolResult {
+    let goal = state.goal.as_ref().map(|goal| {
+        let mut result = value(goal);
+        result["source"] = super::response_source::find(events, goal);
+        result
+    });
+    ToolResult::success(serde_json::to_string_pretty(&json!({ "goal": goal })).unwrap_or_default())
+}

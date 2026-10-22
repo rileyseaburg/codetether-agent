@@ -10,6 +10,8 @@ use std::sync::Arc;
 /// Preserve the application's snapshot, producer and summary persistence behavior.
 #[async_trait]
 pub trait SummarySource: codetether_context_loader::Source {
+    /// Loaded transcript in the same coordinates as the summary index.
+    fn messages(&self) -> &[codetether_provider_core::Message];
     /// Snapshot of the producer's session-specific inputs.
     type Prepared: Send;
     /// Borrow the existing cache for an exact range lookup.

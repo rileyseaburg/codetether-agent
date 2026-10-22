@@ -2,6 +2,10 @@
 resolver = "3"
 default-members = ["crates/codetether-agent"]
 members = [
+    "crates/codetether-diagnostics-bridge",
+    "crates/codetether-rust-repair",
+    "crates/codetether-rust-build",
+    "crates/codetether-rust-build-tool",
     "crates/codetether-native-mcp-server",
     "crates/codetether-native-goal-tools",
     "crates/codetether-native-validation",

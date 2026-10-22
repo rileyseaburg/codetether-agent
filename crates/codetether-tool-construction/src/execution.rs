@@ -5,6 +5,9 @@ use codetether_tool_registry::catalog::ToolKind;
 use std::sync::Arc;
 pub(super) fn create(kind: ToolKind, host: &impl Host) -> Option<Arc<dyn Tool>> {
     Some(match kind {
+        ToolKind::RustBuildPlan => {
+            Arc::new(codetether_rust_build_tool::RustBuildPlanTool) as Arc<dyn Tool>
+        }
         ToolKind::TodoRead => Arc::new(codetether_todo::TodoReadTool::new()) as Arc<dyn Tool>,
         ToolKind::TodoWrite => Arc::new(codetether_todo::TodoWriteTool::new()) as Arc<dyn Tool>,
         ToolKind::Question => {

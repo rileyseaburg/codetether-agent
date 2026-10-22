@@ -20,6 +20,7 @@
 /// Tool IDs whose `execute()` is guaranteed not to mutate the filesystem,
 /// network-visible resources, or internal agent state.
 const READ_ONLY_TOOL_IDS: &[&str] = &[
+    "rust_build_plan",
     "read",
     "image",
     "list",

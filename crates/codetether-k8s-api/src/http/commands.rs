@@ -1,11 +1,7 @@
 //! commands over application-owned Kubernetes services.
 use super::HttpState;
 use crate::{ScaleRequest, SpawnSubagentRequest};
-use axum::{
-    Json,
-    extract::State,
-    http::StatusCode,
-};
+use axum::{Json, extract::State, http::StatusCode};
 
 pub(super) async fn k8s_scale<S: HttpState>(
     State(state): State<S>,

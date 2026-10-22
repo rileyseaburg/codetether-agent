@@ -44,5 +44,8 @@ pub(super) fn convert(messages: &[Message]) -> Result<Vec<ChatCompletionRequestM
 }
 
 #[cfg(test)]
+#[path = "chat_messages/runtime_tests.rs"]
+mod runtime_tests;
+#[cfg(test)]
 #[path = "chat_messages/tests.rs"]
 mod tests;

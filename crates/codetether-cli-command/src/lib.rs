@@ -17,6 +17,11 @@ mod tests;
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+    /// Explicit ra-jit development builds and ordinary Cargo correctness checks.
+    Rust(codetether_rust_build::RustArgs),
+    /// Propose a reviewed Rust diagnostic repair from a bounded stdin snapshot; never apply it.
+    RustPropose(codetether_rust_repair::RustRepairArgs),
+
     /// Start interactive terminal UI
     Tui(TuiArgs),
 

@@ -23,9 +23,7 @@ use super::*;
 /// let action = parse_workspace_symbols_response(response).unwrap();
 /// assert!(matches!(action, LspActionResult::WorkspaceSymbols { symbols } if symbols.is_empty()));
 /// ```
-pub fn parse_workspace_symbols_response(
-    response: JsonRpcResponse,
-) -> Result<LspActionResult> {
+pub fn parse_workspace_symbols_response(response: JsonRpcResponse) -> Result<LspActionResult> {
     if let Some(error) = response.error {
         return Ok(LspActionResult::Error {
             message: error.message,

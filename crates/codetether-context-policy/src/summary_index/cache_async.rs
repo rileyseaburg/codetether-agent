@@ -7,10 +7,12 @@ use super::cache::SummaryIndex;
 use super::types::{SummaryNode, SummaryRange};
 
 impl SummaryIndex {
-    /// Main read path for derivation policies.
+    /// Low-level cache lookup and insertion; callers must first validate sources.
     ///
     /// Cache hit: returns immediately. Cache miss: calls `producer`
     /// which encapsulates RLM summarisation, then caches the result.
+    /// Call [`Self::retain_valid`] with the current transcript before this method;
+    /// range equality alone does not establish content validity.
     ///
     /// # Errors
     ///

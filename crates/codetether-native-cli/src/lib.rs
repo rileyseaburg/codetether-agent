@@ -20,7 +20,7 @@ pub mod __private {
     pub use codetether_native_providers::ProviderRegistry;
     pub use codetether_provider_core::{ContentPart, Message, Role, Usage};
     pub use codetether_run_policy::SessionPolicy;
-    pub use codetether_run_resume::{RunSession, SessionSource};
+    pub use codetether_run_resume::{RunCheckpoint, RunSession, SessionSource};
     pub use codetether_run_runtime::Session as RuntimeSession;
     pub use codetether_session_events::{SessionEvent, SessionResult};
     pub use tokio::sync::mpsc;

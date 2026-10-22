@@ -1,5 +1,6 @@
 //! Migrated application stream regression.
 use super::*;
+use serde_json::Value;
 #[test]
 fn stream_tool_chunks_keep_same_call_id_when_followup_delta_omits_id() {
     let mut chunks = Vec::new();

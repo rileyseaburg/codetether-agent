@@ -2,10 +2,15 @@
 //!
 //! ForkSession supplies native fields and storage. create validates the exact
 //! source user message, creates a fresh identity and copies only prior context.
+#[cfg(test)]
+mod constraint_tests;
+mod constraints;
 mod error;
 mod host;
 pub mod interactive;
 mod metadata;
+#[cfg(test)]
+mod progress_tests;
 mod repository;
 mod service;
 pub use error::ForkError;

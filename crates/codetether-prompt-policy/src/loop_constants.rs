@@ -28,8 +28,7 @@ pub const MAX_CONSECUTIVE_CODESEARCH_NO_MATCHES: u32 = 5;
 /// we give up and surface the report to the caller.
 pub const POST_EDIT_VALIDATION_MAX_RETRIES: u8 = 3;
 
-/// Steps with no file mutations (write/edit/bash) before we nudge the model
-/// to either make progress or provide a final answer.
+/// Repeated returned observations before offering nonterminal recovery guidance.
 pub const MAX_STEPS_WITHOUT_PROGRESS: u32 = 15;
 
 /// Nudge sent when the model keeps trying punctuation/casing variants of the
@@ -45,7 +44,5 @@ pub const NATIVE_TOOL_PROMISE_NUDGE: &str = "You said you would use tools. Do no
 call or promise a next step. Emit the actual tool call now. If native tool calling fails, emit a \
 <tool_call> JSON block immediately instead of prose.";
 
-/// Nudge when the model is making many tool calls but not writing any files.
-pub const NO_PROGRESS_NUDGE: &str = "You have made many tool calls without writing or editing \
-any files. If you are still investigating, that is fine — but if you have gathered enough information, \
-stop reading/searching and start implementing. Provide a final answer if you cannot complete the task.";
+/// Compatibility guidance for repeated evidence; read-only investigation is valid.
+pub const NO_PROGRESS_NUDGE: &str = "Recent tools returned repeated evidence. Investigate the next uncertainty or adjust the approach. Legitimate waiting and read-only investigation may continue; this guidance is not a reason to end the task.";

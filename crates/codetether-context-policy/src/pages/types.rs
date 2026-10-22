@@ -17,6 +17,9 @@ pub enum PageKind {
     /// Hard-pinned invariants the agent must honour — codetether's
     /// `.tasks.jsonl` goal entries map here natively.
     Constraint,
+    /// A formerly pinned source replaced by a later absolute transcript turn.
+    /// Its text remains durable evidence but is no longer an active constraint.
+    SupersededConstraint { by_turn: usize },
     /// Current objective and step. Live plan state.
     Plan,
     /// Scoped user or project preferences.

@@ -48,7 +48,12 @@ pub async fn produce_summary<B>(
     let slice = messages
         .get(range.start..range.end)
         .context("summary_for range out of bounds")?;
-    let input = super::request::format(slice, target_tokens);
+    let provenance = codetether_context_policy::summary_index::SummaryProvenance::new(
+        slice,
+        "background-or-fallback",
+        Some(model),
+    )?;
+    let input = super::request::format(slice, target_tokens, &provenance);
     let content = super::background::summary_or_fallback(
         &input,
         target_tokens,
@@ -63,5 +68,6 @@ pub async fn produce_summary<B>(
         target_tokens,
         granularity,
         generation,
+        provenance: Some(provenance),
     })
 }

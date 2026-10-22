@@ -17,7 +17,7 @@ pub enum QueryKind {
 pub fn classify(tool_id: &str, query: &str) -> QueryKind {
     if matches!(
         tool_id,
-        "session_context" | "context_reset" | "summary_index"
+        "session_context" | "context_reset" | "summary_index" | "proactive_session_context"
     ) {
         return QueryKind::Semantic;
     }

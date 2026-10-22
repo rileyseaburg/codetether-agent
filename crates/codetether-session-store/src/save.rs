@@ -31,19 +31,26 @@ pub async fn save<S: Snapshot + Sync>(session: &S, path: &Path) -> Result<bool> 
         };
     }
     let batch = crate::prepare(session, &checkpoint)?;
+    let edits: Vec<_> = checkpoint
+        .pin_sources
+        .iter()
+        .filter(|source| source.original != source.page)
+        .cloned()
+        .collect();
     anyhow::ensure!(
         !checkpoint.read_only,
         "cannot save a historical consumer range as a session"
     );
-    if batch.unchanged(&checkpoint) {
+    if edits.is_empty() && batch.unchanged(&checkpoint) {
         return Ok(false);
     }
     let owned_path = path.to_path_buf();
     let header = batch.header.clone();
+    let committed_edits = edits.clone();
     let revision = tokio::task::spawn_blocking(move || {
         let ends = (batch.messages.end, batch.tools.end);
         super::marker::check(&owned_path, &batch.id)?;
-        let revision = super::transaction::commit(&owned_path, &batch)?;
+        let revision = super::transaction::commit_with_pins(&owned_path, &batch, &edits)?;
         super::marker::create(&owned_path, &batch.id)?;
         anyhow::Ok((revision, ends))
     })
@@ -53,6 +60,20 @@ pub async fn save<S: Snapshot + Sync>(session: &S, path: &Path) -> Result<bool> 
     checkpoint.message_end = revision.1.0;
     checkpoint.tool_end = revision.1.1;
     checkpoint.header = header;
+    for edit in committed_edits {
+        checkpoint
+            .constraints
+            .retain(|source| source.source_turn != edit.index);
+        if let Some(source) =
+            crate::constraints::ConstraintRecord::from_message(edit.index, &edit.message, edit.page)
+        {
+            checkpoint.constraints.push(source);
+        }
+    }
+    checkpoint
+        .constraints
+        .sort_by_key(|source| source.source_turn);
+    checkpoint.pin_sources.clear();
     *session.state().0.lock().unwrap() = checkpoint;
     clean(session);
     Ok(true)

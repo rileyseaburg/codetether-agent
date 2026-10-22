@@ -41,10 +41,10 @@ fn summary_cache_miss_falls_back_to_raw_packing_without_io() {
 }
 
 #[test]
-fn preserves_pins_and_skips_summaries_that_overlap_them() {
+fn preserves_pins_alongside_summaries_covering_omitted_neighbors() {
     let (index, _) = fixtures::prepared();
     let mut keep = [true, false, true];
     let gaps = select(&index, &mut keep, &[1000, 1000, 1], vec![1, 0], 100);
-    assert!(gaps.is_empty());
+    assert_eq!(gaps.len(), 1);
     assert_eq!(keep, [true, false, true]);
 }

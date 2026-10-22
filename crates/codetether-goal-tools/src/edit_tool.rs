@@ -41,7 +41,7 @@ impl<H: Host + 'static> Tool for EditGoalTool<H> {
     fn description(&self) -> &str {
         "Edit an existing goal only when the user explicitly requests it. \
          Read get_goal first and supply its goalId and updatedAt. \
-         Budget controls are human-only and unavailable through model tools. \
+         Budget controls require the human TUI or authenticated API and are unavailable through model tools. \
          Resume is separate. Never clear a goal to bypass a limit on your own. \
          Completion still requires update_goal."
     }

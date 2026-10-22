@@ -7,6 +7,10 @@ macro_rules! __session_lifecycle_history {
         impl $name {
             /// Append a message to the transcript and bump `updated_at`.
             pub fn add_message(&mut self, message: $crate::__private::Message) {
+                let source_turn = self.message_count();
+                self.metadata
+                    .progress
+                    .observe_message(&message, source_turn);
                 $crate::__private::window::append(
                     $crate::__private::window::WorkingSet {
                         id: &self.id,

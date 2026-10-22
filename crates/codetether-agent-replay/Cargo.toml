@@ -7,8 +7,12 @@ license = "MIT"
 description = "Agent tool-call batching, policy gating and result replay"
 
 [dependencies]
+anyhow = "1"
 async-trait = "0.1"
 codetether-agent-core = { path = "../codetether-agent-core", version = "0.1.0" }
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
 futures = "0.3"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }

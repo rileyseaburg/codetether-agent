@@ -9,8 +9,13 @@ pub async fn trigger_next(view: &mut impl Dispatch) {
     if view.processing() {
         return;
     }
-    let Some(task) = view.dequeue_task() else {
-        return;
+    let task = loop {
+        let Some(task) = view.dequeue_task() else {
+            return;
+        };
+        if !view.task_delivered(&task) {
+            break task;
+        }
     };
     view.set_active_task(task.clone());
     announce(view, &task);
@@ -26,3 +31,7 @@ fn announce(view: &mut impl Presentation, task: &IncomingTask) {
     view.set_status(format!("Executing remote task {}", task.task_id));
     view.scroll_to_bottom();
 }
+
+#[cfg(test)]
+#[path = "dispatch_tests.rs"]
+mod tests;

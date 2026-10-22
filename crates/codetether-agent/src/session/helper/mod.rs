@@ -12,6 +12,7 @@ pub use codetether_tool_call_parser as bare_json;
 pub use codetether_tool_catalog as bootstrap;
 pub mod compression;
 pub mod confirmation;
+mod context_refresh;
 pub use codetether_cost_guard as cost_guard;
 pub mod defaults;
 pub use codetether_edit_policy as edit;

@@ -9,6 +9,7 @@ mod images;
 mod parallel;
 mod policy;
 mod record;
+mod sequential;
 pub use batch::execute;
 use codetether_agent_core::ToolUse;
 use codetether_provider_core::{ContentPart, Message, Role};

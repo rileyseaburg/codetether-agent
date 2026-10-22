@@ -20,6 +20,7 @@ async fn summary_waits_for_an_existing_writer() {
         target_tokens: 32,
         granularity: Granularity::Turn,
         generation: 1,
+        provenance: None,
     };
     let writer = connection::open(&path).unwrap();
     writer.execute_batch("BEGIN IMMEDIATE").unwrap();

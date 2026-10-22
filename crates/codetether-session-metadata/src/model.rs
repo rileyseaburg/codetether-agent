@@ -63,6 +63,15 @@ pub struct SessionMetadata {
     /// Resumable agent-loop checkpoint.
     #[serde(default)]
     pub run_checkpoint: Option<codetether_run_checkpoint::RunCheckpoint>,
+    /// Durable tombstone preventing an old fallback sidecar from reviving a cleared run.
+    #[serde(default)]
+    pub run_checkpoint_cleared: bool,
+    /// Bounded source-linked tool observations shared by all session continuations.
+    #[serde(default)]
+    pub progress: codetether_repeat_guard::ProgressLedger,
+    /// Exact source spans replaced by later user messages, retained across eviction.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub constraint_corrections: Vec<codetether_context_policy::state_header::ConstraintCorrection>,
     /// Runtime-only object-storage history sink configuration.
     #[serde(skip)]
     pub history_sink: Option<codetether_history_sink::HistorySinkConfig>,

@@ -19,5 +19,7 @@ pub trait ResponseHost: Send {
     /// Append the complete assistant message to the session.
     fn append_message(&mut self, message: Message);
     /// Execute one tool call and record its result using host approval policy.
-    async fn execute_tool_call(&mut self, tool_call: ToolCall);
+    /// # Errors
+    /// Stops the remaining batch when session state cannot be reconciled.
+    async fn execute_tool_call(&mut self, tool_call: ToolCall) -> Result<()>;
 }

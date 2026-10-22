@@ -44,14 +44,15 @@ pub async fn create<S: ForkSession>(
         "{} (edited)",
         source.title().unwrap_or("Conversation")
     )));
-    branch.set_metadata(crate::metadata::branch_metadata(
-        source.metadata(),
-        branch.id(),
-        source.agent(),
-    ));
+    let (pages, corrections) = crate::constraints::retained(source, 0, index);
+    let mut metadata =
+        crate::metadata::branch_metadata(source.metadata(), branch.id(), source.agent());
+    metadata.constraint_corrections = corrections;
+    branch.set_metadata(metadata);
     branch.set_agent_name(source.agent());
     for message in source.messages().iter().take(index) {
         branch.add_message(message.clone());
     }
+    branch.replace_pages(pages);
     Ok(branch)
 }

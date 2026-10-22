@@ -39,6 +39,8 @@ pub struct App {
 /// ```
 #[rustfmt::skip]
 pub struct AppState {
+    /// Most recent runtime event, independent of watchdog keepalives.
+    pub last_activity_at: std::time::SystemTime,
     pub view: codetether_tui_navigation::view_state::ViewState, pub messages: Vec<ChatMessage>, pub composer: codetether_composer_view::ComposerState,
     pub chat_viewport: codetether_chat_layout::ChatScrollState, pub(crate) history_page: super::history_page::HistoryPageState, pub approval_preview_scroll: u16, pub tool_viewport: codetether_tool_panel::ToolPreviewScrollState,
     pub protocol_registry: codetether_protocol_view::RegistryState, pub status: String, pub processing: bool, pub approval_waiting: bool, pub session_id: Option<String>, pub session_picker: codetether_session_picker::SessionPickerState, pub cwd_display: String,

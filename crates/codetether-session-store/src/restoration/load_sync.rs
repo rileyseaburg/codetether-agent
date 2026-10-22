@@ -53,6 +53,7 @@ where
         tool_end: tools,
         versions: [0; 3],
         constraints: crate::constraints::read(&tx, session.id(), start)?,
+        pin_sources: Vec::new(),
     };
     super::finish_restore::finish(&mut session, &tx, start, messages)?;
     Ok(TailLoad {

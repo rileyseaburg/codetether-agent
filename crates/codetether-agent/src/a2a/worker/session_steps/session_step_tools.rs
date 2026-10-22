@@ -6,6 +6,8 @@ mod host;
 mod image_fixture;
 #[cfg(test)]
 mod image_tests;
+#[cfg(test)]
+mod progress_tests;
 
 #[cfg(test)]
 include!("session_step_tools_test_imports.rs");

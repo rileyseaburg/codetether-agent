@@ -10,6 +10,7 @@ description = "Scalar tool construction grouped by runtime responsibility"
 tetherscript = []
 
 [dependencies]
+codetether-rust-build-tool = { path = "../codetether-rust-build-tool", version = "0.1.0" }
 codetether-rlm = { path = "../codetether-rlm", version = "0.1.0" }
 codetether-rlm-tool = { path = "../codetether-rlm-tool", version = "0.1.0" }
 codetether-ralph-tool = { path = "../codetether-ralph-tool", version = "0.1.0" }

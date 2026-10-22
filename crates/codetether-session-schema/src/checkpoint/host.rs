@@ -20,6 +20,12 @@ macro_rules! __session_checkpoint_host {
             ) {
                 self.metadata.run_checkpoint = checkpoint;
             }
+            fn checkpoint_cleared(&self) -> bool {
+                self.metadata.run_checkpoint_cleared
+            }
+            fn set_checkpoint_cleared(&mut self, cleared: bool) {
+                self.metadata.run_checkpoint_cleared = cleared;
+            }
             fn sessions_dir() -> $crate::__private::anyhow::Result<::std::path::PathBuf> {
                 $name::sessions_dir()
             }

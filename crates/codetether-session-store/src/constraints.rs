@@ -1,19 +1,18 @@
-//! Preserve the existing eight-excerpt hard-constraint header across window eviction.
+//! Index complete source-backed constraints and their explicit supersessions.
 mod capture;
 mod prefix;
-mod text;
 use anyhow::Result;
 pub use capture::evicted;
 use codetether_context_policy::pages::PageKind;
+pub use codetether_context_policy::state_header::ConstraintRecord;
 use codetether_provider_core::Message;
 pub use prefix::prefix;
 use rusqlite::{Connection, Transaction, params};
-pub use text::excerpt;
-/// Index a protected page excerpt inside the active transaction.
+/// Index a complete pinned source inside the active transaction.
 /// # Arguments
 /// `tx`, `id`, `seq`, `message` and `page` identify a classified message.
 /// # Returns
-/// Unit; only constraint pages with nonempty text create an index row.
+/// Unit; only active or superseded constraint pages with text create a row.
 /// # Errors
 /// SQLite insertion fails.
 /// # Examples
@@ -30,21 +29,19 @@ pub fn record(
     message: &Message,
     page: PageKind,
 ) -> Result<()> {
-    if page == PageKind::Constraint
-        && let Some(text) = excerpt(message)
-    {
+    if let Some(record) = ConstraintRecord::from_message(usize::try_from(seq)?, message, page) {
         tx.execute(
             "INSERT INTO constraints VALUES (?1,?2,?3)",
-            params![id, seq, text],
+            params![id, seq, serde_json::to_string(&record)?],
         )?;
     }
     Ok(())
 }
-/// Read up to eight protected excerpts preceding a sequence boundary.
+/// Read all complete pinned sources preceding a sequence boundary.
 /// # Arguments
 /// `db` and `id` select the session; `before` is the exclusive sequence limit.
 /// # Returns
-/// Ordered sequence numbers and excerpt text.
+/// Ordered source records, including supersession metadata.
 /// # Errors
 /// SQLite reading fails.
 /// # Examples
@@ -54,11 +51,27 @@ pub fn record(
 /// let result = read(db, "session-123", 100)?;
 /// # Ok(()) }
 /// ```
-pub fn read(db: &Connection, id: &str, before: usize) -> Result<Vec<(usize, String)>> {
+pub fn read(db: &Connection, id: &str, before: usize) -> Result<Vec<ConstraintRecord>> {
     let mut query = db.prepare(
-        "SELECT seq,excerpt FROM constraints WHERE session_id=?1 AND seq<?2 ORDER BY seq LIMIT 8",
+        "SELECT seq,excerpt FROM constraints WHERE session_id=?1 AND seq<?2 ORDER BY seq",
     )?;
-    Ok(query
-        .query_map(params![id, before as i64], |r| Ok((r.get(0)?, r.get(1)?)))?
-        .collect::<Result<_, _>>()?)
+    query
+        .query_map(
+            params![id, i64::try_from(before).unwrap_or(i64::MAX)],
+            |row| Ok((row.get::<_, usize>(0)?, row.get::<_, String>(1)?)),
+        )?
+        .map(|row| {
+            let (seq, text) = row?;
+            let record: ConstraintRecord = serde_json::from_str(&text)?;
+            anyhow::ensure!(
+                record.source_turn == seq && record.has_valid_hash(),
+                "constraint source integrity mismatch at turn {seq}"
+            );
+            anyhow::ensure!(
+                record.superseded_by.is_none_or(|next| next > seq),
+                "invalid constraint supersession at turn {seq}"
+            );
+            Ok(record)
+        })
+        .collect()
 }

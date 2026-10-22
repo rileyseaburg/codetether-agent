@@ -23,6 +23,8 @@ pub fn run(tx: &Transaction<'_>, version: i64) -> Result<()> {
             SELECT r.session_id,s.revision,r.kind,r.seq,'put',r.body
             FROM records r JOIN sessions s ON s.id=r.session_id;",
         )?;
+    }
+    if version < 3 {
         constraints::backfill(tx)?;
     }
     Ok(())

@@ -13,11 +13,9 @@ impl LoopState {
     pub fn reset_goal_turn(&mut self) {
         self.output.clear();
         self.validation_retries = 0;
-        self.repeat_guard = Default::default();
         self.codesearch_misses = 0;
         self.build_retries = 0;
         self.native_retries = 0;
-        self.steps_since_write = 0;
         self.turn_id = uuid::Uuid::new_v4().to_string();
     }
 }

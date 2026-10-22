@@ -1,8 +1,11 @@
 //! Execute a non-streaming completion request.
+use super::map_error::map_error;
+use crate::{
+    DeepSeekProvider, request,
+    response::{self, DsResponse},
+};
 use anyhow::{Context, Result};
 use codetether_provider_core::{CompletionRequest, CompletionResponse};
-use crate::{DeepSeekProvider, request, response::{self, DsResponse}};
-use super::map_error::map_error;
 impl DeepSeekProvider {
     pub(crate) async fn complete_non_streaming(
         &self,

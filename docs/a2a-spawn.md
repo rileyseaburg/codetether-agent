@@ -85,7 +85,7 @@ cross-LAN/WAN deployments where multicast isn't routable.
 | Mode | Command | Bind | What it does |
 |---|---|---|---|
 | **Spawn** | `codetether spawn` | `0.0.0.0` + OS-assigned port (configurable) | Standalone headless A2A peer with discovery + auto-intro. **Use for two-terminal / multi-repo / decentralized agent meshes when you don't need a TUI.** |
-| **TUI + A2A** | `codetether tui --a2a-port <P> --a2a-peer <URL>` | configurable | Interactive TUI **plus** the same A2A peer endpoint inside the same process. **Use when you want to drive the agent yourself in the TUI and have it reachable as a peer.** Inbound A2A messages are answered by a fresh background session — they do not appear in your TUI conversation. |
+| **TUI + A2A** | `codetether tui --a2a-port <P> --a2a-peer <URL>` | configurable | Interactive TUI plus an A2A peer endpoint. Inbound peer turns run in the visible conversation by default; `/a2a headless` selects background sessions. |
 | Serve | `codetether serve` | `127.0.0.1:4096` | Headless A2A API with optional mDNS. No outbound peer discovery. |
 | Worker | `codetether worker --server URL` | (outbound) | Connects *to* a CodeTether server as a worker. No inbound API. |
 | Swarm | `codetether swarm` | (in-process) | Spawns sub-agents inside one process. No external API. |
@@ -114,19 +114,35 @@ codetether tui
 
 That's the whole setup. Each TUI starts as normal and *also* exposes
 `/.well-known/agent.json` and the JSON-RPC endpoint on an OS-assigned
-port. mDNS handles peer discovery within ~3 s. From inside one TUI,
-you can use the `http` tool (or any normal session tool) to POST a
-`message/send` to the other side's URL (look in the startup log for
-`A2A peer listening` to find the chosen port).
+port. mDNS handles peer discovery within ~3 s. Use the `agent` tool's
+`list` action to find peers, then send a conversational turn:
 
-**Important — inbound A2A and the TUI session do not share state.**
-When the peer (or curl) sends `message/send`, the request is handled
-by a fresh `Session` spun up by the A2A handler — exactly the same
-way `codetether spawn` answers. The reply goes back over A2A. **The
-exchange does not appear in your TUI's chat view, and your TUI
-session does not see it.** If you want the inbound message to show up
-in the TUI conversation, that's the routed-into-TUI variant, which is
-a separate feature (not in this build).
+```json
+{"action":"message","name":"<peer>","message":"What do you think of this approach?"}
+```
+
+The default call returns the peer's answer directly to the initiating model.
+With `"detach":true`, it returns immediately and later delivers the answer
+(or transport failure) to the originating session's inbox. An active model
+reads it at a prompt boundary; an idle TUI queues a continuation. The same
+reply is not replayed if the active model already consumed it. `/agents`
+also retains the peer transcript.
+
+When answering an inbound peer request, return acknowledgements, questions,
+and results in that turn's response. The sender already has a reply channel
+open. Starting another `agent message` back to the waiting sender would
+launch a separate task and can create a circular wait, so that callback is
+rejected until the inbound request finishes. Messages to other peers remain
+available.
+
+Follow-ups without an explicit `context_id` reuse a conversation scoped to
+the originating session and peer. Supply a different `context_id` to start
+or resume a separate remote thread. Each peer can answer, ask questions,
+or disagree through the same `agent` message action.
+
+Inbound peer turns appear in the receiving TUI's conversation by default
+and wait until its current turn finishes. Use `/a2a headless` for separate
+background sessions, or `/a2a accept` to restore visible-session handling.
 
 ### TUI A2A flag reference
 
@@ -399,7 +415,7 @@ shared `CODETETHER_AUTH_TOKEN` across routed or untrusted networks.
 
 ## Model resolution for inbound messages
 
-When a spawned agent receives a `message/send`, it creates a fresh `Session` (`src/session/mod.rs`) and runs `session.prompt(text)`. The model used is resolved by `configure_a2a_session`:
+When a spawned agent receives a `message/send`, it resumes the conversation identified by `context_id`, or creates a session if that conversation does not exist. Requests without a context start a fresh session. It then runs `session.prompt(text)`. The model used is resolved by `configure_a2a_session`:
 
 1. `CODETETHER_DEFAULT_MODEL` env var (trimmed, non-empty).
 2. Otherwise `default_model` from `Config::load()`.

@@ -23,6 +23,7 @@ pub async fn run<S: crate::SummarySource>(
         Some(s) => s,
         None => return Ok(ToolResult::error("No active session.")),
     };
+    super::produce::validate_cache(&mut session);
     if let Some(node) = session.summary_index().get(parsed.range) {
         return Ok(respond::cached(node));
     }

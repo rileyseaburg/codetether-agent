@@ -3,8 +3,7 @@
 use serde_json::json;
 
 use crate::tool::Tool;
-use crate::tool::tetherscript::TetherScriptPluginTool;
-use crate::tool::tetherscript::input::TetherScriptPluginInput;
+use codetether_tetherscript_tool::input::TetherScriptPluginInput;
 
 #[test]
 fn parses_computer_grant_fields() {

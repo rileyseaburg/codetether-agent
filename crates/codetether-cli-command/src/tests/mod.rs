@@ -12,5 +12,6 @@ type Cli = crate::root::Cli<TestApplication>;
 
 mod access_mode;
 mod defaults;
+mod rust_build;
 mod vault_help;
 mod windows;

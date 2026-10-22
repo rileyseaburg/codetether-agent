@@ -50,5 +50,6 @@ pub mod __private {
     pub use codetether_collaboration_state::execution::AgentRunGuard;
     pub use codetether_provider_core::{Message, Usage};
     pub use codetether_tool_core::ToolResult;
+    pub use serde_json;
     pub use serde_json::Value;
 }

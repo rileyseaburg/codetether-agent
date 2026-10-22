@@ -15,6 +15,8 @@ mod host;
 mod legacy_answer;
 mod legacy_process;
 mod prompts;
+mod prompts_context;
+pub(crate) use prompts::build_query_for_tool;
 mod prompts_system;
 mod should_route;
 mod truncate;

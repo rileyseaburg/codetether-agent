@@ -20,6 +20,8 @@ macro_rules! declare_frontend_redraw {
             session: &$session,
             last_draw: &mut Option<::std::time::Instant>,
         ) -> ::anyhow::Result<()> {
+            // Keep the activity-age badge moving even after processing stops.
+            app.state.needs_redraw |= last_draw.is_some_and(|at| at.elapsed().as_secs() >= 1);
             $crate::redraw::draw_if_ready(
                 &mut host::Native {
                     terminal,

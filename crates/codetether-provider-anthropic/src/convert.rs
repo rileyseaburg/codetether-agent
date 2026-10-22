@@ -46,10 +46,7 @@ use codetether_provider_core::{Message, Role};
 ///
 ///     let (system, messages) = codetether_provider_anthropic::encode_messages(&[], false);
 ///     assert!(system.is_none() && messages.is_empty());
-pub fn messages(
-    messages: &[Message],
-    enable_cache: bool,
-) -> (Option<Vec<Value>>, Vec<Value>) {
+pub fn messages(messages: &[Message], enable_cache: bool) -> (Option<Vec<Value>>, Vec<Value>) {
     let mut system_blocks = Vec::new();
     let mut api_messages = Vec::new();
     let known_tool_calls = super::sanitize::declared_tool_call_ids(messages);

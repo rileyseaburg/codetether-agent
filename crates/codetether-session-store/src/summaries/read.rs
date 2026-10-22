@@ -17,8 +17,11 @@ use rusqlite::{Connection, params};
 /// # Ok(()) }
 /// ```
 pub fn read(db: &Connection, id: &str, start: usize, end: usize) -> Result<SummaryIndex> {
-    let mut query = db.prepare("SELECT seq,end_seq,body FROM projections
-        WHERE session_id=?1 AND name='manual_summary' AND seq>=?2 AND seq<?3 ORDER BY seq DESC LIMIT 128")?;
+    let mut query = db.prepare(
+        "SELECT seq,end_seq,body FROM projections
+        WHERE session_id=?1 AND name='manual_summary' AND seq>=?2 AND seq<?3
+        AND end_seq<=?3 AND end_seq>seq ORDER BY seq DESC LIMIT 128",
+    )?;
     let rows = query.query_map(params![id, start as i64, end as i64], |r| {
         Ok((
             r.get::<_, usize>(0)?,
@@ -29,9 +32,6 @@ pub fn read(db: &Connection, id: &str, start: usize, end: usize) -> Result<Summa
     let mut index = SummaryIndex::new();
     for row in rows {
         let (from, to, body) = row?;
-        if to > end {
-            continue;
-        }
         if let Some(range) = SummaryRange::new(from - start, to - start) {
             index.insert(range, serde_json::from_str(&body)?);
         }

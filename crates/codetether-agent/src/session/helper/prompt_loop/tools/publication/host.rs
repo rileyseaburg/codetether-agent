@@ -24,6 +24,9 @@ impl codetether_prompt_loop::tool_publication::Host for Runner<'_> {
     fn append(&mut self, message: Message) {
         self.inner.session.add_message(message);
     }
+    fn append_approval_feedback(&mut self, call_id: &str, feedback: String) {
+        super::feedback::append(self.inner.session, call_id, feedback);
+    }
     async fn persist(&mut self) -> anyhow::Result<()> {
         super::super::super::super::persist::after_tool(self.inner.session).await
     }

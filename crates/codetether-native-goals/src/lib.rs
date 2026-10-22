@@ -7,3 +7,5 @@ mod tasks;
 pub use tasks::*;
 /// Goal execution operations bound to durable native session journals.
 pub mod runtime;
+/// Canonical user-message provenance for model-created goals.
+pub mod source;

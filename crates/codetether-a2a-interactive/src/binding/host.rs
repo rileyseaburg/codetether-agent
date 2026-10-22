@@ -32,6 +32,11 @@ macro_rules! __frontend_inbox_host {
                 fn dequeue_task(&mut self) -> Option<IncomingTask> {
                     self.app.state.worker.dequeue_worker_task()
                 }
+                fn task_delivered(&self, task: &IncomingTask) -> bool {
+                    self.slot
+                        .borrow()
+                        .is_some_and(|session| $crate::already_delivered(task, &session.messages))
+                }
                 fn set_active_task(&mut self, task: IncomingTask) {
                     self.app.state.worker.active_remote_task = Some(task);
                 }

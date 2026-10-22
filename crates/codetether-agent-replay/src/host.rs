@@ -7,6 +7,14 @@ use crate::*;
 pub trait Host: Send + Sync {
     /// Native session retaining messages and tool usage.
     type Session: Send + Sync;
+    /// Persist pending transcript entries before an external context edit.
+    /// # Errors
+    /// The edit is not executed if saving fails.
+    async fn persist_session(session: &mut Self::Session) -> anyhow::Result<()>;
+    /// Refresh the session after an externally committed context edit.
+    /// # Errors
+    /// Stops replay rather than continuing on stale source state.
+    async fn refresh_session(session: &mut Self::Session) -> anyhow::Result<()>;
     /// Return the existing session-policy denial for one serialized tool call.
     fn blocked(session: &Self::Session, name: &str, arguments: &str) -> Option<ToolResult>;
     /// Execute one permitted call through native input preparation and dispatch.

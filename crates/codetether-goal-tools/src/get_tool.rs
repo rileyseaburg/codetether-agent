@@ -44,7 +44,7 @@ impl<H: Host + 'static> Tool for GetGoalTool<H> {
         "Get Goal"
     }
     fn description(&self) -> &str {
-        "Get the current goal for this session, including status, budgets, token and elapsed-time usage, and remaining token budget."
+        "Get the current goal for this session, including status, budgets, token and elapsed-time usage, remaining token budget, and recorded user-message provenance."
     }
     fn parameters(&self) -> Value {
         json!({"type":"object","properties":{}})
@@ -52,7 +52,7 @@ impl<H: Host + 'static> Tool for GetGoalTool<H> {
     async fn execute(&self, input: Value) -> Result<ToolResult> {
         let args: Args = serde_json::from_value(input)?;
         let session_id = context::session_id(args.session_id)?;
-        let (_, state) = H::current(&session_id).await?;
-        Ok(response::result(&state))
+        let (log, state) = H::current(&session_id).await?;
+        Ok(response::with_source(&state, &log.read_all().await?))
     }
 }

@@ -18,7 +18,7 @@ impl<S: Session> codetether_proactive_worker::Host for Host<S> {
         consumer: &str,
         limit: usize,
     ) -> anyhow::Result<Option<Delivery<S>>> {
-        codetether_session_store::consumer::next_for::<S>(id, consumer, limit).await
+        crate::cursor::next::<S>(id, consumer, limit).await
     }
     async fn commit(&self, ticket: Ticket, view: Value) -> anyhow::Result<()> {
         codetether_session_store::projection::commit(ticket, view)

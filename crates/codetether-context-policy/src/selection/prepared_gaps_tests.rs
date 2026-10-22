@@ -28,6 +28,7 @@ fn insert(index: &mut SummaryIndex, start: usize, end: usize, content: &str) {
             target_tokens: 512,
             granularity: Granularity::Phase,
             generation: 1,
+            provenance: None,
         },
     );
 }

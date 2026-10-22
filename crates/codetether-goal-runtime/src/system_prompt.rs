@@ -8,7 +8,7 @@ use codetether_goal_core::{TaskLog, governance_block};
 /// # Arguments
 /// `base` is the original prompt; `session_id` selects the journal.
 /// # Returns
-/// Returns the full prompt; journal errors retain only the shared turn contract.
+/// Returns the full prompt; journal errors add an explicit recovery instruction.
 /// # Examples
 /// ```rust,no_run
 /// use codetether_goal_runtime::{Journal, compose};
@@ -17,9 +17,11 @@ use codetether_goal_core::{TaskLog, governance_block};
 /// # }
 /// ```
 pub fn compose<H: Journal>(base: &str, session_id: &str) -> String {
-    let base = crate::turn_instructions::append(base.into());
-    let Ok(log) = H::for_session(session_id) else {
-        return base;
+    let (base, _) = codetether_provider_core::runtime_context::split(base);
+    let base = crate::turn_instructions::append(base);
+    let log = match H::for_session(session_id) {
+        Ok(log) => log,
+        Err(error) => return unavailable(base, &error),
     };
     from_log(base, &log)
 }
@@ -28,7 +30,7 @@ pub fn compose<H: Journal>(base: &str, session_id: &str) -> String {
 /// # Arguments
 /// `base` includes existing instructions; `log` is an explicitly resolved journal.
 /// # Returns
-/// Returns the prompt with governance, retaining the base on read errors.
+/// Returns the prompt with governance, or an explicit recovery instruction.
 /// # Examples
 /// ```rust,no_run
 /// use codetether_goal_runtime::{Journal, compose_from_log};
@@ -37,11 +39,23 @@ pub fn compose<H: Journal>(base: &str, session_id: &str) -> String {
 /// # }
 /// ```
 pub fn from_log(base: String, log: &TaskLog) -> String {
-    let state = state_cache::load(log).unwrap_or_default();
+    let (base, _) = codetether_provider_core::runtime_context::split(&base);
+    let state = match state_cache::load(log) {
+        Ok(state) => state,
+        Err(error) => return unavailable(base, &error),
+    };
     match governance_block(&state) {
-        Some(block) => format!("{base}\n\n{block}"),
+        Some(block) => codetether_provider_core::runtime_context::append(&base, &block),
         None => base,
     }
+}
+
+fn unavailable(base: String, error: &anyhow::Error) -> String {
+    tracing::error!(error = %error, "Goal governance could not be loaded");
+    codetether_provider_core::runtime_context::append(
+        &base,
+        "GOAL_GOVERNANCE_UNAVAILABLE: Persisted goal and hold state could not be read. Do not infer that the goal is absent, completed, or unrestricted. Report the persistence failure and recover the journal before continuing goal work or changing goal state.",
+    )
 }
 
 #[cfg(test)]

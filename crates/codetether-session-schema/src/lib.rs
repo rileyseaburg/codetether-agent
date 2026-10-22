@@ -37,6 +37,7 @@ pub mod __private {
     pub use codetether_context_loader as context_loader;
     pub use codetether_context_pin as context_pin;
     pub use codetether_context_policy::derivation::DerivePolicy;
+    pub use codetether_context_policy::state_header::{ConstraintCorrection, ConstraintRecord};
     pub use codetether_context_policy::summary_index::{SummaryNode, SummaryRange};
     pub use codetether_context_policy::{pages::PageKind, summary_index::SummaryIndex};
     pub use codetether_context_summarize as context_summarize;

@@ -36,7 +36,11 @@ pub async fn process(
         )));
     }
 
-    let evidence = evidence::collect(content, &query, &source, config);
+    let evidence = if super::continuation::is_continuation(ctx.tool_id) {
+        super::continuation::collect(content)
+    } else {
+        evidence::collect(content, &query, &source, config)
+    };
     let answer = semantic::synthesize(ctx, &query, &evidence).await?;
     Ok(Some(complete::finish(
         ctx,

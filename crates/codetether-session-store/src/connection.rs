@@ -31,11 +31,11 @@ pub fn open(locator: &Path) -> Result<Connection> {
     db.pragma_update(None, "journal_mode", "WAL")?;
     db.pragma_update(None, "synchronous", "FULL")?;
     let version: i64 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    anyhow::ensure!(version <= 2, "session database requires a newer runtime");
-    if version < 2 {
+    anyhow::ensure!(version <= 3, "session database requires a newer runtime");
+    if version < 3 {
         let tx = db.unchecked_transaction()?;
         super::upgrade::run(&tx, version)?;
-        tx.pragma_update(None, "user_version", 2)?;
+        tx.pragma_update(None, "user_version", 3)?;
         tx.commit()?;
     }
     Ok(db)

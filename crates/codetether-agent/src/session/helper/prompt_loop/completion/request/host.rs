@@ -28,6 +28,10 @@ impl Host for Native<'_, '_> {
             &mut self.attempt.derived.messages,
         )
         .await;
+        self.runner.inner.model.system_prompt = crate::session::tasks::runtime::compose(
+            &self.runner.inner.model.system_prompt,
+            &self.runner.inner.session.id,
+        );
     }
     fn history(&self) -> &[Message] {
         &self.attempt.derived.messages

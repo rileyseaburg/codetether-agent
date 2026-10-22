@@ -36,7 +36,10 @@ async fn owner_device_split_and_lifecycle() {
     let (status, queued) = call(&app, "POST", &request, Some(OWNER), question).await;
     assert_eq!(status, 202);
     let (_, polled) = call(&app, "GET", &commands, Some(&device), None).await;
-    assert_eq!(polled, json!({"request_id": queued["request_id"], "reply": null}));
+    assert_eq!(
+        polled,
+        json!({"request_id": queued["request_id"], "reply": null})
+    );
     let frames = format!("/companion/sessions/{id}/frames");
     let stale = Some(json!({"image": "AAAA", "captured_at": "2020-01-01T00:00:00Z"}));
     assert_eq!(

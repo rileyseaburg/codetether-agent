@@ -44,8 +44,8 @@ pub async fn handle(
     if host.repair(&response, &calls, &truncated).await {
         return Ok(StepFlow::Continue);
     }
-    host.track_writes(step, &calls);
     host.add_message(response.message);
     host.execute(step, calls).await?;
+    host.track_progress(step);
     Ok(StepFlow::Continue)
 }

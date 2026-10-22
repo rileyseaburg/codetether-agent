@@ -1,5 +1,5 @@
 use super::Host;
-use codetether_provider_core::{CompletionRequest, ContentPart, Message, Role};
+use codetether_provider_core::{CompletionRequest, Message};
 /// Construct and budget a request from the current prepared attempt.
 ///
 /// # Arguments
@@ -21,15 +21,12 @@ use codetether_provider_core::{CompletionRequest, ContentPart, Message, Role};
 /// # Ok(()) }
 /// ```
 pub async fn build(host: &mut impl Host) -> anyhow::Result<CompletionRequest> {
-    let mut messages = vec![Message {
-        role: Role::System,
-        content: vec![ContentPart::Text {
-            text: host.target().system_prompt.to_owned(),
-        }],
-    }];
     let mut extras: Vec<Message> = host.proactive().into_iter().cloned().collect();
     host.prepare(&mut extras).await;
-    messages.extend_from_slice(host.history());
+    let mut messages = codetether_context_policy::request::messages::build(
+        host.target().system_prompt,
+        host.history().to_vec(),
+    );
     super::reasoning::sanitize(&mut messages, host.target().provider);
     let target = host.target();
     let request = CompletionRequest {

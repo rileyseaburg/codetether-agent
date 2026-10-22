@@ -34,9 +34,21 @@ pub(super) fn seed_source<H: crate::Source>(
     recent_start: usize,
     budget: &mut usize,
 ) {
+    let pages: Vec<_> = session
+        .pages()
+        .iter()
+        .enumerate()
+        .map(|(index, page)| {
+            if *page == PageKind::Constraint && session.pinned_source_in_header(index) {
+                PageKind::Conversation
+            } else {
+                *page
+            }
+        })
+        .collect();
     seed(
         session.messages(),
-        session.pages(),
+        &pages,
         keep,
         costs,
         recent_start,

@@ -1,0 +1,20 @@
+[package]
+name = "codetether-rust-build-tool"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "First-party Rust build planning for approval-aware agent execution"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-rust-build = { path = "../codetether-rust-build", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+serde_json = "1"
+
+[dev-dependencies]
+codetether-provenance = { path = "../codetether-provenance", version = "0.1.0" }
+codetether-runtime-input = { path = "../codetether-runtime-input", version = "0.1.0" }
+codetether-runtime-policy = { path = "../codetether-runtime-policy", version = "0.1.0" }
+tokio = { version = "1", features = ["macros", "rt"] }

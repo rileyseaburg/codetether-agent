@@ -1180,7 +1180,9 @@ dependencies = [
  "codetether-a2a-inbox",
  "codetether-chat-transcript",
  "codetether-provider-core",
+ "codetether-tui-tick",
  "codetether-worker-events",
+ "tokio",
  "tracing",
 ]
 
@@ -1288,7 +1290,7 @@ dependencies = [
 
 [[package]]
 name = "codetether-agent"
-version = "4.7.6-dev.39"
+version = "4.7.6-dev.53"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2106,11 +2108,13 @@ dependencies = [
 name = "codetether-agent-replay"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "codetether-agent-core",
  "codetether-provider-core",
  "codetether-tool-core",
  "futures",
+ "tokio",
 ]
 
 [[package]]
@@ -3132,6 +3136,8 @@ dependencies = [
  "codetether-models-cli",
  "codetether-mux-cli",
  "codetether-oracle-cli",
+ "codetether-rust-build",
+ "codetether-rust-repair",
  "codetether-search-cli",
  "codetether-vault-cli",
  "codetether-worktree-cli",
@@ -3177,6 +3183,8 @@ dependencies = [
  "codetether-cli-command",
  "codetether-config",
  "codetether-crash",
+ "codetether-rust-build",
+ "codetether-rust-repair",
  "codetether-secrets",
  "codetether-tls",
  "codetether-windows-cli",
@@ -3826,12 +3834,18 @@ name = "codetether-context-dispatch"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "codetether-context-legacy",
  "codetether-context-policy",
  "codetether-incremental-derivation",
  "codetether-provider-core",
+ "codetether-request-tokens",
  "codetether-reset-derivation",
+ "codetether-rlm",
+ "codetether-rlm-background",
  "codetether-session-events",
+ "futures",
+ "serde_json",
  "tokio",
  "tracing",
 ]
@@ -3890,8 +3904,10 @@ dependencies = [
  "async-trait",
  "codetether-context-loader",
  "codetether-context-policy",
+ "codetether-provider-core",
  "codetether-tool-core",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -3952,6 +3968,7 @@ dependencies = [
  "codetether-tool-core",
  "codetether-tracked-vec",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -4001,6 +4018,20 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "codetether-diagnostics-bridge"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dirs",
+ "libc",
+ "lsp-types",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "url",
 ]
 
 [[package]]
@@ -4594,11 +4625,20 @@ name = "codetether-goal-runtime"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
+ "codetether-bedrock-protocol",
+ "codetether-codex-protocol",
+ "codetether-context-policy",
+ "codetether-context-request",
  "codetether-goal-core",
+ "codetether-provider-anthropic",
  "codetether-provider-core",
+ "codetether-provider-google",
  "codetether-session-control",
+ "futures",
  "parking_lot",
+ "serde_json",
  "tempfile",
  "tokio",
  "tracing",
@@ -4618,6 +4658,8 @@ dependencies = [
  "codetether-tool-core",
  "serde",
  "serde_json",
+ "tempfile",
+ "tokio",
  "tracing",
  "uuid",
 ]
@@ -4800,8 +4842,13 @@ dependencies = [
  "anyhow",
  "async-trait",
  "codetether-context-policy",
+ "codetether-context-request",
  "codetether-provider-core",
  "codetether-request-tokens",
+ "codetether-session-store",
+ "rusqlite",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -4933,6 +4980,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "codetether-config",
+ "codetether-diagnostics-bridge",
  "libc",
  "lsp-types",
  "serde",
@@ -5860,6 +5908,7 @@ dependencies = [
  "codetether-provider-core",
  "codetether-session-store",
  "serde_json",
+ "tokio",
  "uuid",
 ]
 
@@ -5993,6 +6042,7 @@ dependencies = [
  "codetether-session-store",
  "codetether-summary-producer",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -6568,10 +6618,14 @@ name = "codetether-peer-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "codetether-a2a-core",
  "codetether-a2a-discovery",
  "codetether-a2a-http",
+ "codetether-agent-messages",
  "codetether-agent-trace",
+ "codetether-bus-core",
+ "codetether-collaboration-state",
  "codetether-provider-core",
  "codetether-tool-core",
  "dashmap",
@@ -7111,6 +7165,7 @@ dependencies = [
  "async-openai",
  "async-trait",
  "bytes",
+ "codetether-context-policy",
  "codetether-provider-core",
  "futures",
  "reqwest 0.13.4",
@@ -7662,7 +7717,11 @@ dependencies = [
 name = "codetether-repeat-guard"
 version = "0.1.0"
 dependencies = [
+ "codetether-edit-policy",
+ "codetether-provider-core",
+ "serde",
  "serde_json",
+ "sha2 0.10.9",
 ]
 
 [[package]]
@@ -7858,6 +7917,7 @@ dependencies = [
  "codetether-provider-core",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
 ]
 
@@ -7963,6 +8023,7 @@ dependencies = [
  "codetether-run-checkpoint",
  "codetether-session-events",
  "codetether-step-limit",
+ "tempfile",
  "tokio",
  "tracing",
 ]
@@ -8009,6 +8070,50 @@ dependencies = [
  "hex",
  "serde_json",
  "sha2 0.11.0",
+]
+
+[[package]]
+name = "codetether-rust-build"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-rust-build-tool"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-provenance",
+ "codetether-runtime-input",
+ "codetether-runtime-policy",
+ "codetether-rust-build",
+ "codetether-tool-core",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-rust-repair"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "clap",
+ "codetether-config",
+ "codetether-native-providers",
+ "codetether-provider-core",
+ "codetether-secrets",
+ "futures",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -8365,6 +8470,7 @@ dependencies = [
  "codetether-provider-core",
  "codetether-session-metadata",
  "thiserror 2.0.20",
+ "tokio",
 ]
 
 [[package]]
@@ -8433,6 +8539,7 @@ dependencies = [
  "codetether-history-sink",
  "codetether-provenance",
  "codetether-provider-core",
+ "codetether-repeat-guard",
  "codetether-rlm",
  "codetether-run-checkpoint",
  "codetether-session-title",
@@ -9461,6 +9568,7 @@ dependencies = [
  "codetether-ripgrep-tool",
  "codetether-rlm",
  "codetether-rlm-tool",
+ "codetether-rust-build-tool",
  "codetether-session-recall",
  "codetether-skill-tool",
  "codetether-swarm-share",
@@ -15502,6 +15610,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1_smol"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
+
+[[package]]
 name = "sha2"
 version = "0.10.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -17066,6 +17180,7 @@ dependencies = [
  "getrandom 0.4.3",
  "js-sys",
  "serde_core",
+ "sha1_smol",
  "wasm-bindgen",
 ]
 

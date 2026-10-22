@@ -16,8 +16,15 @@ use codetether_provider_core::Message;
 /// ```
 pub async fn create<S: Session>(parent: &S, window: impl FnOnce() -> usize) -> anyhow::Result<S> {
     let mut child = S::new().await?;
-    child.replace_transcript(tail(parent, window()));
-    child.set_metadata(parent.metadata().clone());
+    let messages = tail(parent, window());
+    let start = parent.messages().len() - messages.len();
+    let (pages, corrections) = crate::constraints::retained(parent, start, parent.messages().len());
+    child.replace_transcript(messages);
+    child.replace_pages(pages);
+    let mut metadata = parent.metadata().clone();
+    crate::metadata::reset_execution(&mut metadata);
+    metadata.constraint_corrections = corrections;
+    child.set_metadata(metadata);
     child.set_detached_agent();
     child.set_title(
         parent

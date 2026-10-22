@@ -54,10 +54,11 @@ pub async fn gate(
             super::args::revised(args, arguments, &approval_id),
             warnings,
         ),
-        LiveApprovalDecision::Denied { reason } => ApprovalGate::Blocked(
+        LiveApprovalDecision::Denied { reason } => ApprovalGate::Denied(
             args,
             super::result::denied(tool_name, &id, reason.as_deref()),
             warnings,
+            reason.filter(|text| !text.trim().is_empty()),
         ),
     }
 }

@@ -3,11 +3,8 @@
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __impl_event_completion {
-    ($native:ident, $settle:path) => {
+    ($native:ident) => {
         impl $crate::lifecycle::Completion for $native<'_> {
-            fn settle_inbox(&mut self) {
-                $settle(self.app, self.slot);
-            }
             fn clear_streaming_text(&mut self) {
                 self.app
                     .state

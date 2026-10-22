@@ -11,6 +11,9 @@ pub(super) struct ApplicationHost<'a, S, H: Application> {
 }
 #[async_trait]
 impl<S: InputContext, H: Application> ToolCallHost for ApplicationHost<'_, S, H> {
+    fn repeated_edit(&self, tool: &str, input: &serde_json::Value) -> Option<String> {
+        self.session.repeated_edit(tool, input)
+    }
     fn prepare_input(&mut self, input: &serde_json::Value) -> serde_json::Value {
         self.session
             .prepare_worker_input(input, self.workspace_dir, self.model)
@@ -22,7 +25,14 @@ impl<S: InputContext, H: Application> ToolCallHost for ApplicationHost<'_, S, H>
     ) -> codetether_tool_core::ToolResult {
         crate::tools::run_tool(self.registry, tool_name, input, self.cb).await
     }
+    async fn persist_context(&mut self) -> anyhow::Result<()> {
+        transcript::Host::save(self.session).await
+    }
+    async fn refresh_context(&mut self) -> anyhow::Result<()> {
+        self.session.refresh_context().await
+    }
     fn record_result(&mut self, tool_id: String, result: codetether_tool_core::ToolResult) {
+        self.session.record_outcome(&tool_id, &result);
         transcript::add_tool_result(self.session, tool_id, result);
     }
 }

@@ -14,6 +14,7 @@ use super::{Host, ToolKind};
 /// ```
 pub fn search(host: &mut impl Host) {
     for kind in [
+        ToolKind::RustBuildPlan,
         ToolKind::Grep,
         ToolKind::Ripgrep,
         ToolKind::CodeSearch,

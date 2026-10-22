@@ -3,7 +3,7 @@
 #[cfg(test)]
 #[cfg(feature = "tetherscript")]
 mod tests {
-    use crate::tool::tetherscript::input::TetherScriptPluginInput;
+    use codetether_tetherscript_tool::input::TetherScriptPluginInput;
 
     #[test]
     fn parses_browser_grant_fields() {

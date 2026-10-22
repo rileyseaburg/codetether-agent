@@ -12,3 +12,7 @@ codetether-worker-events = { path = "../codetether-worker-events", version = "0.
 codetether-provider-core = { path = "../codetether-provider-core", version = "0.1.0" }
 codetether-chat-transcript = { path = "../codetether-chat-transcript", version = "0.1.0" }
 tracing = "0.1"
+
+[dev-dependencies]
+codetether-tui-tick = { path = "../codetether-tui-tick", version = "0.1.0" }
+tokio = { version = "1", features = ["macros", "rt"] }

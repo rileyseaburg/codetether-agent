@@ -16,11 +16,13 @@ mod host;
 /// Implementations preserve the session's input enrichment and result recording.
 pub trait Tools<S, R> {
     /// Execute a tool call using the original response context and session.
+    /// # Errors
+    /// Returns persistence/refresh failures to stop the remaining tool batch.
     fn execute(
         session: &mut S,
         context: &ResponseContext<'_, R>,
         tool_call: ToolCall,
-    ) -> impl Future<Output = ()> + Send;
+    ) -> impl Future<Output = anyhow::Result<()>> + Send;
 }
 
 /// Session-loop response callback using tool effects `E`.

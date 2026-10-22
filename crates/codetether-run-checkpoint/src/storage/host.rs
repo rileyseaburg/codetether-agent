@@ -15,8 +15,12 @@ pub trait Storage: Send + Sync {
     fn checkpoint(&self) -> Option<&RunCheckpoint>;
     /// Replace the checkpoint embedded in session metadata.
     fn set_checkpoint(&mut self, checkpoint: Option<RunCheckpoint>);
+    /// Whether canonical metadata explicitly records that the checkpoint was cleared.
+    fn checkpoint_cleared(&self) -> bool;
+    /// Replace the durable clear marker alongside the checkpoint metadata.
+    fn set_checkpoint_cleared(&mut self, cleared: bool);
     /// Resolve the existing session directory, propagating native path errors.
     fn sessions_dir() -> Result<PathBuf>;
-    /// Save session metadata after the sidecar operation succeeds.
+    /// Atomically save canonical metadata before changing its fallback sidecar.
     async fn save_session(&self) -> Result<()>;
 }

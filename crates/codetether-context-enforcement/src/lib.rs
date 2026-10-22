@@ -21,8 +21,8 @@ pub use terminal::terminal_truncate_messages;
 mod tests;
 
 mod cascade_finish;
+mod env_from_check;
 mod event_completed;
 mod event_send;
 mod event_started;
 mod start;
-mod env_from_check;

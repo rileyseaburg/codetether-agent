@@ -18,4 +18,5 @@ serde_json = "1.0.151"
 tracing = "0.1"
 
 [dev-dependencies]
+codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }

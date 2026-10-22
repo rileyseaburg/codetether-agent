@@ -1,0 +1,16 @@
+[package]
+name = "codetether-rust-build"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Explicit first-party Rust development commands and ra-jit planning"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6.6", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["process", "rt", "macros"] }
+
+[dev-dependencies]
+tempfile = "3"

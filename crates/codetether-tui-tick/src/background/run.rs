@@ -14,7 +14,8 @@ pub async fn drain<H: Host>(host: &mut H) {
     host.models();
     host.bus();
     host.queue_workers();
-    host.display_worker();
+    // Dispatch owns dequeueing: rendering must not consume a task before the
+    // reactor can start its provider turn.
     host.events().await;
     while let Some(notice) = host.next_notice() {
         apply_notice(host, notice).await;

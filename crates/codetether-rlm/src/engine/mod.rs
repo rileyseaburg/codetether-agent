@@ -8,6 +8,11 @@ mod ast;
 mod bus;
 mod classify;
 mod complete;
+mod continuation;
+#[cfg(test)]
+mod continuation_coverage_tests;
+#[cfg(test)]
+mod continuation_tests;
 mod deterministic;
 mod evidence;
 mod file;

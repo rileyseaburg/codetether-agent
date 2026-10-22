@@ -19,6 +19,9 @@ impl codetether_bus_view::ingress::Effects for Native<'_> {
     fn owns_agent(&self, parent: &str, agent: &str) -> bool {
         crate::tui::app::managed_agent::owned(parent, agent)
     }
+    fn knows_peer(&self, parent: &str, peer: &str) -> bool {
+        codetether_peer_agent::observation::transcript(peer, parent).is_some()
+    }
     fn push_assistant(&mut self, text: String) {
         self.0
             .state

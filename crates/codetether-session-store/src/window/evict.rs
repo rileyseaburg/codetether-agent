@@ -27,7 +27,7 @@ pub fn before_append<T>(session: WorkingSet<'_, T>) {
         session.messages.evict(count);
         session.pages.evict(count);
         state.message_start += count;
-        *session.summaries = Default::default();
+        session.summaries.evict_prefix(count);
     }
     let count = session
         .tools

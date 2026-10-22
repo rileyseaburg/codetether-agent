@@ -53,17 +53,33 @@ pub async fn derive_with_policy<H: Source, S>(
     force_keep_last: Option<usize>,
     hooks: codetether_context_legacy::Hooks,
 ) -> Result<DerivedContext> {
+    let mut headers = Vec::new();
+    super::state_header::prepend_state_header(session, &mut headers);
+    let execution = select(policy, force_keep_last);
+    let reserved_prompt = match execution {
+        codetether_context_policy::derivation::dispatch::Execution::Incremental { .. } => {
+            system_prompt.to_owned()
+        }
+        _ => super::state_header::reserve(system_prompt, &headers),
+    };
     let input = DispatchInputs {
         session,
         provider,
         model,
-        system_prompt,
+        system_prompt: &reserved_prompt,
+        header_tokens: codetether_request_tokens::estimate_tokens_for_messages(&headers),
         tools,
         event_tx,
         force_keep_last,
         hooks,
     };
-    let mut derived = super::execute::run(input, select(policy, force_keep_last)).await?;
-    super::state_header::prepend_state_header(session, &mut derived.messages);
+    let mut derived = super::execute::run(input, execution).await?;
+    if let Some(header) = headers.pop() {
+        derived.messages.insert(0, header);
+        derived
+            .resolutions
+            .insert(0, codetether_context_policy::pages::ResidencyLevel::Full);
+        derived.provenance.push("constraint_sources".into());
+    }
     Ok(derived)
 }

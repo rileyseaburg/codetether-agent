@@ -38,8 +38,10 @@ pub struct Checkpoint {
     pub header: String,
     /// Acknowledged message, page and tool vector mutation identities.
     pub versions: [u64; 3],
-    /// Protected sequence/excerpt pairs retained beyond the loaded window.
-    pub constraints: Vec<(usize, String)>,
+    /// Full pinned sources and explicit supersessions beyond the loaded window.
+    pub constraints: Vec<codetether_context_policy::state_header::ConstraintRecord>,
+    /// At most two historical sources staged by an indexed pin operation.
+    pub pin_sources: Vec<crate::pin_edits::PinSource>,
     /// Absolute persisted end of message history.
     pub message_end: usize,
     /// Absolute persisted end of tool history.

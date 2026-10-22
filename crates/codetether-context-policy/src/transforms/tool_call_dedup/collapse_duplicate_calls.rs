@@ -12,7 +12,7 @@ use super::*;
 /// };
 ///
 /// let args = serde_json::json!({
-///     "path": "src/very/deeply/nested/module.rs",
+///     "path": "src/very/deeply/nested/module/with/a/long/path/to/the/file.rs",
 ///     "encoding": "utf-8",
 /// }).to_string();
 ///

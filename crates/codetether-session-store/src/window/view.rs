@@ -28,6 +28,6 @@ pub struct WorkingSet<'a, T> {
     pub pages: &'a mut TrackedVec<PageKind>,
     /// Loaded tool-use records.
     pub tools: &'a mut TrackedVec<T>,
-    /// Summary index invalidated when the loaded message window advances.
+    /// Summary index rebased when the loaded message window advances.
     pub summaries: &'a mut SummaryIndex,
 }

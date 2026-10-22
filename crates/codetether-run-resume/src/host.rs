@@ -14,6 +14,17 @@ pub trait RunSession: Storage + Sized + Send + Sync {
     type Registry: Send + Sync;
     /// Current transcript used to detect progress and build checkpoints.
     fn messages(&self) -> &[Message];
+    /// Absolute number of messages, including the evicted prefix.
+    fn message_count(&self) -> usize;
+    /// Build evidence from complete, consistent canonical history after saving pending data.
+    /// # Errors
+    /// Returns persistence, snapshot or source-integrity errors.
+    async fn build_checkpoint(
+        &self,
+        objective: &str,
+        max_steps: usize,
+        workspace: &std::path::Path,
+    ) -> Result<codetether_run_checkpoint::RunCheckpoint>;
     /// Update the step limit for the next attempt.
     fn set_max_steps(&mut self, max_steps: Option<usize>);
     /// Application default used only when no limit was supplied.

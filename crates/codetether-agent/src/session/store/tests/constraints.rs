@@ -2,6 +2,9 @@
 use super::super::{WINDOW, constraints, load, save};
 use super::message;
 use crate::session::{Session, pages::PageKind};
+mod fork;
+mod historical;
+mod partial;
 #[tokio::test]
 async fn old_pinned_constraints_remain_in_the_compact_state_header() {
     let root = tempfile::tempdir().unwrap();
@@ -16,14 +19,20 @@ async fn old_pinned_constraints_remain_in_the_compact_state_header() {
     save(&session, &path).await.unwrap();
     let mut tail = load(&path, WINDOW).await.unwrap().session;
     assert_eq!(
-        constraints::prefix(&tail),
-        vec!["- turn 0: never delete evidence"]
+        constraints::prefix(&tail)
+            .iter()
+            .map(|record| (record.source_turn, record.text.as_str()))
+            .collect::<Vec<_>>(),
+        vec![(0, "never delete evidence")]
     );
     tail.add_message(message("continue"));
     save(&tail, &path).await.unwrap();
     let tail = load(&path, WINDOW).await.unwrap().session;
     assert_eq!(
-        constraints::prefix(&tail),
-        vec!["- turn 0: never delete evidence"]
+        constraints::prefix(&tail)
+            .iter()
+            .map(|record| (record.source_turn, record.text.as_str()))
+            .collect::<Vec<_>>(),
+        vec![(0, "never delete evidence")]
     );
 }

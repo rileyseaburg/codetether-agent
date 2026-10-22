@@ -76,6 +76,7 @@ macro_rules! declare_event_pipeline {
             worker_bridge: &Option<$bridge>,
             evt: $event,
         ) {
+            app.state.last_activity_at = ::std::time::SystemTime::now();
             $crate::pipeline::handle(
                 &mut host::Native {
                     app,

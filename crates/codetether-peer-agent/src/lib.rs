@@ -25,9 +25,12 @@ use serde_json::Value;
 /// # Arguments
 /// * `name` — Discovered peer name or supported identity alias.
 /// * `text` — User request text.
-/// * `context_id` — Optional reusable remote conversation ID.
+/// * `context_id` — Optional reusable remote conversation ID. When absent,
+///   owner-scoped calls reuse a stable conversation for that owner and peer.
 /// * `parent_session_id` — Optional owner of observed turn evidence.
-/// * `detach` — Whether to return before the remote turn settles.
+/// * `detach` — Whether to return before the remote turn settles. Background
+///   outcomes are delivered to the owner's bus inbox and collaboration wait.
+///   Without an owner or installed bus, the call waits so its reply is not lost.
 /// # Returns
 /// Existing peer result, detached response, or validation/missing-peer failure.
 /// # Errors

@@ -1,5 +1,6 @@
 //! Version-one schema: small headers and individually addressable records.
-/// Version-two table and index declarations used by transactional upgrades.
+/// Table declarations used by transactional upgrades; version three stores full
+/// source records in the legacy-named constraint `excerpt` column.
 pub const SQL: &str = "
 CREATE TABLE IF NOT EXISTS blobs (hash TEXT PRIMARY KEY, body TEXT NOT NULL) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS projections (

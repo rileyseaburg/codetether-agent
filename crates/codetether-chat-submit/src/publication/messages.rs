@@ -1,8 +1,8 @@
 use codetether_chat_model::{ChatMessage, MessageType};
 use codetether_image::ImageAttachment;
-/// Append compact user text followed by image summaries in attachment order.
+/// Append user text followed by image summaries in attachment order.
 /// # Arguments
-/// Messages is the displayed chat log; prompt is unexpanded user input;
+/// Messages is the displayed chat log; prompt includes expanded paste content;
 /// images retain the native attachment data and summary policy.
 /// # Returns
 /// Appends messages with current timestamps and no completion usage.

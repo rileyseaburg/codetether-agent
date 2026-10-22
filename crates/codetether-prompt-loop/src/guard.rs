@@ -24,6 +24,5 @@ impl LoopState {
         }
         codetether_edit_policy::detect_stub_in_tool_input(tool, input)
             .or_else(|| self.decline_guard.blocked(tool, input))
-            .or_else(|| self.repeat_guard.check(tool, input))
     }
 }

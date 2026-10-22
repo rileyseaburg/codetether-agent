@@ -18,5 +18,7 @@ async fn test_slot() -> crate::tui::app::session_runtime::SessionSlot {
     crate::tui::app::session_runtime::SessionSlot::new(session)
 }
 
+#[path = "tests_activity.rs"]
+mod tests_activity;
 #[path = "tests_text_timing.rs"]
 mod tests_text_timing;

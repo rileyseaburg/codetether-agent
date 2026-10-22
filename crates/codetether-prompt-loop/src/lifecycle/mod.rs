@@ -15,7 +15,7 @@ pub use run::run;
 pub trait Host: Effects + crate::completion::driver::Host + crate::goal_recovery::Host {}
 impl<T> Host for T where T: Effects + crate::completion::driver::Host + crate::goal_recovery::Host {}
 
-/// Per-step preparation and thinking notification.
-pub mod start;
 /// Run persistence, archival and final-answer construction.
 pub mod finish;
+/// Per-step preparation and thinking notification.
+pub mod start;

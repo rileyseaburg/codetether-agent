@@ -9,8 +9,15 @@ function gh(args, input) { return execFileSync('gh', args, { encoding: 'utf8', i
 /** @param {string} tag @returns {GitHubRelease|undefined} */
 export function findRelease(tag) {
   const pages = JSON.parse(gh(['api', `repos/${githubRepo}/releases`, '--paginate', '--slurp']));
-  return pages.flat().find(release => release.tag_name === tag);
+  return selectRelease(pages.flat(), tag);
 }
+/** Prefer a published release over stale duplicate drafts for the same tag.
+ * @param {GitHubRelease[]} releases @param {string} tag @returns {GitHubRelease|undefined} */
+export function selectRelease(releases, tag) {
+  const matches = releases.filter(release => release.tag_name === tag);
+  return matches.find(release => !release.draft) || matches[0];
+}
+
 /** @param {number} id @returns {GitHubRelease} */
 export function getRelease(id) { return JSON.parse(gh(['api', `repos/${githubRepo}/releases/${id}`])); }
 /** @param {import('./source.mjs').SourceRelease} release @param {string} sha @returns {GitHubRelease} */

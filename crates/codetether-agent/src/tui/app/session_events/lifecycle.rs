@@ -9,5 +9,4 @@ codetether_session_events::declare_event_lifecycle!(
     crate::tui::worker_bridge::TuiWorkerBridge;
     crate::tui::app::worker_bridge::handle_processing_started,
     crate::tui::app::worker_bridge::handle_processing_stopped,
-    crate::tui::app::inbox::live::settle_from_session,
 );

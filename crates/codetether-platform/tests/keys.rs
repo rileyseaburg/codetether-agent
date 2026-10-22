@@ -1,8 +1,8 @@
 //! Pure Windows key parsing can be verified without sending input.
-#[path = "../src/windows/computer_use/input/vk_table.rs"]
-mod vk_table;
 #[path = "../src/windows/computer_use/input/parse.rs"]
 mod parse;
+#[path = "../src/windows/computer_use/input/vk_table.rs"]
+mod vk_table;
 
 #[test]
 fn modifiers_named_keys_and_fallbacks_match_the_input_contract() {

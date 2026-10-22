@@ -16,13 +16,13 @@
 //! assert_eq!(provider.name(), "zai");
 //! ```
 
-pub mod history;
 #[path = "catalog/mod.rs"]
 pub mod catalog;
 mod client;
 pub mod completion;
 pub mod discovery;
 mod error_wire;
+pub mod history;
 mod messages;
 mod preview;
 pub mod request;

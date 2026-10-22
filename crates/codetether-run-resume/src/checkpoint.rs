@@ -2,7 +2,7 @@
 
 use crate::RunResumePlan;
 use anyhow::Result;
-use codetether_run_checkpoint::{RunCheckpoint, auto_resume_prompt};
+use codetether_run_checkpoint::auto_resume_prompt;
 use std::path::{Path, PathBuf};
 
 /// Require transcript progress and a positive budget before saving exhaustion.
@@ -23,7 +23,7 @@ pub fn should_checkpoint<S: crate::RunSession>(
     session: &S,
     max_steps: usize,
 ) -> bool {
-    session.messages().len() > message_count_before && max_steps > 0
+    session.message_count() > message_count_before && max_steps > 0
 }
 
 /// Persist a checkpoint when the step budget is exhausted.
@@ -51,14 +51,9 @@ pub async fn persist_exhaustion_checkpoint<S: crate::RunSession>(
     max_steps: usize,
     workspace: &Path,
 ) -> Result<PathBuf> {
-    let cp = RunCheckpoint::from_session_messages(
-        objective,
-        max_steps,
-        session.id().to_string(),
-        Some(workspace.to_path_buf()),
-        session.messages().len(),
-        session.messages(),
-    );
+    let cp = session
+        .build_checkpoint(objective, max_steps, workspace)
+        .await?;
     codetether_run_checkpoint::storage::save(session, cp).await
 }
 
@@ -83,6 +78,21 @@ pub async fn resume_plan<S: crate::RunSession>(
     let Some(checkpoint) = codetether_run_checkpoint::storage::load(session).await? else {
         return Ok(None);
     };
+    anyhow::ensure!(
+        checkpoint.session_id == session.id(),
+        "checkpoint belongs to another session"
+    );
+    // Reconcile edits and newer corrections even when the message count is unchanged.
+    let checkpoint = session
+        .build_checkpoint(
+            &checkpoint.original_objective,
+            checkpoint.max_step_budget,
+            checkpoint
+                .workspace
+                .as_deref()
+                .unwrap_or_else(|| Path::new(".")),
+        )
+        .await?;
     Ok(Some(RunResumePlan {
         prompt: auto_resume_prompt(&checkpoint),
         remaining,

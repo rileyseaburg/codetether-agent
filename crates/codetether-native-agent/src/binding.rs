@@ -5,7 +5,9 @@
 /// enrichment policies. The session retains its normal creation and mutation
 /// methods; no separate transcript or accounting state is introduced.
 /// The invocation module must be able to access metadata.directory, messages,
-/// tool_uses and usage, plus the session's new/add_human_message/add_message methods.
+/// tool_uses and usage, plus new/add_human_message/add_message/save and
+/// refresh_context_from_store methods. Context edits are persisted before dispatch
+/// and refreshed before later tools or completions consume their state.
 /// # Usage
 /// ```text
 /// codetether_native_agent::impl_session_services!(
@@ -37,13 +39,26 @@ macro_rules! impl_session_services {
                 name: &str,
                 args: &str,
             ) -> Option<$crate::__private::ToolResult> {
-                $blocked(session, name, args)
+                $blocked(session, name, args).or_else(|| {
+                    let input = $crate::__private::serde_json::from_str(args).ok()?;
+                    session
+                        .metadata
+                        .progress
+                        .blocked_edit(name, &input)
+                        .map($crate::__private::ToolResult::error)
+                })
             }
         }
         #[$crate::__private::async_trait]
         impl $crate::__private::SessionWrite for $services {
             async fn new_session() -> $crate::__private::Result<$session> {
                 <$session>::new().await
+            }
+            async fn persist_session(session: &mut $session) -> $crate::__private::Result<()> {
+                session.save().await
+            }
+            async fn refresh_session(session: &mut $session) -> $crate::__private::Result<()> {
+                session.refresh_context_from_store().await
             }
             fn add_human(session: &mut $session, message: $crate::__private::Message) {
                 session.add_human_message(message);

@@ -1,8 +1,8 @@
 //! Classify rejected data URLs and provide display explanations.
-mod reason;
 mod message;
-pub use reason::RejectReason;
+mod reason;
 use super::data_url::MAX_BASE64_PAYLOAD_CHARS;
+pub use reason::RejectReason;
 /// Classify a rejected image data URL, or `None` when it is not one.
 ///
 /// # Arguments

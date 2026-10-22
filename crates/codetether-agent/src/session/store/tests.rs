@@ -1,5 +1,7 @@
 //! Core delta persistence and identity regressions.
 mod constraints;
+mod checkpoint_history;
+mod checkpoint_snapshot;
 mod contention;
 mod consumers;
 mod events;
@@ -7,6 +9,7 @@ mod eviction;
 mod incident;
 mod migration;
 mod recovery;
+mod progress_continuity;
 mod replacement;
 mod scaling;
 mod summary_contention;

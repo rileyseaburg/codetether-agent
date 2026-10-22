@@ -3,8 +3,8 @@ use super::super::super::Runner;
 use crate::provider::Message;
 use codetether_prompt_loop::driver::{ParsedCall, Tools};
 impl Tools for Runner<'_> {
-    fn track_writes(&mut self, step: usize, calls: &[ParsedCall]) {
-        codetether_prompt_loop::response::progress::track_writes(self, step, calls);
+    fn track_progress(&mut self, step: usize) {
+        codetether_prompt_loop::response::progress::track(self, step);
     }
     fn add_message(&mut self, message: Message) {
         self.inner.session.add_message(message);
@@ -15,8 +15,8 @@ impl Tools for Runner<'_> {
 }
 
 impl codetether_prompt_loop::response::progress::Host for Runner<'_> {
-    fn progress(&mut self) -> &mut codetether_prompt_loop::LoopState {
-        &mut self.inner.progress
+    fn evidence(&mut self) -> &mut codetether_repeat_guard::ProgressLedger {
+        &mut self.inner.session.metadata.progress
     }
     fn add_message(&mut self, message: Message) {
         self.inner.session.add_message(message);

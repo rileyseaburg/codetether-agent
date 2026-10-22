@@ -9,6 +9,7 @@ fn node(text: &str) -> SummaryNode {
         target_tokens: 512,
         granularity: Granularity::Turn,
         generation: 0,
+        provenance: None,
     }
 }
 

@@ -44,3 +44,6 @@ pub mod resume;
 
 /// Goal-aware draining of one-shot queued chat prompts.
 pub mod queued;
+
+#[cfg(test)]
+mod tests;

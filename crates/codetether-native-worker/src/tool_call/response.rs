@@ -8,7 +8,7 @@ impl<S: InputContext, H: Application> crate::response::Tools<S, ToolRegistry<H>>
         session: &mut S,
         context: &ResponseContext<'_, ToolRegistry<H>>,
         tool_call: ToolCall,
-    ) {
+    ) -> anyhow::Result<()> {
         execute_tool_call(
             session,
             context.tool_registry,
@@ -18,6 +18,6 @@ impl<S: InputContext, H: Application> crate::response::Tools<S, ToolRegistry<H>>
             &context.output_callback,
             tool_call,
         )
-        .await;
+        .await
     }
 }

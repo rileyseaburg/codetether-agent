@@ -13,10 +13,10 @@ pub(super) fn agent_tool_parameters() -> Value {
             "name": { "type": "string", "description": "Local agent name, authenticated LAN peer name, or durable child session ID" },
             "instructions": { "type": "string", "description": "System instructions (spawn). Durable and writable ephemeral children get managed Git worktrees at parent HEAD, excluding uncommitted edits. Review/cherry-pick returned child commits explicitly; no auto-merge. Read-only ephemeral jobs share the workspace." },
             "message": { "type": "string", "description": "Message to send" },
-            "context_id": { "type": "string", "maxLength": 128, "pattern": "^[A-Za-z0-9_-]+$", "description": "Stable A2A conversation ID for related remote-agent turns" },
+            "context_id": { "type": "string", "maxLength": 128, "pattern": "^[A-Za-z0-9_-]+$", "description": "Stable A2A conversation ID for related remote-agent turns. Defaults to a separate conversation for this session and peer; set explicitly to select another thread." },
             "model": { "type": "string", "description": "Model (spawn). Should be free/subscription-eligible; otherwise a cost warning is returned." },
             "ephemeral": { "type": "boolean", "description": "Run once without a child transcript or registry entry. Ephemeral runs are synchronous." },
-            "detach": { "type": "boolean", "description": "Defaults to false so the caller receives the result. Interactive clients may set true for background execution. Ephemeral agents cannot detach." }
+            "detach": { "type": "boolean", "description": "Defaults to false so the caller receives the result. Interactive clients may set true for background execution; remote replies return to the initiating session automatically. Ephemeral agents cannot detach." }
         },
         "required": ["action"]
     })

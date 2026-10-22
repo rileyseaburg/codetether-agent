@@ -9,11 +9,16 @@ pub(super) async fn run<H: Source, S>(
 ) -> Result<DerivedContext> {
     let budget =
         codetether_context_policy::derivation::input_budget::resolve(input.model, budget_tokens);
+    anyhow::ensure!(
+        input.header_tokens < budget,
+        "context window budget exceeded: pinned source text alone requires {} tokens, input budget is {budget}; explicitly supersede or unpin obsolete constraints",
+        input.header_tokens
+    );
     codetether_incremental_derivation::derive_incremental(
-        input.session,
+        &super::header_source::HeaderSource(input.session),
         input.system_prompt,
         input.tools,
-        budget,
+        budget - input.header_tokens,
     )
     .await
 }

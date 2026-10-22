@@ -20,6 +20,9 @@ pub(super) fn apply_identity(
 }
 
 pub(super) fn apply_extracted(checkpoint: &mut RunCheckpoint, extracted: ExtractedState) {
+    checkpoint.actions = extracted.actions;
+    checkpoint.user_context = extracted.user_context;
+    checkpoint.assistant_context = extracted.assistant_context;
     checkpoint.current_browser_url = extracted.browser_url;
     checkpoint.completed_actions = extracted.completed_actions;
     checkpoint.blockers = extracted.blockers;

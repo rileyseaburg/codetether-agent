@@ -18,6 +18,14 @@
 pub mod cache;
 pub mod cache_async;
 pub mod cache_mut;
+mod evict_prefix;
+#[cfg(test)]
+mod evict_prefix_tests;
+mod projection;
+mod provenance;
+pub use projection::projection_name;
+#[cfg(test)]
+mod provenance_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -26,6 +34,8 @@ mod tests_async;
 mod tests_summary_for;
 mod tree_serde;
 pub mod types;
+mod validate;
+pub use provenance::{SUMMARY_POLICY, SUMMARY_POLICY_VERSION, SummaryProvenance};
 
 pub use cache::SummaryIndex;
 pub use types::{Granularity, SummaryNode, SummaryRange};

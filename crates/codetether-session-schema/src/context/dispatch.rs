@@ -8,8 +8,11 @@ macro_rules! __session_context_dispatch {
             fn saved_policy(&self) -> $crate::__private::DerivePolicy {
                 self.metadata.context_policy
             }
-            fn constraint_prefix(&self) -> ::std::vec::Vec<::std::string::String> {
+            fn constraint_prefix(&self) -> ::std::vec::Vec<$crate::__private::ConstraintRecord> {
                 $crate::__private::store::constraints::prefix(self)
+            }
+            fn constraint_corrections(&self) -> &[$crate::__private::ConstraintCorrection] {
+                &self.metadata.constraint_corrections
             }
             fn message_offset(&self) -> usize {
                 $name::message_offset(self)

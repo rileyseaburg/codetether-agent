@@ -6,6 +6,7 @@
 //! which registered contracts are advertised to each provider.
 mod alias;
 pub mod budget;
+pub mod context_edit;
 mod contract;
 pub mod feedback;
 pub mod images;

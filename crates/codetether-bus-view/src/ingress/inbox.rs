@@ -25,6 +25,9 @@ pub fn maybe_queue(host: &mut impl Host, envelope: &BusEnvelope) {
     if should_ignore(host, envelope, from, to) {
         return;
     }
+    if host.session_id() == Some(to) && !host.knows_peer(to, from) {
+        return;
+    }
     let message = text_parts(parts);
     if !message.trim().is_empty() {
         host.enqueue_task(IncomingTask {
@@ -32,7 +35,11 @@ pub fn maybe_queue(host: &mut impl Host, envelope: &BusEnvelope) {
                 .correlation_id
                 .clone()
                 .unwrap_or_else(|| envelope.id.clone()),
-            message: super::prompt::untrusted(from, &message),
+            message: format!(
+                "[sub-agent-event:{}]\n{}",
+                envelope.id,
+                super::prompt::untrusted(from, &message)
+            ),
             from_agent: Some(from.clone()),
         });
     }
@@ -46,7 +53,10 @@ fn should_ignore(host: &impl Host, envelope: &BusEnvelope, from: &str, to: &str)
 }
 
 fn addressed_to_tui(host: &impl Host, to: &str) -> bool {
-    to == "tui" || host.worker_id() == Some(to) || host.is_registered(to)
+    to == "tui"
+        || host.worker_id() == Some(to)
+        || host.is_registered(to)
+        || host.session_id() == Some(to)
 }
 
 fn text_parts(parts: &[Part]) -> String {

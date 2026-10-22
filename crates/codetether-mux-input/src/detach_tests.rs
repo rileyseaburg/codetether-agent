@@ -1,4 +1,3 @@
-
 use super::*;
 #[test]
 fn detects_split_detach_sequence() {

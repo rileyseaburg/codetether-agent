@@ -32,6 +32,10 @@ pub trait Dispatch: Presentation {
     fn processing(&self) -> bool;
     /// Take the oldest pending task.
     fn dequeue_task(&mut self) -> Option<IncomingTask>;
+    /// Whether this bus reply was already injected into the active conversation.
+    fn task_delivered(&self, _task: &IncomingTask) -> bool {
+        false
+    }
     /// Track the task whose completion will be reported.
     fn set_active_task(&mut self, task: IncomingTask);
     /// Dispatch using the frontend's active session and provider registry.

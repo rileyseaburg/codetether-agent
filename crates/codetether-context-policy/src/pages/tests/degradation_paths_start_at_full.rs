@@ -6,6 +6,7 @@ fn degradation_paths_start_at_full() {
     for kind in [
         PageKind::Bootstrap,
         PageKind::Constraint,
+        PageKind::SupersededConstraint { by_turn: 10 },
         PageKind::Plan,
         PageKind::Preference,
         PageKind::Evidence,

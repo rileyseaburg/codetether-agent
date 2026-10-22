@@ -3,6 +3,7 @@
 //! [prepare] and [schedule] launch the shared proactive worker using [Host].
 //! [store] owns validated prepared-index sidecar paths. Applications implement
 //! [Session] for their existing message window and bounded tail loader.
+mod cursor;
 mod lifecycle;
 mod session;
 pub mod store;

@@ -34,6 +34,7 @@ impl Host for Native<'_> {
     }
     fn restore(&mut self, session: Session) {
         self.slot.restore(session);
+        crate::tui::app::inbox::live::settle_from_session(self.app, self.slot);
     }
     fn active(&mut self) -> Option<Self::Active<'_>> {
         Some(active::Native {

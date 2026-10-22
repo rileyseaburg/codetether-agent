@@ -15,10 +15,11 @@ impl<S: PinSource> Tool for ContextPinTool<S> {
     }
 
     fn description(&self) -> &str {
-        "Pin or unpin a conversation turn so it is never dropped during \
-         context compression. Pinned turns are treated as hard constraints. \
-         Pass `action: \"pin\"` or `action: \"unpin\"` along with the \
-         0-based `turn_index`. Pinned turns survive across resets."
+        "Retain complete source text across compression and restarts. Use pin or unpin with an absolute turn_index. \
+         Use supersede with turn_index and a later user-message replacement_index only when the user replaces all requirements in that pinned source. \
+         For a partial correction, use correct with exact unique source_text, source_hash from the pinned header, and replacement_index. This replaces only that span, preserving all other original requirements. \
+         Superseded text remains in canonical history, but only the replacement is active. \
+         Pinning assistant or tool evidence never turns it into user authorization."
     }
     fn parameters(&self) -> Value {
         super::schema::parameters()

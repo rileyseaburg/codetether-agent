@@ -15,7 +15,8 @@ use std::sync::Arc;
 /// # Returns
 /// True when the response has no tool calls, otherwise false.
 /// # Errors
-/// Returns the host's execution-boundary error before recording the response.
+/// Returns execution-boundary or context reconciliation errors. A failed tool
+/// reconciliation stops later calls in the same response.
 /// # Examples
 /// ```rust,no_run
 /// # async fn example(host: &mut impl codetether_a2a_worker_core::session_protocol::response::ResponseHost, response: codetether_provider_core::CompletionResponse) -> anyhow::Result<()> {
@@ -44,7 +45,7 @@ pub async fn process_response<H: ResponseHost>(
         return Ok(true);
     }
     for tool_call in tool_calls {
-        host.execute_tool_call(tool_call).await;
+        host.execute_tool_call(tool_call).await?;
     }
     Ok(false)
 }

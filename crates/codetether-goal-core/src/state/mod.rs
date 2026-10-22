@@ -17,8 +17,23 @@ impl TaskState {
     /// Fold events in insertion order into the current state.
     pub fn from_log(events: &[TaskEvent]) -> Self {
         let mut state = Self::default();
-        events.iter().for_each(|event| state.apply(event));
+        state.extend(events);
         state
+    }
+
+    /// Apply newly appended events without replaying the existing journal.
+    /// # Arguments
+    /// * `events` — Subsequent events in their original journal order.
+    /// # Returns
+    /// Updates this state using the same rules as [`Self::from_log`].
+    /// # Examples
+    /// ```
+    /// let mut state = codetether_goal_core::TaskState::default();
+    /// state.extend(&[]);
+    /// assert!(state.goal.is_none());
+    /// ```
+    pub fn extend(&mut self, events: &[TaskEvent]) {
+        events.iter().for_each(|event| self.apply(event));
     }
 
     /// Returns tasks that are pending or in progress, ordered by id.

@@ -10,6 +10,7 @@ description = "Native proactive context scheduling, cursor processing and prepar
 anyhow = "1"
 async-trait = "0.1"
 serde_json = "1"
+tokio = { version = "1", features = ["rt"] }
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }
 codetether-prepared-context = { path = "../codetether-prepared-context", version = "0.1.0" }
 codetether-proactive-context = { path = "../codetether-proactive-context", version = "0.1.0" }

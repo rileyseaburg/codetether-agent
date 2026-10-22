@@ -10,9 +10,9 @@ use codetether_session_events::SessionEvent;
 use futures::stream::BoxStream;
 
 use super::drain_state::DrainState;
+use codetether_stream_outcome::DrainOutcome;
 #[cfg(test)]
 pub(super) use codetether_stream_outcome::IDLE_TIMEOUT;
-use codetether_stream_outcome::DrainOutcome;
 
 /// Drain `stream`, classifying the stop reason. Never errors on its own; a
 /// terminal error chunk is reported as [`codetether_stream_outcome::StreamStop::Fault`] for the caller.

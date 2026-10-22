@@ -20,13 +20,20 @@ use ratatui::text::Span;
 /// # }
 /// ```
 pub fn metric_spans(app: &App) -> Vec<Span<'static>> {
-    codetether_chat_status::metric_spans(&codetether_chat_status::MetricProviders {
-        state: app,
-        processing: super::processing_badge::processing_badge,
-        tokens: push_token_spans,
-        context: super::context_gauge::context_gauge_spans,
-        throughput: push_throughput_span,
-        sparkline: super::throughput_sparkline::sparkline_spans,
-        status: status_text_span,
-    })
+    let mut spans = vec![
+        super::super::status_bar::activity::badge(app),
+        Span::raw(" | "),
+    ];
+    spans.extend(codetether_chat_status::metric_spans(
+        &codetether_chat_status::MetricProviders {
+            state: app,
+            processing: super::processing_badge::processing_badge,
+            tokens: push_token_spans,
+            context: super::context_gauge::context_gauge_spans,
+            throughput: push_throughput_span,
+            sparkline: super::throughput_sparkline::sparkline_spans,
+            status: status_text_span,
+        },
+    ));
+    spans
 }

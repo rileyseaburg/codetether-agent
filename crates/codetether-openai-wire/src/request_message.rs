@@ -1,6 +1,6 @@
 //! OpenAI-compatible request message wire contracts.
-use serde::Deserialize;
 use crate::OpenAiRequestToolCall;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 /// OpenAI-compatible OpenAiRequestMessage wire representation.

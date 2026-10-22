@@ -56,6 +56,9 @@ pub async fn complete(
         content,
         outcome.metadata.as_ref(),
     ));
+    if let Some(feedback) = outcome.approval_feedback {
+        host.append_approval_feedback(&call.id, feedback);
+    }
     host.persist().await?;
     host.record_codesearch(outcome.codesearch_miss);
     Ok(())

@@ -78,5 +78,3 @@ fn last_content_part(message: &mut Value) -> Option<&mut Value> {
         .and_then(Value::as_array_mut)
         .and_then(|parts| parts.last_mut())
 }
-
-

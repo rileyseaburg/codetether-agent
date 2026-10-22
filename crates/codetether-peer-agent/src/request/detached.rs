@@ -15,20 +15,19 @@ pub(super) fn spawn(
     let owned_name = name.to_string();
     let owned_text = text.to_string();
     let owned_context = context_id.map(ToString::to_string);
+    let owner = turn.owner_session_id.clone();
     tokio::spawn(async move {
-        if let Err(error) = run::execute(
+        let outcome = run::execute(
             &owned_name,
             &owned_text,
             owned_context.as_deref(),
             route,
             turn,
         )
-        .await
-        {
-            tracing::warn!(target: "codetether_agent::tool::agent::message::remote::request::detached", peer_name = %owned_name, %error, "Detached LAN peer turn failed");
-        }
+        .await;
+        super::completion::publish(&owned_name, owner.as_deref(), outcome);
     });
     ToolResult::success(format!(
-        "Message dispatched to @{name}; open /agents to inspect its live transcript"
+        "Message dispatched to @{name}; its reply will return to this conversation. Open /agents to inspect its live transcript"
     ))
 }

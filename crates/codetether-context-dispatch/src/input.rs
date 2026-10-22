@@ -10,6 +10,7 @@ pub(super) struct DispatchInputs<'a, H: Source, S> {
     pub provider: Arc<dyn Provider>,
     pub model: &'a str,
     pub system_prompt: &'a str,
+    pub header_tokens: usize,
     pub tools: &'a [ToolDefinition],
     pub event_tx: Option<&'a mpsc::Sender<SessionEvent<S>>>,
     pub force_keep_last: Option<usize>,

@@ -7,9 +7,9 @@ use codetether_provider_core::Message;
 use super::incremental_coverage::uncovered_ranges;
 use super::incremental_types::MessageOrigin;
 
-/// Trim stale messages from the oldest side without crossing the active user
-/// turn, keeping `resolutions` and `origins` in lock-step. If fixed request
-/// overhead already exceeds the budget, preserving the active turn wins.
+/// Trim stale messages before the active user turn, then older complete
+/// exchanges after it, keeping metadata in lock-step. The active instruction
+/// and newest exchange remain protected even if they exceed the budget.
 ///
 /// Returns `(final_dropped_ranges, provenance_tags)`. The caller
 /// merges `provenance_tags` into its own provenance vector.
@@ -35,6 +35,15 @@ pub fn clamp_and_recompute(
         removed += 1;
         clamped = true;
         est = estimate_request(messages);
+    }
+    while est > budget_tokens
+        && super::incremental_tail_clamp::drop_oldest_exchange(messages, resolutions, origins)
+    {
+        clamped = true;
+        est = estimate_request(messages);
+        if !tags.contains(&"incremental_active_history_clamp") {
+            tags.push("incremental_active_history_clamp");
+        }
     }
     if clamped {
         tags.push("incremental_overflow_clamp");

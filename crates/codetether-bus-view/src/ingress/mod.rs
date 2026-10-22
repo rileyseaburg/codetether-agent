@@ -13,3 +13,5 @@ pub use agent_track::track;
 pub use host::{Effects, Host, State};
 pub use inbox::maybe_queue;
 pub use ingest::drain;
+#[cfg(test)]
+mod tests;

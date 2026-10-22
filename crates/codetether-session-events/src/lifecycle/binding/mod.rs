@@ -12,15 +12,15 @@ mod sync;
 /// ```text
 /// codetether_session_events::declare_event_lifecycle!(
 ///     Native; Session, SessionEvent, App, SessionSlot, WorkerBridge;
-///     processing_started, processing_stopped, settle_inbox,
+///     processing_started, processing_stopped,
 /// );
 /// ```
 #[macro_export]
 macro_rules! declare_event_lifecycle {
     ($native:ident; $(,)? $session:ty, $event:ty, $app:ty, $slot:ty, $bridge:ty;
-     $(,)? $started:path, $stopped:path, $settle:path $(,)?) => {
+     $(,)? $started:path, $stopped:path $(,)?) => {
         $crate::__impl_event_processing!($native, $started, $stopped);
-        $crate::__impl_event_completion!($native, $settle);
+        $crate::__impl_event_completion!($native);
         $crate::__impl_event_sync!($native, $session);
 
         pub(super) async fn handle_event(

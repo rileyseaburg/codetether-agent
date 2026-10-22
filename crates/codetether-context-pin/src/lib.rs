@@ -3,10 +3,15 @@
 //! [ContextPinTool] validates the action and index, loads the calling session,
 //! then updates and saves through [PinSource]. Page mutation remains delegated
 //! to the existing tracked storage container.
+mod correct;
 mod execute;
+pub use execute::apply_to_session;
 mod logic;
 mod schema;
 mod source;
+mod supersede;
+#[cfg(test)]
+mod tests;
 mod tool;
 pub use source::PinSource;
 /// Context pinning tool bound to the application's session storage.

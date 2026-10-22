@@ -26,3 +26,4 @@ pub mod incremental_types;
 pub mod incremental_below_budget;
 /// Active-turn-safe overflow clamping.
 pub mod incremental_clamp;
+mod incremental_tail_clamp;

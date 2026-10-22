@@ -11,8 +11,8 @@ use crate::client_diagnostics_wait as publication;
 impl LspClient {
     /// Requests fresh diagnostics for the current on-disk document.
     pub async fn diagnostics(&self, path: &Path) -> Result<LspActionResult> {
-        let content = tokio::fs::read_to_string(path).await.unwrap_or_default();
-        self.diagnostics_for_content(path, &content).await
+        let content = tokio::fs::read_to_string(path).await?;
+        self.diagnostics_synced(path, &content, true).await
     }
 
     /// Requests real LSP diagnostics for proposed, not-yet-written content.
@@ -25,6 +25,15 @@ impl LspClient {
         path: &Path,
         content: &str,
     ) -> Result<LspActionResult> {
+        self.diagnostics_synced(path, content, false).await
+    }
+
+    async fn diagnostics_synced(
+        &self,
+        path: &Path,
+        content: &str,
+        saved: bool,
+    ) -> Result<LspActionResult> {
         let uri = path_to_uri(path);
         let already_open = self.open_documents.read().await.contains_key(&uri);
         self.transport.invalidate_diagnostics(&uri).await;
@@ -32,6 +41,9 @@ impl LspClient {
             self.change_document(path, content).await?;
         } else {
             self.open_document(path, content).await?;
+        }
+        if saved {
+            crate::client_saved::notify(self, &uri, content).await?;
         }
         if let Some(result) = super::typescript_diagnostics::request(self, &uri).await? {
             return Ok(result);

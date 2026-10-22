@@ -15,9 +15,16 @@ pub(super) async fn range(snapshot: &Snapshot, plan: Plan) -> anyhow::Result<Sum
         .get(plan.range.start..plan.range.end)
         .ok_or_else(|| anyhow::anyhow!("proactive RLM range out of bounds"))?;
     let context = messages_to_rlm_context(slice);
+    let provenance = codetether_context_policy::summary_index::SummaryProvenance::new(
+        slice,
+        "proactive-rlm",
+        Some(&snapshot.runtime.model),
+    )?;
+    let policy = codetether_context_policy::summary_index::SUMMARY_POLICY;
+    let version = codetether_context_policy::summary_index::SUMMARY_POLICY_VERSION;
     let input = format!(
-        "Summarize this transcript range in at most {} tokens. Preserve decisions, constraints, file paths, errors, tool outcomes, unresolved work, and likely next context needs.\n\n{context}",
-        plan.target_tokens,
+        "Summary policy {version}: {policy}\nSource SHA-256: {}\nRequested model: {:?}\nSummarize this transcript range in at most {} tokens.\n\n{context}",
+        provenance.source_sha256, provenance.requested_model, plan.target_tokens,
     );
     let request = CrateAutoProcessContext {
         tool_id: "proactive_session_context",
@@ -44,5 +51,6 @@ pub(super) async fn range(snapshot: &Snapshot, plan: Plan) -> anyhow::Result<Sum
         target_tokens: plan.target_tokens,
         granularity: plan.granularity,
         generation: snapshot.generation,
+        provenance: Some(provenance),
     })
 }

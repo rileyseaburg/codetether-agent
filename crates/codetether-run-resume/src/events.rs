@@ -34,7 +34,7 @@ pub async fn execute_prompt_with_resume_events<S: crate::RunSession>(
     let mut prompt_text = message.to_string();
     let mut resumes_left = resume_attempts.unwrap_or(0);
     loop {
-        let before = session.messages().len();
+        let before = session.message_count();
         let result = session
             .prompt_with_events(&prompt_text, event_tx.clone(), Arc::clone(&registry))
             .await?;

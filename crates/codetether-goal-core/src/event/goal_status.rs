@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use codetether_agent::session::GoalStatus;
+/// use codetether_goal_core::GoalStatus;
 /// assert!(GoalStatus::Active.is_active());
 /// assert!(GoalStatus::Complete.is_terminal());
 /// ```

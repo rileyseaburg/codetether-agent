@@ -14,12 +14,12 @@ pub fn submit<H: Host>(host: &mut H, prompt: &str) {
         return;
     }
     let expanded = host.expand(prompt);
-    if !host.steer(expanded, images.clone()) {
+    if !host.steer(expanded.clone(), images.clone()) {
         queue_fallback(host, prompt);
         return;
     }
     host.clear_attachments();
-    crate::publication::push_user_messages(host.messages(), prompt, &images);
+    crate::publication::push_user_messages(host.messages(), &expanded, &images);
     host.clear_input();
     host.status("Steered current turn".to_string());
     host.scroll();

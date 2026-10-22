@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { checksums, digest } from './source.mjs';
 import { mirrorAssets } from './asset.mjs';
 import { publishedReleases } from './list.mjs';
+import { selectRelease } from './github.mjs';
 test('rejects partial source uploads and duplicate checksum names', async () => {
   const original = globalThis.fetch;
   const sha = '0'.repeat(64);
@@ -15,6 +16,26 @@ test('rejects partial source uploads and duplicate checksum names', async () => 
     assert.equal(sums.get('SHA256SUMS-v1.0.0.txt'), digest(Buffer.from(`${sha}  app.exe\n`)));
     await assert.rejects(checksums({ ...release, assets: release.assets.slice(0, 1) }), /incomplete/);
     globalThis.fetch = async () => new Response(`${sha}  app.exe\n${sha}  app.exe\n`);
+    await assert.rejects(checksums(release), /Duplicate/);
+  } finally { globalThis.fetch = original; }
+});
+test('accepts manual SHA256SUMS naming and whitespace with strict safety checks', async () => {
+  const original = globalThis.fetch;
+  const sha = 'a'.repeat(64);
+  const release = { tag_name: 'v1.0.0', assets: [{ name: 'SHA256SUMS' }, { name: 'app.exe' }] };
+  try {
+    globalThis.fetch = async url => {
+      assert.ok(url.endsWith('/v1.0.0/SHA256SUMS'));
+      return new Response(`${sha}   app.exe\n`);
+    };
+    assert.equal((await checksums(release)).get('app.exe'), sha);
+    await assert.rejects(checksums({ ...release, assets: [] }), /exactly one/);
+    await assert.rejects(checksums({ ...release, assets: [...release.assets, { name: 'SHA256SUMS-v1.0.0.txt' }] }), /exactly one/);
+    for (const filename of ['../app.exe', 'dir/app.exe']) {
+      globalThis.fetch = async () => new Response(`${sha}   ${filename}\n`);
+      await assert.rejects(checksums(release), /Invalid checksum/);
+    }
+    globalThis.fetch = async () => new Response(`${sha}  app.exe\n${sha}   app.exe\n`);
     await assert.rejects(checksums(release), /Duplicate/);
   } finally { globalThis.fetch = original; }
 });
@@ -36,4 +57,13 @@ test('does not overwrite same-name GitHub assets with a different digest', async
   await assert.rejects(mirrorAssets(source, target, new Map([['app.exe', sha]]), '/unused'), /Refusing conflicting/);
   target.assets[0].digest = `sha256:${sha}`;
   assert.equal(await mirrorAssets(source, target, new Map([['app.exe', sha]]), '/unused'), target);
+});
+test('prefers a published release over a duplicate draft for the same tag', () => {
+  const draft = { tag_name: 'v1', draft: true, id: 2 };
+  const published = { tag_name: 'v1', draft: false, id: 1 };
+  assert.equal(selectRelease([draft, published], 'v1'), published);
+  assert.equal(selectRelease([published, draft], 'v1'), published);
+  assert.equal(selectRelease([draft], 'v1'), draft);
+  assert.equal(selectRelease([published], 'v1'), published);
+  assert.equal(selectRelease([draft, published], 'v2'), undefined);
 });

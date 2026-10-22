@@ -31,6 +31,10 @@ pub trait Effects {
     fn enqueue_task(&mut self, task: IncomingTask);
     /// Check whether the sender is a managed child of the current session.
     fn owns_agent(&self, parent: &str, agent: &str) -> bool;
+    /// Whether this session has an outgoing conversation with the remote peer.
+    fn knows_peer(&self, _parent: &str, _peer: &str) -> bool {
+        false
+    }
     /// Append a sanitized assistant result to chat.
     fn push_assistant(&mut self, text: String);
     /// Replace frontend status text.

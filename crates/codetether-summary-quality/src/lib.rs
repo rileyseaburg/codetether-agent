@@ -7,6 +7,7 @@ mod bounded;
 mod clamp;
 mod floor;
 mod gate;
+mod sections;
 pub use bounded::bounded_summary;
 pub use clamp::clamp_tokens;
 pub use codetether_context_policy::summary_index::text::strip_stats_header;

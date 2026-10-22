@@ -13,6 +13,8 @@ mod files;
 mod integrations;
 mod media;
 mod native;
+#[cfg(test)]
+mod rust_build_tests;
 mod search_tools;
 pub use native::{Host, NativeTool};
 

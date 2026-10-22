@@ -7,6 +7,9 @@ macro_rules! __session_context_tool_summary {
         #[$crate::__private::async_trait]
         impl $crate::__private::context_summarize::SummarySource for $name {
             type Prepared = $crate::__private::context_summarize::production::Prepared;
+            fn messages(&self) -> &[$crate::__private::Message] {
+                &self.messages
+            }
             fn summary_index(&self) -> &$crate::__private::SummaryIndex {
                 &self.summary_index
             }

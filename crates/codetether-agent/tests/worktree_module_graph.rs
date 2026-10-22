@@ -1,49 +1,23 @@
 use std::path::Path;
 
 #[test]
-fn worktree_uses_single_active_module_file() {
+fn worktree_uses_a_direct_crate_reexport() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let monolith = root.join("src/worktree.rs");
     let split_mod = root.join("src/worktree/mod.rs");
-    let split_dir = root.join("src/worktree");
-    let has_monolith = monolith.is_file();
-    let has_split_mod = split_mod.is_file();
-
+    let source = std::fs::read_to_string(root.join("src/lib.rs")).unwrap();
     assert!(
-        has_monolith || has_split_mod,
-        "expected either src/worktree.rs or src/worktree/mod.rs to define the worktree module"
+        source
+            .lines()
+            .any(|line| line.trim() == "pub use codetether_worktree as worktree;")
     );
-    assert!(
-        !(has_monolith && has_split_mod),
-        "expected exactly one active worktree module entry point"
-    );
-    if !split_dir.is_dir() || has_split_mod {
-        return;
-    }
-
-    assert!(
-        !contains_rust_file(&split_dir),
-        "src/worktree/ contains Rust modules, but src/worktree.rs is the active module"
-    );
+    assert!(!monolith.exists(), "obsolete worktree facade remains");
+    assert!(!split_mod.exists(), "obsolete worktree facade remains");
 }
 
 #[test]
 fn worktree_implementation_lives_in_workspace_crate() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let facade = std::fs::read_to_string(root.join("src/worktree/mod.rs")).unwrap();
-    assert!(facade.contains("pub use codetether_worktree::*;"));
-    assert!(!facade.contains("mod manager;"));
     assert!(root.join("../codetether-worktree/src/lib.rs").is_file());
     assert!(root.join("../codetether-worktree/src/manager.rs").is_file());
-}
-
-fn contains_rust_file(path: &Path) -> bool {
-    let Ok(entries) = std::fs::read_dir(path) else {
-        return false;
-    };
-    entries.filter_map(Result::ok).any(|entry| {
-        let path = entry.path();
-        path.extension().is_some_and(|ext| ext == "rs")
-            || (path.is_dir() && contains_rust_file(&path))
-    })
 }

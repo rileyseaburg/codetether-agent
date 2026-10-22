@@ -4,6 +4,7 @@ use anyhow::Result;
 use rusqlite::{TransactionBehavior, params};
 mod guard;
 mod header;
+mod pins;
 use std::path::Path;
 /// Commit an optimistic delta atomically, recognizing acknowledged retries.
 /// # Arguments
@@ -20,19 +21,34 @@ use std::path::Path;
 /// # Ok(()) }
 /// ```
 pub fn commit(path: &Path, batch: &Batch) -> Result<i64> {
+    commit_with_pins(path, batch, &[])
+}
+
+pub(crate) fn commit_with_pins(
+    path: &Path,
+    batch: &Batch,
+    edits: &[crate::pin_edits::PinSource],
+) -> Result<i64> {
     let mut db = super::connection::open(path)?;
     let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let nonce = super::identity::nonce(batch);
+    let nonce = pins::nonce(batch, edits)?;
     if let Some(revision) = guard::retry(&tx, &batch.id, &nonce)? {
         return Ok(revision);
     }
     let old_count = guard::check(&tx, batch)?;
     let revision = batch.revision + 1;
-    header::write(&tx, batch, revision, old_count)?;
+    let start = edits
+        .iter()
+        .map(|edit| edit.index)
+        .min()
+        .unwrap_or(batch.messages.start)
+        .min(batch.messages.start);
+    header::write(&tx, batch, revision, old_count, start)?;
     super::records::write(&tx, &batch.id, 0, &batch.messages)?;
     super::records::write(&tx, &batch.id, 1, &batch.tools)?;
     super::tool_state::apply(&tx, batch)?;
     super::events::append(&tx, batch, revision)?;
+    pins::write(&tx, batch, revision, edits)?;
     tx.execute(
         "INSERT INTO commits VALUES (?1,?2,?3)",
         params![batch.id, revision, nonce],

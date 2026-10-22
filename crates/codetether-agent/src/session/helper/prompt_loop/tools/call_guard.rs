@@ -19,9 +19,20 @@ pub(super) async fn publish_start(runner: &Runner<'_>, call: &Call) {
 
 /// Returns the reason an interactive, stubbed, or repeated call is blocked.
 pub(super) fn blocked(runner: &mut Runner<'_>, call: &Call) -> Option<String> {
-    runner.inner.progress.blocked(
-        &call.name,
-        &call.input,
-        codetether_question::runtime::available,
-    )
+    runner
+        .inner
+        .progress
+        .blocked(
+            &call.name,
+            &call.input,
+            codetether_question::runtime::available,
+        )
+        .or_else(|| {
+            runner
+                .inner
+                .session
+                .metadata
+                .progress
+                .blocked_edit(&call.name, &call.input)
+        })
 }

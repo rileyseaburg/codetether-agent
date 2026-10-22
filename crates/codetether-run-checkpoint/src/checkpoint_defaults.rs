@@ -5,6 +5,10 @@ use chrono::Utc;
 
 pub(super) fn empty_checkpoint() -> RunCheckpoint {
     RunCheckpoint {
+        evidence_version: 1,
+        actions: Vec::new(),
+        user_context: Vec::new(),
+        assistant_context: None,
         reason: CheckpointReason::MaxStepsExhausted,
         original_objective: String::new(),
         max_step_budget: 0,

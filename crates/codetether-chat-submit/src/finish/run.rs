@@ -15,10 +15,9 @@ pub async fn finish<H: Actions>(host: &mut H, prompt: &str) {
     if prompt.is_empty() && pending_images.is_empty() {
         return;
     }
-    // Chat history shows the compact placeholder; the agent receives the
-    // expanded full paste content wrapped in delimiters.
+    // Expand before publishing so the submitted paste stays readable in chat.
     let agent_prompt = host.expand(prompt, &pending_text_pastes);
     host.adopt(&agent_prompt).await;
-    host.publish(prompt, &pending_images);
+    host.publish(&agent_prompt, &pending_images);
     host.dispatch(&agent_prompt, pending_images).await;
 }

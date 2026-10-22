@@ -1,0 +1,153 @@
+{
+  "name": "codetether-rust",
+  "displayName": "CodeTether Rust",
+  "description": "Rust status, checks, reviewed fixes and shared native diagnostics with optional sccache/MinIO support.",
+  "version": "0.4.1",
+  "activationEvents": ["onStartupFinished", "onLanguage:rust"],
+  "publisher": "codetether",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./src/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:vscode": "node test/run-vscode.cjs"
+  },
+  "contributes": {
+    "problemMatchers": [
+      {
+        "name": "codetether-rustc",
+        "owner": "codetether-rust",
+        "source": "CodeTether Rust",
+        "applyTo": "allDocuments",
+        "fileLocation": [
+          "autoDetect",
+          "${workspaceFolder}"
+        ],
+        "pattern": [
+          {
+            "regexp": "^(error|warning|warn)(?:\\[([^\\]]+)\\])?: (.*)$",
+            "severity": 1,
+            "code": 2,
+            "message": 3
+          },
+          {
+            "regexp": "^\\s*-->\\s+(.+):(\\d+):(\\d+)\\s*$",
+            "file": 1,
+            "line": 2,
+            "column": 3
+          }
+        ]
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "codetether-rust",
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "workspace": { "type": "string" },
+          "automatic": { "type": "boolean" },
+          "action": {
+            "type": "string"
+          }
+        }
+      }
+    ],
+    "commands": [
+      { "command": "codetether.rust.menu", "title": "CodeTether Rust: Status and Actions" },
+      { "command": "codetether.rust.cache-build", "title": "CodeTether Rust: Build & Publish Shared Cache" },
+      { "command": "codetether.rust.cache-publish", "title": "CodeTether Rust: Publish Verified Cache" },
+      { "command": "codetether.rust.enableCheckOnSave", "title": "CodeTether Rust: Enable Check on Save" },
+      {
+        "command": "codetether.rust.build",
+        "title": "CodeTether Rust: Build (ra-jit)"
+      },
+      {
+        "command": "codetether.rust.run",
+        "title": "CodeTether Rust: Run (ra-jit)"
+      },
+      {
+        "command": "codetether.rust.test",
+        "title": "CodeTether Rust: Test (ra-jit)"
+      },
+      {
+        "command": "codetether.rust.check",
+        "title": "CodeTether Rust: Check (rustc)"
+      },
+      {
+        "command": "codetether.rust.status",
+        "title": "CodeTether Rust: Daemon Status"
+      },
+      {
+        "command": "codetether.rust.doctor",
+        "title": "CodeTether Rust: Diagnose Prerequisites"
+      },
+      {
+        "command": "codetether.rust.stop",
+        "title": "CodeTether Rust: Stop ra-jit Daemon"
+      }
+    ],
+    "configuration": {
+      "title": "CodeTether Rust Builds",
+      "properties": {
+        "codetether.rust.useSccache": { "type": "boolean", "default": false, "scope": "resource", "description": "Set RUSTC_WRAPPER to sccache and CARGO_INCREMENTAL=0 for Cargo subprocesses. Inherits host-side MinIO/S3 configuration and credentials. Does not restart daemons or cache ra-jit's in-memory compilation." },
+        "codetether.rust.sccacheExecutable": { "type": "string", "default": "sccache", "scope": "machine", "description": "sccache executable on the extension host, not a shell command. Credentials belong in host-side configuration, never here." },
+        "codetether.rust.checkOnSave": { "type": "boolean", "default": false, "scope": "resource", "description": "Run ordinary Cargo check after saving Rust/Cargo files. Can execute build scripts. Use Enable Check on Save to avoid duplicate rust-analyzer checks." },
+        "codetether.rust.checkOnSaveDelay": { "type": "number", "default": 750, "minimum": 100, "maximum": 10000, "scope": "resource", "description": "Debounce delay in milliseconds; concurrent saves coalesce." },
+        "codetether.rust.sharedDiagnostics": { "type": "boolean", "default": true, "scope": "resource", "description": "Display workspace-matched diagnostics published by running native CodeTether LSP clients, including the TUI." },
+        "codetether.rust.diagnosticsDirectory": { "type": "string", "default": "", "scope": "machine", "description": "Override native diagnostics cache location on this host. Empty uses the CodeTether user cache." },
+        "codetether.rust.fixModel": { "type": "string", "default": "", "scope": "machine", "description": "Optional provider/model for tool-free repair proposals. Empty uses CodeTether's configured model." },
+        "codetether.rust.executable": {
+          "type": "string",
+          "default": "codetether",
+          "scope": "machine",
+          "description": "CodeTether executable on the extension host, not a shell command."
+        },
+        "codetether.rust.toolchain": {
+          "scope": "resource",
+          "type": "string",
+          "default": "stable",
+          "description": "Rustup toolchain; ra-jit operations require Rust 1.99.0."
+        },
+        "codetether.rust.package": {
+          "scope": "resource",
+          "type": "string",
+          "default": "",
+          "description": "Optional Cargo package selection."
+        },
+        "codetether.rust.bin": {
+          "scope": "resource",
+          "type": "string",
+          "default": "",
+          "description": "Optional Cargo binary selection."
+        },
+        "codetether.rust.runArgs": {
+          "scope": "resource",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Program arguments, passed literally without shell expansion."
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@vscode/test-electron": "2.5.2"
+  }
+}

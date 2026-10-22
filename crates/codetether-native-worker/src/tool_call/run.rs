@@ -6,10 +6,13 @@ use super::*;
 /// original provider tool-call tuple.
 /// # Returns
 /// Completes after the tool reply has been recorded on the session transcript.
+/// # Errors
+/// Propagates context save/refresh failures after recording their diagnostics.
 /// # Examples
 /// ```no_run
-/// # async fn example<S: codetether_native_worker::tool_call::InputContext, H: codetether_application_registry::Application>(session: &mut S, registry: &codetether_application_registry::ToolRegistry<H>) {
-/// codetether_native_worker::tool_call::execute_tool_call(session, registry, codetether_a2a_worker_core::execution_policy::AutoApprove::None, std::path::Path::new("."), "model", &None, ("call".into(), "read".into(), serde_json::json!({}))).await;
+/// # async fn example<S: codetether_native_worker::tool_call::InputContext, H: codetether_application_registry::Application>(session: &mut S, registry: &codetether_application_registry::ToolRegistry<H>) -> anyhow::Result<()> {
+/// codetether_native_worker::tool_call::execute_tool_call(session, registry, codetether_a2a_worker_core::execution_policy::AutoApprove::None, std::path::Path::new("."), "model", &None, ("call".into(), "read".into(), serde_json::json!({}))).await?;
+/// # Ok(())
 /// # }
 /// ```
 pub async fn execute_tool_call<S: InputContext, H: Application>(
@@ -20,7 +23,7 @@ pub async fn execute_tool_call<S: InputContext, H: Application>(
     model: &str,
     cb: &Option<Arc<dyn Fn(String) + Send + Sync + 'static>>,
     (tool_id, tool_name, tool_input): ToolCall,
-) {
+) -> anyhow::Result<()> {
     codetether_a2a_worker_core::session_protocol::tool_call::execute_tool_call(
         &mut host::ApplicationHost {
             session,
@@ -33,5 +36,5 @@ pub async fn execute_tool_call<S: InputContext, H: Application>(
         cb,
         (tool_id, tool_name, tool_input),
     )
-    .await;
+    .await
 }

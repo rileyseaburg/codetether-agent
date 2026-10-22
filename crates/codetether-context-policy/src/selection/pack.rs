@@ -16,8 +16,18 @@ pub fn select(
     let mut accepted = Vec::new();
     let dropped = super::ranges::collect_dropped_ranges(keep);
     for gap in super::prepared_gaps::select(index, &dropped) {
+        if gap.range.end > keep.len() {
+            continue;
+        }
         let range = gap.range.start..gap.range.end;
-        let raw_cost: usize = per_message[range.clone()].iter().sum();
+        if covered[range.clone()].iter().any(|&value| value) {
+            continue;
+        }
+        let raw_cost: usize = range
+            .clone()
+            .filter(|&i| !keep[i])
+            .map(|i| per_message[i])
+            .sum();
         let cost = estimate_tokens_for_messages(&[summary_message(&gap)]);
         if cost <= budget && cost < raw_cost {
             budget -= cost;

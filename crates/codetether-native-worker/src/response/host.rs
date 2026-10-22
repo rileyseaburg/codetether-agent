@@ -23,7 +23,7 @@ where
     fn append_message(&mut self, message: Message) {
         transcript::Host::append(self.session, message);
     }
-    async fn execute_tool_call(&mut self, tool_call: ToolCall) {
-        E::execute(self.session, self.context, tool_call).await;
+    async fn execute_tool_call(&mut self, tool_call: ToolCall) -> anyhow::Result<()> {
+        E::execute(self.session, self.context, tool_call).await
     }
 }

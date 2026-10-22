@@ -2,17 +2,8 @@
 use super::{super::Runner, call::Call};
 use anyhow::Result;
 pub(super) async fn after(runner: &mut Runner<'_>, call: &Call, success: bool) -> Result<()> {
-    if call.name != "context_pin" || !success {
+    if !codetether_tool_core::context_edit::is_context_edit(&call.name) || !success {
         return Ok(());
     }
-    let current = &runner.inner.session;
-    let mut latest = crate::session::Session::load_tail(&current.id, current.messages.len())
-        .await?
-        .session;
-    latest.max_steps = current.max_steps;
-    latest.bus = current.bus.clone();
-    latest.metadata.subcall_provider = current.metadata.subcall_provider.clone();
-    latest.metadata.subcall_model_name = current.metadata.subcall_model_name.clone();
-    *runner.inner.session = latest;
-    Ok(())
+    runner.inner.session.refresh_context_from_store().await
 }

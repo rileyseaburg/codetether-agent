@@ -8,10 +8,15 @@ pub fn build(app: &App) -> Vec<Span<'static>> {
         id: &request.id,
         pending: approval_queue::len(),
     });
-    codetether_webview_bars::prefix::build(Status {
+    let mut spans = vec![
+        super::super::status_bar::activity::badge(app),
+        Span::raw(" | "),
+    ];
+    spans.extend(codetether_webview_bars::prefix::build(Status {
         processing: app.state.processing,
         status: &app.state.status,
         pending_tool: app.state.tool_timing.pending_tool_name.as_deref(),
         approval,
-    })
+    }));
+    spans
 }

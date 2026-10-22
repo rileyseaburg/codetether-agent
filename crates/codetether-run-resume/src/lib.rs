@@ -10,6 +10,7 @@ mod host;
 mod plain;
 mod plan;
 pub use checkpoint::{persist_exhaustion_checkpoint, resume_plan, should_checkpoint};
+pub use codetether_run_checkpoint::RunCheckpoint;
 pub use events::execute_prompt_with_resume_events;
 pub use host::RunSession;
 pub use plain::execute_prompt_with_resume;
