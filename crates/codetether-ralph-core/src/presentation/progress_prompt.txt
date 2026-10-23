@@ -1,0 +1,22 @@
+# PRD: {} - {}
+
+## Current Story: {} - {}
+
+{}
+
+### Acceptance Criteria:
+{}
+
+### Verification Steps:
+{}
+
+## Previous Progress:
+{}
+
+## Instructions:
+1. Implement the requirements for this story
+2. Write any necessary code changes
+3. Document what you learned
+4. End with `STORY_COMPLETE: {}` when done
+
+Respond with the implementation and any shell commands needed.

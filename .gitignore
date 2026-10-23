@@ -54,6 +54,7 @@ patch*.patch
 prd_*.json
 prd.json
 progress_*.txt
+!crates/codetether-ralph-core/src/presentation/progress_prompt.txt
 sq_[0-9][0-9][0-9]/
 ralph_*.log
 *.vsix
