@@ -7,28 +7,21 @@ impl WebSearchTool {
         if p.query.trim().is_empty() {
             return Ok(ToolResult::error("Query cannot be empty"));
         }
-
-        let results = self.search_ddg(&p.query, p.max_results).await?;
-
-        if results.is_empty() {
-            return Ok(ToolResult::success("No results found".to_string()));
+        let configured = std::env::var(BACKEND_ENV).ok();
+        let order = match backend_order(configured.as_deref()) {
+            Ok(order) => order,
+            Err(failure) => return Ok(report::config_error(&p.query, &failure)),
+        };
+        let max = p.max_results.clamp(1, 20);
+        let mut attempts = Vec::with_capacity(order.len());
+        for backend in order {
+            let attempt = self.attempt(backend, &p.query, max).await;
+            let done = attempt.outcome.is_ok();
+            attempts.push(attempt);
+            if done {
+                break;
+            }
         }
-
-        let output = results
-            .iter()
-            .enumerate()
-            .map(|(i, r)| {
-                format!(
-                    "{}. {}\n   URL: {}\n   {}",
-                    i + 1,
-                    r.title,
-                    r.url,
-                    r.snippet
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n\n");
-
-        Ok(ToolResult::success(output).with_metadata("count", json!(results.len())))
+        Ok(report::render(&p.query, &attempts))
     }
 }

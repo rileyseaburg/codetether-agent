@@ -1,12 +1,11 @@
 //! construct for web search.
 use super::*;
-/// Search the web through the existing DuckDuckGo HTML endpoint.
+/// Search the web through Bing HTML, then DuckDuckGo HTML if Bing fails.
 ///
 /// # Examples
 /// ```rust
 /// let _tool = codetether_websearch::WebSearchTool::new();
 /// ```
-
 pub struct WebSearchTool {
     pub(crate) client: reqwest::Client,
 }
@@ -24,7 +23,6 @@ impl WebSearchTool {
     /// ```rust
     /// let _tool = codetether_websearch::WebSearchTool::new();
     /// ```
-
     pub fn new() -> Self {
         let client = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
