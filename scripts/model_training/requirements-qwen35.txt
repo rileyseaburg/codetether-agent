@@ -6,7 +6,7 @@
 # torch 2.5 or newer; pairing it with torch 2.4 failed at import.
 accelerate==1.14.0
 bitsandbytes==0.50.0
-datasets==5.0.0
+datasets==5.0.1
 peft==0.19.1
 safetensors==0.8.0
 transformers==5.14.1

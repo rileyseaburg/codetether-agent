@@ -6,7 +6,7 @@
 # peft 0.15.2 requires only torch>=1.13.0, so these pins hold on torch 2.4.
 accelerate==1.6.0
 bitsandbytes==0.45.5
-datasets==3.5.0
+datasets==5.0.1
 peft==0.15.2
 safetensors==0.5.3
 transformers==4.57.1
