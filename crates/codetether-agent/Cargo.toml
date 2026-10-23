@@ -1,6 +1,6 @@
 [package]
 name = "codetether-agent"
-version = "4.7.6-dev.54"
+version = "4.7.6-dev.55"
 
 
 edition = "2024"
