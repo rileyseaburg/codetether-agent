@@ -9,5 +9,5 @@ bitsandbytes==0.45.5
 datasets==3.5.0
 peft==0.15.2
 safetensors==0.5.3
-transformers==4.57.1
+transformers==5.10.1
 trl==0.17.0
