@@ -87,9 +87,9 @@ macro_rules! declare_event_pipeline {
             }
             app.state.last_activity_at = ::std::time::SystemTime::now();
             app.state.last_activity_kind = match &evt {
-                $crate::SessionEvent::Thinking | $crate::SessionEvent::ThinkingComplete(_) => {
-                    "thinking"
-                }
+                $crate::SessionEvent::Thinking
+                | $crate::SessionEvent::ThinkingChunk(_)
+                | $crate::SessionEvent::ThinkingComplete(_) => "thinking",
                 $crate::SessionEvent::TextChunk(_) | $crate::SessionEvent::TextComplete(_) => {
                     "message"
                 }

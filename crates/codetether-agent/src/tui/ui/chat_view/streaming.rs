@@ -3,6 +3,7 @@ use crate::tui::{app::state::AppState, message_formatter::MessageFormatter};
 pub use codetether_message_cache::reset_stream_parse_cache;
 use ratatui::text::Line;
 mod events;
+mod reasoning;
 /// Append the active stream, sampling elapsed time inside the shared header.
 ///
 /// # Arguments
@@ -28,6 +29,7 @@ pub fn push_streaming_preview(
     separator_width: usize,
     formatter: &MessageFormatter,
 ) {
+    reasoning::append(lines, state, formatter);
     codetether_tool_panel::push_streaming_preview(
         lines,
         state.processing,

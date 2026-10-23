@@ -23,6 +23,8 @@ use crate::{
 pub enum SessionEvent<S = ()> {
     /// The agent is thinking or waiting on the model.
     Thinking,
+    /// Cumulative readable reasoning preview; opaque signatures are excluded.
+    ThinkingChunk(String),
     /// Synthetic provider-wait liveness tick; no model output was received.
     /// Consumers may refresh watchdogs but must not treat this as task activity.
     ProviderKeepalive,

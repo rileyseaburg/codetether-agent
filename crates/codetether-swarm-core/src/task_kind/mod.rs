@@ -8,12 +8,13 @@ pub(crate) enum TaskKind {
 }
 
 mod decision;
+mod directives;
 mod words;
 
 pub(crate) fn classify(name: &str, instruction: &str, specialty: Option<&str>) -> TaskKind {
     let intent = format!("{instruction} {name} {}", specialty.unwrap_or_default());
     let label = tokens(name);
-    let tokens = tokens(&intent);
+    let tokens = directives::tokens(&intent);
     decision::classify(&tokens, &label)
 }
 

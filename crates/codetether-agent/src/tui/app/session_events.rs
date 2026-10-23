@@ -14,6 +14,7 @@ mod context;
 mod errors;
 mod interlude;
 mod lifecycle;
+mod reasoning;
 mod retention;
 mod tools;
 
@@ -34,7 +35,7 @@ codetether_session_events::declare_event_pipeline!(
     crate::session::SessionEvent;
     crate::tui::app::session_events::retention::trim,
     crate::tui::app::session_events::context::handle_event;
-    crate::tui::app::session_events::lifecycle::handle_event,
+    crate::tui::app::session_events::reasoning::handle_event,
     crate::tui::app::session_events::interlude::handle_event,
     crate::tui::app::session_events::retry::handle_event,
     crate::tui::app::session_events::tools::handle_event,

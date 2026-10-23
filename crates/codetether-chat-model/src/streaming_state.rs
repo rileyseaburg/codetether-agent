@@ -11,6 +11,8 @@ use std::time::Instant;
 pub struct StreamingState {
     /// Cumulative assistant reply.
     pub streaming_text: String,
+    /// Readable provider reasoning received so far, separate from the reply.
+    pub streaming_reasoning: String,
     /// Start of throughput measurement.
     pub streaming_start: Option<Instant>,
     /// Cumulative streamed character count.

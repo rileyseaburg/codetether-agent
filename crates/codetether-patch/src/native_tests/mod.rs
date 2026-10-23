@@ -9,3 +9,5 @@ mod approval_verify_tests;
 mod preview_tests;
 #[cfg(test)]
 mod test_support;
+#[cfg(test)]
+mod write_guard_tests;

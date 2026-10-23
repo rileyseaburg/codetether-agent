@@ -29,7 +29,7 @@ pub(super) async fn on_text<S>(
     Ok(())
 }
 
-/// Append a thinking/reasoning delta and emit a nonblocking activity signal.
+/// Append readable reasoning and emit a bounded cumulative preview without blocking.
 ///
 /// # Errors
 ///
@@ -39,13 +39,17 @@ pub(super) fn on_thinking<S>(
     delta: &str,
     event_tx: Option<&tokio::sync::mpsc::Sender<SessionEvent<S>>>,
 ) -> Result<()> {
-    if let Some(tx) = event_tx {
-        let _ = tx.try_send(SessionEvent::Thinking);
-    }
     if delta.is_empty() {
+        if let Some(tx) = event_tx {
+            let _ = tx.try_send(SessionEvent::Thinking);
+        }
         return Ok(());
     }
     codetether_stream_bounds::ensure_text_room(thinking.len(), delta.len())?;
     thinking.push_str(delta);
+    if let Some(tx) = event_tx {
+        let preview = codetether_stream_bounds::snapshot_for_send(thinking);
+        let _ = tx.try_send(SessionEvent::ThinkingChunk(preview));
+    }
     Ok(())
 }

@@ -10,7 +10,7 @@ async fn patch_approval_required_does_not_write() {
     let _env = EnvGuard::set("CODETETHER_PATCH_APPROVAL_REQUIRED", "1");
     let data = tempfile::tempdir().expect("tempdir");
     let _data_env = EnvGuard::set("CODETETHER_DATA_DIR", data.path().to_str().unwrap());
-    let dir = tempfile::tempdir().expect("tempdir");
+    let dir = tempfile::tempdir_in(std::env::current_dir().unwrap()).expect("workspace fixture");
     seed(dir.path());
 
     let result = execute(dir.path(), json!({"patch": sample_patch()})).await;

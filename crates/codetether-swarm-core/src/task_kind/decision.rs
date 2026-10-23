@@ -20,14 +20,17 @@ fn has_label(tokens: &[String], actions: &[&str]) -> bool {
 fn has_directive(tokens: &[String], actions: &[&str]) -> bool {
     tokens.iter().enumerate().any(|(index, token)| {
         actions.contains(&token.as_str())
-            && (index == 0 || words::CONNECTORS.contains(&tokens[index - 1].as_str()))
+            && (index == 0
+                || tokens[index - 1].is_empty()
+                || words::CONNECTORS.contains(&tokens[index - 1].as_str()))
     })
 }
 
 fn is_verification(tokens: &[String]) -> bool {
     has_directive(tokens, words::VERIFYING)
         || (tokens
-            .first()
+            .iter()
+            .find(|token| !token.is_empty())
             .is_some_and(|token| words::RUN.contains(&token.as_str()))
             && tokens
                 .iter()

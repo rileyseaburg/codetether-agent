@@ -1,6 +1,6 @@
 //! End-to-end patch execution pipeline.
 
-use super::{apply, approval_flow, args, group, metadata, parser, result, success};
+use super::{apply, approval_flow, args, group, metadata, parser, result, success, write_guard};
 use anyhow::Result;
 use codetether_tool_core::ToolResult;
 use serde_json::{Value, json};
@@ -18,6 +18,7 @@ pub(super) async fn execute(root: &Path, params: Value) -> Result<ToolResult> {
     };
     let hunks = parser::parse_patch(&patch);
     let files = group::files(&hunks);
+    let count = hunks.len();
     if hunks.is_empty() {
         return Ok(metadata::attach(
             result::parse_error(),
@@ -27,23 +28,22 @@ pub(super) async fn execute(root: &Path, params: Value) -> Result<ToolResult> {
             approval_required,
         ));
     }
-    if let Some(response) = approval_flow::pending(&mode, &files, hunks.len(), &patch) {
+    if !mode.dry_run
+        && let Some(blocked) = write_guard::check(root, &files)?
+    {
+        return Ok(metadata::attach(blocked, &files, count, &patch, false));
+    }
+    if let Some(response) = approval_flow::pending(&mode, &files, count, &patch) {
         return Ok(response);
     }
     let receipt = match approval_flow::verify(&mode, &files) {
         Ok(receipt) => receipt,
-        Err(error) => return Ok(metadata::attach(error, &files, hunks.len(), &patch, true)),
+        Err(error) => return Ok(metadata::attach(error, &files, count, &patch, true)),
     };
     let outcome = apply::run(root, &hunks, mode.dry_run)?;
     let mut response = success::build(&outcome, mode.dry_run);
     if let Some(receipt) = receipt {
         response = response.with_metadata("approval_receipt", json!(receipt));
     }
-    Ok(metadata::attach(
-        response,
-        &files,
-        hunks.len(),
-        &patch,
-        false,
-    ))
+    Ok(metadata::attach(response, &files, count, &patch, false))
 }

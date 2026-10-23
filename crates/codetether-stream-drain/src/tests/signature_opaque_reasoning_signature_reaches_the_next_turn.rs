@@ -13,9 +13,12 @@ async fn opaque_reasoning_signature_reaches_the_next_turn() {
         StreamChunk::Thinking(signature.to_string()),
         StreamChunk::Done { usage: None },
     ];
-    let response = collect_stream_completion_with_events(Box::pin(stream::iter(chunks)), None)
+    let (tx, mut rx) = tokio::sync::mpsc::channel(4);
+    let response = collect_stream_completion_with_events(Box::pin(stream::iter(chunks)), Some(&tx))
         .await
         .expect("completion");
+    assert!(matches!(rx.try_recv(), Ok(super::SessionEvent::Thinking)));
+    assert!(rx.try_recv().is_err());
 
     assert!(matches!(
         response.message.content.as_slice(),

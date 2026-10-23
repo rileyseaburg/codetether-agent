@@ -15,6 +15,7 @@ use crate::SessionEvent;
 pub fn label<S>(event: &SessionEvent<S>) -> String {
     match event {
         SessionEvent::Thinking => "Thinking update received".into(),
+        SessionEvent::ThinkingChunk(_) => "Thinking text streaming".into(),
         SessionEvent::ProviderKeepalive => "Waiting for model — keepalive (no new output)".into(),
         SessionEvent::ThinkingComplete(_) => "Thinking text received".into(),
         SessionEvent::TextChunk(_) => "Reply text received".into(),

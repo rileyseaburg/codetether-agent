@@ -22,5 +22,7 @@ async fn test_slot() -> crate::tui::app::session_runtime::SessionSlot {
 mod tests_activity;
 #[path = "tests_keepalive.rs"]
 mod tests_keepalive;
+#[path = "tests_live_reasoning.rs"]
+mod tests_live_reasoning;
 #[path = "tests_text_timing.rs"]
 mod tests_text_timing;
