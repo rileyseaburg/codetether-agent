@@ -2,7 +2,8 @@
 //!
 //! [GeminiWebProtocol] contains stateless wire helpers. [prompt] renders
 //! history; [tool_validation] checks emitted calls; [response_text] selects
-//! answers; [stream_output] emits provider-neutral chunks.
+//! answers; [stream_output] emits provider-neutral chunks; [images] handles
+//! image generation and continuation wire data.
 use regex::Regex;
 use serde_json::{Value, json};
 use std::sync::OnceLock;
@@ -15,6 +16,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// assert!(serde_json::from_str::<serde_json::Value>(&body).is_ok());
 /// ```
 pub struct GeminiWebProtocol;
+pub mod images;
 pub mod prompt;
 #[cfg(test)]
 mod prompt_tests;
