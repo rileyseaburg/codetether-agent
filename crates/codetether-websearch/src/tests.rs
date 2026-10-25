@@ -1,5 +1,5 @@
 //! Offline parser and rendering tests using captured page shapes.
-use crate::{Backend, SearchFailure, attempt::Attempt, bing, duckduckgo, report};
+use crate::{Backend, SearchFailure, attempt::Attempt, bing, duckduckgo, report, searxng};
 
 const BING_OK: &str = r#"<ol id="b_results"><li class="b_algo" data-id><h2><a target="_blank" href="https://www.bing.com/ck/a?!&amp;&amp;p=abc&amp;u=a1aHR0cHM6Ly9hc2NlbmRhdGVsZXZvbi5jb20v&amp;ntb=1" h="ID=SERP,1"><strong>Lavon apartments</strong> for rent | Ascend</a></h2><div class="b_caption"><p class="b_lineclamp2">Ascend at Elevon in Lavon, TX &amp; more</p></div></li></ol>"#;
 
@@ -40,6 +40,50 @@ fn duckduckgo_challenge_page_is_a_failure() {
         duckduckgo::parse(200, "<html></html>", 5),
         Err(SearchFailure::Malformed(_))
     ));
+}
+
+#[test]
+fn searxng_json_parses_and_outage_is_not_zero_results() {
+    let ok = r#"{"results":[{"title":"<b>Rust</b>","url":"https://rust-lang.org/","content":"A language"},{"title":"x","url":"magnet:?xt"}],"unresponsive_engines":[]}"#;
+    let results = searxng::parse(200, ok, 5).unwrap();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].title, "Rust");
+    assert_eq!(results[0].url, "https://rust-lang.org/");
+    let outage = r#"{"results":[],"unresponsive_engines":[["bing","timeout"]]}"#;
+    assert!(matches!(
+        searxng::parse(200, outage, 5),
+        Err(SearchFailure::Upstream(_))
+    ));
+    assert!(
+        searxng::parse(200, r#"{"results":[]}"#, 5)
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        searxng::parse(403, "", 5),
+        Err(SearchFailure::Forbidden { status: 403 })
+    );
+    assert!(matches!(
+        searxng::parse(200, "<html>", 5),
+        Err(SearchFailure::Malformed(_))
+    ));
+    assert_eq!(
+        searxng::url("http://s:8080/", "a b"),
+        "http://s:8080/search?q=a%20b&format=json&language=en-US"
+    );
+}
+
+#[test]
+fn backend_order_prefers_searxng_only_when_configured() {
+    use crate::backend_order;
+    assert_eq!(
+        backend_order(Some("auto"), true).unwrap(),
+        vec![Backend::SearXng, Backend::Bing, Backend::DuckDuckGo]
+    );
+    assert_eq!(
+        backend_order(Some("searxng"), false).unwrap(),
+        vec![Backend::SearXng]
+    );
 }
 
 #[test]
