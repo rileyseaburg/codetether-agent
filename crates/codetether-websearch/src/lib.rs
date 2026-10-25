@@ -1,7 +1,8 @@
 //! Native web search as an executable tool.
 //!
-//! [WebSearchTool] queries Bing HTML first and falls back to DuckDuckGo HTML
-//! only when Bing fails (override with [`BACKEND_ENV`]). Output keeps the
+//! [WebSearchTool] queries a self-hosted SearXNG JSON API first when
+//! [`SEARXNG_URL_ENV`] is set, then Bing HTML, then DuckDuckGo HTML, stopping
+//! at the first success (override with [`BACKEND_ENV`]). Output keeps the
 //! historical `N. title` / `   URL: ...` / snippet lines and appends one
 //! [`EVIDENCE_PREFIX`] JSON line recorded from the actual HTTP exchange:
 //! query, backend, status, request ID, source URLs, and every attempt.
@@ -28,6 +29,7 @@ mod params;
 mod report;
 mod result;
 mod schema;
+mod searxng;
 mod text;
 mod tool;
 pub use backend::{BACKEND_ENV, Backend, backend_order};
@@ -35,6 +37,7 @@ pub use construct::WebSearchTool;
 pub use failure::SearchFailure;
 use params::Params;
 pub use report::EVIDENCE_PREFIX;
+pub use searxng::SEARXNG_URL_ENV;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 

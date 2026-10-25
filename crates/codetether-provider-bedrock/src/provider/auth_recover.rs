@@ -17,15 +17,10 @@ use codetether_secrets as secrets;
 /// token was installed and the caller should retry. SigV4 providers never
 /// recover here (their credentials are not Vault-managed API keys).
 pub(crate) async fn recover(provider: &BedrockProvider) -> bool {
-    let Some(current) = provider.auth.current_bearer() else {
+    if provider.auth.current_bearer().is_none() {
         return false;
-    };
-    if let Some(newer) = newer_vault_key(&current).await {
-        provider.auth.set_bearer(newer);
-        tracing::info!(target: "codetether_agent::provider::bedrock::exports::auth_recover",
-            provider = "bedrock",
-            "adopted refreshed Bedrock key from Vault"
-        );
+    }
+    if adopt_vault_key(provider).await {
         return true;
     }
     match sso_refresh::refresh_now(true).await {
@@ -39,6 +34,23 @@ pub(crate) async fn recover(provider: &BedrockProvider) -> bool {
             false
         }
     }
+}
+
+/// Read Vault directly and adopt a changed bearer key without minting or saving.
+/// Missing or unchanged keys retain current credentials; SigV4 skips Vault.
+pub(crate) async fn adopt_vault_key(provider: &BedrockProvider) -> bool {
+    let Some(current) = provider.auth.current_bearer() else {
+        return false;
+    };
+    let Some(newer) = newer_vault_key(&current).await else {
+        return false;
+    };
+    provider.auth.set_bearer(newer);
+    tracing::info!(target: "codetether_agent::provider::bedrock::exports::auth_recover",
+        provider = "bedrock",
+        "adopted refreshed Bedrock key from Vault"
+    );
+    true
 }
 
 async fn newer_vault_key(current: &str) -> Option<String> {
@@ -57,3 +69,7 @@ fn adoptable(stored: Option<&str>, current: &str) -> Option<String> {
 #[cfg(test)]
 #[path = "auth_recover_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "auth_recover_vault_tests.rs"]
+mod vault_tests;

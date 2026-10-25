@@ -32,6 +32,8 @@ pub enum SearchFailure {
     HttpStatus { status: u16 },
     /// A 2xx page matching neither a result list nor a no-results page.
     Malformed(String),
+    /// A metasearch proxy answered but every upstream engine failed.
+    Upstream(String),
 }
 
 impl SearchFailure {
@@ -45,13 +47,17 @@ impl SearchFailure {
             Self::Challenge { .. } => "WEBSEARCH_PROVIDER_CHALLENGE",
             Self::HttpStatus { .. } => "WEBSEARCH_HTTP_ERROR",
             Self::Malformed(_) => "WEBSEARCH_MALFORMED_RESPONSE",
+            Self::Upstream(_) => "WEBSEARCH_UPSTREAM_UNAVAILABLE",
         }
     }
 
     /// Human-readable detail for logs and tool output.
     pub fn detail(&self) -> String {
         match self {
-            Self::Config(text) | Self::Transport(text) | Self::Malformed(text) => text.clone(),
+            Self::Config(text)
+            | Self::Transport(text)
+            | Self::Malformed(text)
+            | Self::Upstream(text) => text.clone(),
             Self::Forbidden { status }
             | Self::RateLimited { status }
             | Self::HttpStatus { status } => format!("provider returned HTTP {status}"),

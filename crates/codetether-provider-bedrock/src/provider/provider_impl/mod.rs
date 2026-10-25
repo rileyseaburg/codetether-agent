@@ -21,13 +21,13 @@ impl Provider for BedrockProvider {
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>> {
-        self.validate_auth()?;
+        self.prepare_auth().await?;
         self.discover_models().await
     }
 
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
         let model_id = Self::resolve_model_id(&request.model);
-        self.validate_auth()?;
+        self.prepare_auth().await?;
         if Self::should_use_invoke_model(model_id) {
             return self.complete_invoke_model(&request, model_id).await;
         }
@@ -39,7 +39,7 @@ impl Provider for BedrockProvider {
         request: CompletionRequest,
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
         let model_id = Self::resolve_model_id(&request.model);
-        self.validate_auth()?;
+        self.prepare_auth().await?;
         if Self::should_use_invoke_model(model_id) {
             return self.invoke_model_stream_adapter(&request, model_id).await;
         }

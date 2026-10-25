@@ -4,7 +4,7 @@ version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
-description = "Native web-search tool (Bing HTML, DuckDuckGo HTML as secondary) for CodeTether"
+description = "Native web-search tool (self-hosted SearXNG, Bing HTML, DuckDuckGo HTML) for CodeTether"
 
 [dependencies]
 anyhow = "1"

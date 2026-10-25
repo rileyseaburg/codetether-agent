@@ -5,6 +5,27 @@
 use super::{BedrockAuth, BedrockProvider};
 use anyhow::Result;
 impl BedrockProvider {
+    /// Adopt an externally refreshed Vault key without minting or saving.
+    /// A slow or unavailable Vault leaves existing credentials in place.
+    ///
+    /// # Errors
+    /// Returns an error if the resulting credentials are empty or incomplete.
+    pub(crate) async fn prepare_auth(&self) -> Result<()> {
+        if tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            super::auth_recover::adopt_vault_key(self),
+        )
+        .await
+        .is_err()
+        {
+            tracing::warn!(
+                provider = "bedrock",
+                "pre-request Vault key check timed out; retaining current credentials"
+            );
+        }
+        self.validate_auth()
+    }
+
     /// Validate that credentials/token are non-empty.
     ///
     /// # Errors

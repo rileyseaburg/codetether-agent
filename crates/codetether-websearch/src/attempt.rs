@@ -31,8 +31,11 @@ impl Attempt {
 impl WebSearchTool {
     /// Contact one backend and classify its response.
     pub(crate) async fn attempt(&self, backend: Backend, query: &str, max: usize) -> Attempt {
-        let (url, id_header) = backend.request(query);
-        match self.fetch(&url, id_header).await {
+        let fetched = match backend.request(query) {
+            Ok((url, id_header)) => self.fetch(&url, id_header).await,
+            Err(failure) => Err(failure),
+        };
+        match fetched {
             Err(failure) => Attempt {
                 backend,
                 status: None,

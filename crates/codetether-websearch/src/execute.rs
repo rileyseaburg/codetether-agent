@@ -8,7 +8,8 @@ impl WebSearchTool {
             return Ok(ToolResult::error("Query cannot be empty"));
         }
         let configured = std::env::var(BACKEND_ENV).ok();
-        let order = match backend_order(configured.as_deref()) {
+        let searxng = searxng::configured().is_some();
+        let order = match backend_order(configured.as_deref(), searxng) {
             Ok(order) => order,
             Err(failure) => return Ok(report::config_error(&p.query, &failure)),
         };
