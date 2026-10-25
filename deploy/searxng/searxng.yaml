@@ -1,0 +1,107 @@
+# Self-hosted SearXNG backing CodeTether's `websearch` tool.
+#
+# Workers reach it in-cluster via
+#   CODETETHER_SEARXNG_URL=http://searxng.searxng.svc.cluster.local:8080
+# Create the secret first (never commit the value):
+#   kubectl -n searxng create secret generic searxng-secret \
+#     --from-literal=secret-key="$(openssl rand -hex 32)"
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: searxng
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-settings
+  namespace: searxng
+data:
+  settings.yml: |
+    use_default_settings: true
+    general:
+      instance_name: codetether-search
+    server:
+      # Internal-only API for agents; the bot limiter would block them.
+      limiter: false
+      public_instance: false
+      image_proxy: false
+      method: GET
+      # secret_key is supplied by the SEARXNG_SECRET env var.
+    search:
+      safe_search: 0
+      formats:
+        - html
+        - json   # required: the websearch tool calls /search?format=json
+    outgoing:
+      request_timeout: 5.0
+      max_request_timeout: 10.0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+  namespace: searxng
+  labels: {app.kubernetes.io/name: searxng}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: searxng}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: searxng}
+    spec:
+      containers:
+        - name: searxng
+          image: searxng/searxng:2026.10.19-81371861f
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - name: SEARXNG_BASE_URL
+              value: http://searxng.searxng.svc.cluster.local:8080/
+            - name: SEARXNG_SECRET
+              valueFrom: {secretKeyRef: {name: searxng-secret, key: secret-key}}
+          volumeMounts:
+            - {name: settings, mountPath: /etc/searxng/settings.yml, subPath: settings.yml, readOnly: true}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+      volumes:
+        - name: settings
+          configMap: {name: searxng-settings}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+  namespace: searxng
+spec:
+  selector: {app.kubernetes.io/name: searxng}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+---
+# Limiter is off, so keep the API cluster-internal: only pods in namespaces
+# labelled codetether.run/searxng-client=true may call it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: searxng-clients
+  namespace: searxng
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: searxng}}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {codetether.run/searxng-client: "true"}
+      ports:
+        - {port: 8080, protocol: TCP}
