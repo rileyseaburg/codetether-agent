@@ -6,7 +6,7 @@ use codetether_tool_core::{Tool, ToolResult};
 use serde_json::Value;
 use std::{collections::VecDeque, sync::Mutex};
 
-/// Generates or edits an image with OpenAI's Images API.
+/// Generates or edits images with OpenAI or an explicit Gemini Web backend.
 ///
 /// # Examples
 ///

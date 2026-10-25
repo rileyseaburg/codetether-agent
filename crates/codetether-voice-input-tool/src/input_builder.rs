@@ -1,5 +1,5 @@
 //! Typed audio capture callbacks and buffer delivery.
-use super::input_stream::SampleBuffer;
+use super::{capture_errors::CaptureErrors, input_stream::SampleBuffer};
 use anyhow::Result;
 use cpal::traits::DeviceTrait;
 use cpal::{Sample, SizedSample};
@@ -8,6 +8,7 @@ pub fn typed<T>(
     device: &cpal::Device,
     config: &cpal::StreamConfig,
     samples: SampleBuffer,
+    errors: CaptureErrors,
 ) -> Result<cpal::Stream>
 where
     T: Sample + SizedSample + Send + 'static,
@@ -16,7 +17,7 @@ where
     Ok(device.build_input_stream(
         config.clone(),
         move |data: &[T], _| push(data, &samples),
-        |err| tracing::error!(target: "codetether_agent::tool::voice_input::input_builder", error = %err, "Audio capture error"),
+        move |err| errors.report(err),
         None,
     )?)
 }

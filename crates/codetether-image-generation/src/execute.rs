@@ -9,6 +9,9 @@ impl ImageGenerationTool {
         args: ImagegenArgs,
     ) -> Result<codetether_tool_core::ToolResult> {
         args.validate()?;
+        if args.provider == super::backend::ImageBackend::GeminiWeb {
+            return super::gemini::generate::generate(&args).await;
+        }
         let images = super::references::resolve(&args, &self.recent).await?;
         let auth = super::credentials::resolve().await?;
         tracing::info!(target: "codetether_agent::tool::image_generation::execute",

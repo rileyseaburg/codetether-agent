@@ -40,7 +40,8 @@ pub struct SwarmConfig {
     /// Enable worktree isolation for sub-agents
     pub worktree_enabled: bool,
 
-    /// Automatically merge worktree changes on success
+    /// Deliver successful worktree changes into the spawning checkout as
+    /// uncommitted edits (never commits or merges into the user's branch).
     pub worktree_auto_merge: bool,
 
     /// Enable speculative branch pruning for explicitly equivalent alternatives.

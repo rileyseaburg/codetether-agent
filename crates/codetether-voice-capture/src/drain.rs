@@ -7,8 +7,8 @@ use crate::Input;
 /// # Arguments
 /// * `state` — Frontend slot, text insertion and status operations.
 /// # Returns
-/// Returns immediately when the slot is locked or incomplete; consumes completed
-/// empty results and reports their status without inserting text.
+/// Returns immediately when the slot is locked or incomplete; consumes failed
+/// results and reports their reason as status without inserting text.
 /// # Examples
 /// Frontends implement [Input] and call this function on each polling tick.
 pub fn drain_voice_transcription(state: &mut impl Input) {
@@ -16,15 +16,17 @@ pub fn drain_voice_transcription(state: &mut impl Input) {
         Some(s) => s.clone(),
         None => return,
     };
-    let text = match slot.try_lock().ok().and_then(|mut g| g.take()) {
-        Some(t) => t,
+    let outcome = match slot.try_lock().ok().and_then(|mut g| g.take()) {
+        Some(o) => o,
         None => return,
     };
     state.clear_pending();
-    if text.is_empty() {
-        state.set_status("Voice transcription produced no text");
-        return;
+    match outcome {
+        Ok(text) if !text.is_empty() => {
+            state.insert_text(&text);
+            state.set_status("Voice transcribed ✓");
+        }
+        Ok(_) => state.set_status("Voice transcription produced no text"),
+        Err(reason) => state.set_status(&format!("Voice: {reason}")),
     }
-    state.insert_text(&text);
-    state.set_status("Voice transcribed ✓");
 }

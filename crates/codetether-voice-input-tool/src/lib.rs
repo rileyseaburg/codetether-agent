@@ -8,6 +8,7 @@
 //! Voice API `/transcribe` endpoint for speech-to-text.
 
 mod actions;
+mod capture_errors;
 pub(crate) mod client;
 mod device;
 mod downmix;
@@ -17,6 +18,7 @@ mod input_config;
 mod input_stream;
 mod params;
 pub mod recorder;
+mod recording_wait;
 mod resampler;
 #[cfg(test)]
 mod resampler_tests;

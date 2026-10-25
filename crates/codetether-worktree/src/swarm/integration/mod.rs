@@ -1,16 +1,16 @@
-//! # Swarm Merge Outcomes
+//! # Swarm Delivery Outcomes
 //!
-//! Applies a completed swarm subtask's worktree changes to the parent branch.
-//! This module prepares a commit, checks whether the branch has net changes,
-//! delegates merge eligibility to `merge_decision`, and records the resulting
-//! success or failure on [`SubTaskResult`].
+//! Delivers a completed swarm subtask's worktree changes into the checkout the
+//! swarm was spawned from, as uncommitted edits. Nothing is committed to or
+//! merged into the user's branch. This module prepares the worker-branch
+//! commit, checks whether the branch has net changes, delegates eligibility to
+//! `merge_decision`, and records the outcome on [`SubTaskResult`].
 //!
 //! ## Usage
 //!
-//! The swarm executor calls [`apply`] after a subtask finishes. Callers provide
-//! the subtask result and its [`WorktreeInfo`], plus whether changes and
-//! verification output are expected. Successful merges are appended to the
-//! result and cleaned up; integration failures mark the result unsuccessful.
+//! The swarm executor calls [`apply`] after a subtask finishes. Delivered and
+//! already-present work is cleaned up; rejected patches keep the worktree and
+//! branch and mark the result unsuccessful.
 
 use crate::swarm::commit as worktree_commit;
 use crate::{WorktreeInfo, WorktreeManager};
@@ -21,32 +21,31 @@ mod merge_decision;
 #[path = "record.rs"]
 mod merge_record;
 
-/// Integrates a completed subtask's worktree into the parent branch.
+/// Delivers a completed subtask's worktree into the spawning checkout.
 ///
 /// # Arguments
 ///
-/// * `result` — Subtask result updated with merge details or an integration error.
-/// * `manager` — Manager used to inspect, merge, and clean up the worktree.
+/// * `result` — Subtask result updated with delivery details or an integration error.
+/// * `manager` — Manager for the spawning checkout; used to inspect, deliver, and clean up.
 /// * `worktree` — Worktree containing the completed subtask's changes.
 /// * `expects_changes` — Whether the subtask was expected to modify tracked files.
 ///
 /// # Returns
 ///
-/// Returns after the worktree is merged, determined to need no merge, or fails
-/// integration. Failures are recorded in `result` rather than returned.
+/// Returns after the worktree is delivered, determined to need no delivery, or
+/// fails integration. Failures are recorded in `result` rather than returned.
 ///
 /// # Examples
 ///
-/// A successful integration appends a merge summary to the existing subtask
-/// output:
+/// A successful delivery appends a summary to the existing subtask output:
 ///
 /// ```rust
 /// let mut output = String::from("Subtask completed");
-/// let summary = "Merged 2 files";
-/// output.push_str(&format!("\n\n--- Merge Result ---\n{summary}"));
+/// let summary = "Applied 2 file(s) as uncommitted changes";
+/// output.push_str(&format!("\n\n--- Delivery Result ---\n{summary}"));
 ///
-/// assert!(output.contains("--- Merge Result ---"));
-/// assert!(output.ends_with("Merged 2 files"));
+/// assert!(output.contains("--- Delivery Result ---"));
+/// assert!(output.ends_with("uncommitted changes"));
 /// ```
 pub async fn apply(
     result: &mut SubTaskResult,
@@ -80,7 +79,7 @@ pub async fn apply(
         result,
         manager,
         worktree,
-        manager.merge(&worktree.name).await,
+        manager.deliver(&worktree.name).await,
     )
     .await;
 }

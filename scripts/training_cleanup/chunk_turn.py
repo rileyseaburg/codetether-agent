@@ -1,7 +1,7 @@
 """Tool-safe chunking for one validated user turn."""
 
 from .model import RejectedRecord, SourceRecord
-from .provenance import reject
+from .provenance import identity, reject
 from .record import text
 from .sample_size import fits
 from .tool_units import build as units
@@ -48,9 +48,14 @@ def _with_targets(
         for chunk in chunks
         if any(text(record, 'role') == 'assistant' for record in chunk)
     ]
+    # Context rows (system messages and the prompt) repeat in every chunk; a row kept by any
+    # accepted chunk must not also be rejected, or per-object outcome accounting double-counts it.
+    kept = {identity(row) for chunk in accepted for row in chunk}
     for chunk in chunks:
         if chunk not in accepted:
             rejected.extend(
-                reject(row, 'missing_assistant_target') for row in chunk[1:]
+                reject(row, 'missing_assistant_target')
+                for row in chunk[1:]
+                if identity(row) not in kept
             )
     return accepted, rejected

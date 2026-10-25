@@ -1,14 +1,18 @@
-//! OpenAI image generation and editing tool.
+//! OpenAI and Gemini Web image generation and editing tool.
 //!
 //! [`ImageGenerationTool`] turns a rewritten prompt and optional image
-//! references into a generated PNG that is saved and returned to the model.
+//! references into an image that is saved and returned to the model. Set
+//! `provider` to `gemini-web` for native Gemini generation and `refine_from`
+//! to a previous result's state path for conversational improvements.
 
 mod args;
 mod artifact;
 mod auth;
+mod backend;
 mod client;
 mod credentials;
 mod execute;
+mod gemini;
 mod recent;
 mod reference_file;
 mod references;

@@ -1,39 +1,41 @@
-//! Integration happens only after parent review and an explicit cherry-pick.
+//! Finished child work lands in the parent checkout as uncommitted edits only.
 
 use super::super::allocate;
 use super::support::{commit_data, fixture, git, head};
 use crate::tool::ToolResult;
 
 #[tokio::test]
-async fn parent_reviews_then_explicitly_cherry_picks_child_commit() {
+async fn completed_child_is_delivered_as_uncommitted_parent_edits() {
     let repo = fixture();
     let original = head(repo.path());
     let child = allocate(repo.path()).await.unwrap();
     let commit = commit_data(&child.worktree, "reviewed child change\n");
-    let failure = child.attach(ToolResult::error("task failed after committing"));
-    assert!(!failure.success);
-    assert!(failure.output.contains("task failed after committing"));
-    assert!(failure.output.contains("review_then_cherry_pick"));
     let guidance = child.guidance();
     assert!(guidance.contains("Parent uncommitted changes are NOT copied"));
     assert!(guidance.contains("Nothing is auto-merged"));
-    let review = git(
-        repo.path(),
-        &["show", "--format=", &commit, "--", "project/data.txt"],
-    );
-    assert!(review.contains("+reviewed child change"));
-    assert_eq!(head(repo.path()), original);
-    assert_eq!(
-        std::fs::read_to_string(repo.path().join("project/data.txt")).unwrap(),
-        "primary\n"
-    );
-    git(repo.path(), &["cherry-pick", &commit]);
-    assert_ne!(head(repo.path()), original);
+    let delivered = child.deliver(ToolResult::success("done")).await;
+    assert!(delivered.success, "{}", delivered.output);
+    assert!(delivered.output.contains("uncommitted changes"));
+    assert_eq!(head(repo.path()), original, "parent history untouched");
+    assert!(git(repo.path(), &["diff", "--cached", "--name-only"]).is_empty());
     assert_eq!(
         std::fs::read_to_string(repo.path().join("project/data.txt")).unwrap(),
         "reviewed child change\n"
     );
-    assert!(git(repo.path(), &["status", "--porcelain"]).is_empty());
     assert!(child.worktree.is_dir());
     assert_eq!(head(&child.worktree), commit);
+}
+
+#[tokio::test]
+async fn failed_child_is_not_delivered() {
+    let repo = fixture();
+    let child = allocate(repo.path()).await.unwrap();
+    commit_data(&child.worktree, "unverified change\n");
+    let failure = child.attach(child.deliver(ToolResult::error("task failed")).await);
+    assert!(!failure.success);
+    assert!(failure.output.contains("deliver_uncommitted_to_parent"));
+    assert_eq!(
+        std::fs::read_to_string(repo.path().join("project/data.txt")).unwrap(),
+        "primary\n"
+    );
 }

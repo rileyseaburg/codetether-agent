@@ -4,6 +4,14 @@ use serde_json::json;
 use std::path::Path;
 
 pub(super) fn generated(data_url: String, path: Option<&Path>) -> ToolResult {
+    generated_typed(data_url, path, "image/png")
+}
+
+pub(super) fn generated_typed(
+    data_url: String,
+    path: Option<&Path>,
+    mime_type: &str,
+) -> ToolResult {
     let path_text = path.map(|value| value.display().to_string());
     let output = path_text.as_ref().map_or_else(
         || "Generated image returned; local artifact was not saved".into(),
@@ -18,7 +26,7 @@ pub(super) fn generated(data_url: String, path: Option<&Path>) -> ToolResult {
             "image_data_url",
             json!({
                 "data_url": data_url,
-                "mime_type": "image/png",
+                "mime_type": mime_type,
                 "detail": "auto"
             }),
         )

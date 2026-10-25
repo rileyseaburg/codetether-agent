@@ -26,7 +26,7 @@ async fn handoff_keeps_agent_id_fields_and_success_flag() {
         assert_eq!(output["isolation"]["auto_merge"], false);
         assert_eq!(
             output["isolation"]["integration"],
-            "review_then_cherry_pick"
+            "deliver_uncommitted_to_parent"
         );
         let checkout = &output["isolation"]["checkout"];
         assert_eq!(checkout["workspace"], json!(child.workspace));

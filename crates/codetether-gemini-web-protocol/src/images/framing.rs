@@ -20,7 +20,7 @@ pub(super) fn decode(body: &[u8]) -> Result<Vec<Value>> {
         }
         let (start, end) = batch_bounds(remaining)?;
         let batch: Value = serde_json::from_slice(&remaining[start..end])
-            .map_err(|_| anyhow!("invalid_batch_json"))?;
+            .map_err(|error| anyhow::Error::new(error).context("invalid_batch_json"))?;
         let Value::Array(batch) = batch else {
             return Err(anyhow!("invalid_batch_shape"));
         };

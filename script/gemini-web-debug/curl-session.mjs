@@ -1,8 +1,9 @@
 import { curlRequest } from "./curl-wire.mjs";
 import { summarizeCurl } from "./curl-response.mjs";
+import { sessionTokens } from "./session-tokens.mjs";
 
 export const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36";
-/** @typedef {{at: string, bl: string, sid: string, prefix: string}} Session */
+/** @typedef {import("./session-tokens.mjs").SessionTokens & {prefix: string}} Session */
 
 /** @param {string} cookie @param {"--http2" | "--http1.1"} protocol
  * @param {(label: string, summary: Record<string, unknown>) => void} save
@@ -12,13 +13,12 @@ export async function curlSession(cookie, protocol, save) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const result = await curlRequest(url, { Cookie: cookie, "User-Agent": USER_AGENT }, null, protocol);
     const html = result.body.toString("utf8");
-    const at = html.match(/"(?:thykhd|SNlM0e)":"([^"]+)"/)?.[1] ?? "";
+    const tokens = sessionTokens(html);
     save(`session-${protocol.slice(2)}-${attempt}`, { ...summarizeCurl(result, [cookie]),
-      phase: "session-token GET", requestedProtocol: protocol, tokenPresent: Boolean(at) });
+      phase: "session-token GET", requestedProtocol: protocol, tokenPresent: Boolean(tokens.at), authenticatedToken: tokens.authenticatedToken });
     if (result.exitCode !== 0) return null;
-    if (at && result.metrics.http_code === 200) return {
-      at, bl: html.match(/"cfb2h":"([^"]+)"/)?.[1] ?? "",
-      sid: html.match(/"FdrFJe":"([^"]+)"/)?.[1] ?? "",
+    if (tokens.at && result.metrics.http_code === 200) return {
+      ...tokens,
       prefix: new URL(url).pathname.match(/(\/u\/\d+)\//)?.[1] ?? "",
     };
     const location = result.headers.match(/^location:\s*(.+)$/im)?.[1]?.trim();

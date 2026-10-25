@@ -1,7 +1,10 @@
-import { curlRequest } from "./curl-wire.mjs";
-import { curlSession, USER_AGENT } from "./curl-session.mjs";
-import { form, modelHeader } from "./payload.mjs";
+import { curlSession } from "./curl-session.mjs";
+import { form } from "./payload.mjs";
 import { rpcResult } from "./rpc-result.mjs";
+import { sendRpc } from "./rpc-request.mjs";
+import { imageForm, imageModelHeader, IMAGE_MODE } from "./image-payload.mjs";
+import { parseImageResponse } from "./image-protocol.mjs";
+import { ImageError } from "./image-error.mjs";
 
 export const RPC_MODES = Object.freeze({
   "gemini-web-thinking": "5bf011840784117a", "gemini-web-pro": "9d8ca3786ebdfbea",
@@ -9,27 +12,28 @@ export const RPC_MODES = Object.freeze({
 
 /** Authenticated Gemini web-RPC client using curl HTTP/2, not the Rust provider.
  * @param {string} cookie @param {(label: string, summary: Record<string, unknown>) => void} save
- * @returns {Promise<{generate: (model: keyof typeof RPC_MODES, prompt: string, expected: string) => Promise<import("./rpc-result.mjs").RpcResult>}>} */
+ * @returns {Promise<{authenticatedToken: boolean, generate: (model: keyof typeof RPC_MODES, prompt: string, expected: string) => Promise<import("./rpc-result.mjs").RpcResult>,
+ * generateImages: (prompt: string, previous?: import("./image-continuation.mjs").ImageContinuation) => Promise<ReturnType<typeof parseImageResponse>>}>} */
 export async function createRpcClient(cookie, save) {
   const session = await curlSession(cookie, "--http2", save);
   if (!session) throw new Error("session_unavailable");
   const secrets = [cookie, session.at, session.sid, process.env.VAULT_TOKEN ?? "",
     ...cookie.split(/;\s*/).map(pair => pair.slice(pair.indexOf("=") + 1))];
   return {
+    authenticatedToken: session.authenticatedToken,
     /** @param {keyof typeof RPC_MODES} model @param {string} prompt @param {string} expected
      * @returns {Promise<import("./rpc-result.mjs").RpcResult>} */
     async generate(model, prompt, expected) {
       if (!Object.hasOwn(RPC_MODES, model)) throw new Error("unknown_model");
-      const mode = RPC_MODES[model];
-      const url = new URL(`https://gemini.google.com${session.prefix}/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate`);
-      url.search = new URLSearchParams({ bl: session.bl, "f.sid": session.sid, hl: "en",
-        _reqid: String(Date.now() % 900000 + 100000), rt: "c" }).toString();
-      const headers = { Cookie: cookie, "User-Agent": USER_AGENT, Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8", "X-Same-Domain": "1",
-        Origin: "https://gemini.google.com", Referer: "https://gemini.google.com/app",
-        "x-goog-ext-525001261-jspb": modelHeader(mode) };
-      const response = await curlRequest(url.href, headers, form(prompt, session.at).toString(), "--http2");
+      const response = await sendRpc(cookie, session, RPC_MODES[model], form(prompt, session.at));
       return rpcResult(response, secrets, expected);
+    },
+    /** Generate image references. Returned URLs are sensitive and must not be logged.
+     * @param {string} prompt @param {import("./image-continuation.mjs").ImageContinuation} [previous]
+     * @returns {Promise<ReturnType<typeof parseImageResponse>>} */
+    async generateImages(prompt, previous) {
+      if (!session.authenticatedToken) throw new ImageError("image_session_not_authenticated");
+      return parseImageResponse(await sendRpc(cookie, session, IMAGE_MODE, imageForm(prompt, session.at, previous), imageModelHeader(session.bl)));
     },
   };
 }

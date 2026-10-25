@@ -6,6 +6,10 @@ use std::path::PathBuf;
 #[derive(Debug, Deserialize)]
 pub(super) struct ImagegenArgs {
     pub(super) prompt: String,
+    #[serde(default)]
+    pub(super) provider: super::backend::ImageBackend,
+    #[serde(default)]
+    pub(super) refine_from: Option<PathBuf>,
     pub(super) referenced_image_paths: Option<Vec<PathBuf>>,
     pub(super) num_last_images_to_include: Option<usize>,
     #[serde(rename = "__ct_recent_images", default)]
@@ -22,6 +26,7 @@ impl ImagegenArgs {
             bail!("`prompt` must not be empty");
         }
         let paths = self.referenced_image_paths.as_deref().unwrap_or_default();
+        super::gemini::validate::selectors(self, paths)?;
         if paths.len() > super::MAX_EDIT_IMAGES {
             bail!("`referenced_image_paths` must contain at most 5 paths");
         }

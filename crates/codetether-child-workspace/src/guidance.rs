@@ -13,9 +13,10 @@ impl Handoff {
              never write to parent paths inherited from conversation history.\n\
              Work only in this checkout. Commit only your task's files on this branch and report \
              commit IDs and verification evidence. Do not merge, push, or delete the worktree.\n\
-             Integration is explicit: the parent reviews the child commits and cherry-picks the \
-             reported task commits into its checkout under its normal write lease. Nothing is \
-             auto-merged. The child checkout is retained for review, recovery, and resume.",
+             Integration: when your turn completes, the harness applies this branch's changes to \
+             the parent checkout as uncommitted edits for the user to review. Nothing is \
+             auto-merged or committed to the parent branch. The child checkout is retained for \
+             review, recovery, and resume.",
             self.workspace.display(),
             self.branch,
             self.base_commit,

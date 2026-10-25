@@ -81,6 +81,7 @@ state_v5.py
 
 # Local/generated diagnostics and runtime artifacts
 /artifacts/
+/gemini-images/
 /codetether-bin
 /cookies.txt
 *.jsonl

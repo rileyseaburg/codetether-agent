@@ -1,0 +1,13 @@
+{
+  "evidenceLevel": "static/local client diagnostic against live Google HTTP",
+  "runtime": "Node RPC image client with curl HTTP/2",
+  "requestedSelector": "e051ce1aa80aa576",
+  "backendIdentity": "Not attested",
+  "credentialSource": "explicit Netscape cookie file",
+  "hop": 1,
+  "host": "work.fife.usercontent.google.com",
+  "status": 200,
+  "mime": "text/plain",
+  "bytes": 1352,
+  "exitCode": 0
+}

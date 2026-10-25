@@ -1,5 +1,12 @@
 # Gemini Web RPC diagnostic client
 
+For everyday use, run `./gemini-image "your image description"` from the repository
+root, or `./gemini-image` for an interactive prompt. See [QUICKSTART.md](QUICKSTART.md).
+
+Image generation and image retrieval are available through `generate-image.mjs`.
+See [IMAGE-GENERATION.md](IMAGE-GENERATION.md) for usage, protocol details,
+credential requirements, and the distinction between mocked and live evidence.
+
 This client reuses the authenticated curl HTTP/2 transport to call Gemini's
 private `BardFrontendService/StreamGenerate` endpoint. It is not an official
 Google SDK, a browser session, or the CodeTether Rust provider.
@@ -37,7 +44,7 @@ change the protocol. Configured mode IDs do not attest backend model versions.
 ## Tests and evidence
 
 ```sh
-node --test script/gemini-web-debug/rpc-framing.test.mjs script/gemini-web-debug/rpc-result.test.mjs script/gemini-web-debug/curl-response.test.mjs
+node --test script/gemini-web-debug/*.test.mjs
 ```
 
 Tests are mocked local. Live HTTP diagnostics write redacted JSON under

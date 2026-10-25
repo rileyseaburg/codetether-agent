@@ -35,6 +35,7 @@ impl<F: FnMut(&str)> Input for TranscriptionInput<'_, F> {
     }
     fn clear_pending(&mut self) {
         self.recording.pending_text = None;
+        self.recording.stop_flag = None;
     }
     fn insert_text(&mut self, text: &str) {
         (self.insert)(text);

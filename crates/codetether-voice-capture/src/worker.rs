@@ -5,17 +5,27 @@ use std::sync::{Arc, Mutex};
 
 use codetether_voice_input_tool::{encoder, recorder};
 
-use super::transcribe::transcribe_sync;
+use super::{level, transcribe::transcribe_sync};
 
-/// Caller-owned slot that receives a completed transcription or an empty string.
+/// Outcome of one recording: transcribed text, or a user-facing failure reason.
+///
+/// # Examples
+/// ```
+/// let ok: codetether_voice_capture::VoiceOutcome = Ok("hello".into());
+/// let failed: codetether_voice_capture::VoiceOutcome = Err("No audio captured".into());
+/// assert!(ok.is_ok() && failed.is_err());
+/// ```
+pub type VoiceOutcome = Result<String, String>;
+
+/// Caller-owned slot that receives the completed [VoiceOutcome].
 /// # Examples
 /// ```
 /// let slot: codetether_voice_capture::VoiceSlot = Default::default();
 /// assert!(slot.lock().unwrap().is_none());
 /// ```
-pub type VoiceSlot = Arc<Mutex<Option<String>>>;
+pub type VoiceSlot = Arc<Mutex<Option<VoiceOutcome>>>;
 
-/// Start recording audio and publish the transcription result to `slot`.
+/// Start recording audio and publish the transcription outcome to `slot`.
 /// # Arguments
 /// * `max` — Maximum recording duration in seconds.
 /// * `flag` — Caller-controlled early-stop flag.
@@ -34,21 +44,20 @@ pub fn spawn_voice_worker(max: u64, flag: Arc<AtomicBool>, slot: VoiceSlot) {
     std::thread::spawn(move || publish_voice_text(&slot, record_text(max, flag)));
 }
 
-fn record_text(max: u64, flag: Arc<AtomicBool>) -> String {
-    match recorder::record(max, flag) {
-        Ok(samples) => encoder::encode_wav(&samples)
-            .ok()
-            .and_then(|wav| transcribe_sync(&wav))
-            .unwrap_or_default(),
-        Err(e) => {
-            tracing::error!(target: "codetether_agent::tui::app::event_handlers::voice::voice_worker", error = %e, "Recording failed");
-            String::new()
-        }
-    }
+fn record_text(max: u64, flag: Arc<AtomicBool>) -> VoiceOutcome {
+    let samples = recorder::record(max, flag).map_err(|e| {
+        tracing::error!(target: "codetether_agent::tui::app::event_handlers::voice::voice_worker", error = %e, "Recording failed");
+        format!("Recording failed: {e}. {}", level::MIC_HINT)
+    })?;
+    let peak = level::peak(&samples);
+    tracing::info!(target: "codetether_agent::tui::app::event_handlers::voice::voice_worker", samples = samples.len(), peak, "Recording captured");
+    level::check(&samples)?;
+    let wav = encoder::encode_wav(&samples).map_err(|e| format!("WAV encoding failed: {e}"))?;
+    transcribe_sync(&wav)
 }
 
-fn publish_voice_text(slot: &VoiceSlot, text: String) {
+fn publish_voice_text(slot: &VoiceSlot, outcome: VoiceOutcome) {
     if let Ok(mut guard) = slot.lock() {
-        *guard = Some(text);
+        *guard = Some(outcome);
     }
 }

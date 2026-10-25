@@ -8,6 +8,7 @@ use reqwest::Client;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
+pub mod images;
 mod tokens;
 pub use tokens::SessionTokens;
 /// Origin used for Gemini page and request transport.

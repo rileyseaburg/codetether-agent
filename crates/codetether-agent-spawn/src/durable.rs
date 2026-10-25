@@ -26,5 +26,11 @@ pub(super) async fn run<H: Host>(
     let result = super::finish::run::<H>(request, &agent_id, warning.as_deref())
         .await
         .unwrap_or_else(|error| ToolResult::error(format!("Child dispatch failed: {error}")));
+    // Synchronous turns have finished; deliver their work to the spawning checkout.
+    let result = if request.detach {
+        result
+    } else {
+        handoff.deliver(result).await
+    };
     Ok(handoff.attach(result))
 }

@@ -17,6 +17,7 @@ mod cleanup_remove;
 mod cleanup_remove_tests;
 mod cleanup_worktrees;
 mod complete;
+mod delivery;
 include!("worktree_create_modules.rs");
 mod dirty_check;
 mod discover;

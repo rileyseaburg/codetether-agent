@@ -1,0 +1,17 @@
+{
+  "evidenceLevel": "static/local client diagnostic against live Google HTTP",
+  "runtime": "Node RPC image client with curl HTTP/2",
+  "requestedSelector": "e051ce1aa80aa576",
+  "backendIdentity": "Not attested",
+  "credentialSource": "explicit Netscape cookie file",
+  "outcome": "ok",
+  "images": [
+    {
+      "path": "new-image-output/image-1.jpg",
+      "sha256": "7fc9c9d1df778246d533c770e0b3cf53ee01757f6ad87c07a5a01727f855a362",
+      "bytes": 124008,
+      "width": 1024,
+      "height": 572
+    }
+  ]
+}

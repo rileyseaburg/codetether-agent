@@ -1,7 +1,7 @@
-//! Record a swarm worktree merge without hiding failed artifacts.
+//! Record a swarm worktree delivery without hiding failed artifacts.
 
 use super::SubTaskResult;
-use crate::{MergeResult, WorktreeInfo, WorktreeManager};
+use crate::{Delivery, WorktreeInfo, WorktreeManager};
 
 #[path = "failure.rs"]
 mod failure;
@@ -11,12 +11,14 @@ pub(super) async fn apply(
     result: &mut SubTaskResult,
     manager: &WorktreeManager,
     worktree: &WorktreeInfo,
-    merged: anyhow::Result<MergeResult>,
+    delivered: anyhow::Result<Delivery>,
 ) {
-    match merged {
-        Ok(merged) if merged.success => success(result, manager, worktree, merged).await,
-        Ok(merged) => failure::merge(result, &merged),
-        Err(error) => fail(result, format!("Failed to merge worktree: {error}")),
+    match delivered {
+        Ok(delivery) if delivery.status.is_delivered() => {
+            success(result, manager, worktree, delivery).await
+        }
+        Ok(delivery) => fail(result, delivery.summary()),
+        Err(error) => fail(result, format!("Failed to deliver worktree: {error}")),
     }
 }
 
@@ -24,15 +26,16 @@ async fn success(
     result: &mut SubTaskResult,
     manager: &WorktreeManager,
     worktree: &WorktreeInfo,
-    merged: MergeResult,
+    delivery: Delivery,
 ) {
-    tracing::info!(subtask_id = %result.subtask_id, files = merged.files_changed,
-        "Merged swarm worktree changes");
-    result
-        .result
-        .push_str(&format!("\n\n--- Merge Result ---\n{}", merged.summary));
-    if let Err(error) = manager.cleanup(&worktree.name).await {
-        tracing::warn!(%error, "Failed to cleanup merged swarm worktree");
+    tracing::info!(subtask_id = %result.subtask_id, files = delivery.files.len(),
+        status = delivery.status.as_str(), "Delivered swarm worktree changes");
+    result.result.push_str(&format!(
+        "\n\n--- Delivery Result ---\n{}",
+        delivery.summary()
+    ));
+    if let Err(error) = manager.discard_delivered(&worktree.name).await {
+        tracing::warn!(%error, "Failed to cleanup delivered swarm worktree");
     }
 }
 

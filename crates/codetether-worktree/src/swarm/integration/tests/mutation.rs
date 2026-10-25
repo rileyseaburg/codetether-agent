@@ -30,7 +30,7 @@ async fn patch_equivalent_work_is_accepted_and_cleaned_up() {
     let mut result = fixture.result();
     super::super::super::apply(&mut result, &fixture.manager, &fixture.worktree, true).await;
     assert!(result.success, "{:?}", result.error);
-    assert!(result.result.contains("no changes to merge"));
+    assert!(result.result.contains("already present"));
     assert!(!fixture.worktree.path.exists());
     assert!(!fixture.branch_exists());
 }

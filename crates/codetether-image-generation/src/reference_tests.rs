@@ -6,6 +6,8 @@ use std::{collections::VecDeque, sync::Mutex};
 async fn conversation_images_take_priority_over_process_cache() {
     let args = ImagegenArgs {
         prompt: "edit it".into(),
+        provider: Default::default(),
+        refine_from: None,
         referenced_image_paths: None,
         num_last_images_to_include: Some(2),
         recent_images: vec!["user".into(), "generated".into()],

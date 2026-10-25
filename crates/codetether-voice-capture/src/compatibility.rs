@@ -16,7 +16,7 @@ pub fn drain_voice_transcription(state: &mut impl Input) {
         None => return,
     };
     let text = match slot.lock().ok().and_then(|mut g| g.take()) {
-        Some(t) if !t.is_empty() => t,
+        Some(Ok(t)) if !t.is_empty() => t,
         _ => return,
     };
     state.clear_pending();

@@ -5,6 +5,8 @@ use std::{collections::VecDeque, path::PathBuf, sync::Mutex};
 fn args(paths: Option<Vec<PathBuf>>, count: Option<usize>) -> ImagegenArgs {
     ImagegenArgs {
         prompt: "paint a moonlit lake".into(),
+        provider: Default::default(),
+        refine_from: None,
         referenced_image_paths: paths,
         num_last_images_to_include: count,
         recent_images: Vec::new(),

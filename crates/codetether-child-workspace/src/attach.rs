@@ -12,7 +12,7 @@ impl Handoff {
 
     pub fn attach(&self, mut result: ToolResult) -> ToolResult {
         let isolation = serde_json::json!({"mode": "worktree", "checkout": self,
-            "integration": "review_then_cherry_pick", "auto_merge": false});
+            "integration": "deliver_uncommitted_to_parent", "auto_merge": false});
         if let Ok(serde_json::Value::Object(mut object)) = serde_json::from_str(&result.output) {
             object.insert("isolation".into(), isolation);
             result.output = serde_json::Value::Object(object).to_string();

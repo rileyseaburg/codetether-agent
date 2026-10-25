@@ -36,7 +36,7 @@ pub async fn run<H: EphemeralHost>(
     let outcome = H::execute(setup.run, request.instructions, runtime_id).await;
     let result = super::ephemeral_result::build(request.name, outcome, warning);
     Ok(match setup.handoff {
-        Some(handoff) => handoff.attach(result),
+        Some(handoff) => handoff.attach(handoff.deliver(result).await),
         None => result,
     })
 }
