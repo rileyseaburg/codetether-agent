@@ -59,7 +59,8 @@ pub fn record_from(
     let (stream, samples, errors) = silence_alsa(|| input_stream::build(&device))?;
     silence_alsa(|| stream.play())?;
     tracing::info!(target: "codetether_agent::tool::voice_input::recorder", max_duration_secs, "Recording started");
-    let outcome = recording_wait::for_stop(Duration::from_secs(max_duration_secs), &stop_flag, &errors);
+    let outcome =
+        recording_wait::for_stop(Duration::from_secs(max_duration_secs), &stop_flag, &errors);
     drop(stream);
     outcome?;
     errors.check()?;

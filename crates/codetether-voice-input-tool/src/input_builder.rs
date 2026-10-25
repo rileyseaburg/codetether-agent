@@ -15,7 +15,7 @@ where
     i16: cpal::FromSample<T>,
 {
     Ok(device.build_input_stream(
-        config.clone(),
+        *config,
         move |data: &[T], _| push(data, &samples),
         move |err| errors.report(err),
         None,

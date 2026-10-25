@@ -12,7 +12,11 @@ pub fn build(device: &cpal::Device) -> Result<(cpal::Stream, SampleBuffer, Captu
     let samples = Arc::new(Mutex::new(Resampler::new(&config.stream)));
     let errors = CaptureErrors::default();
     let stream = build_stream(
-        device, &config.stream, config.format, samples.clone(), errors.clone(),
+        device,
+        &config.stream,
+        config.format,
+        samples.clone(),
+        errors.clone(),
     )?;
     Ok((stream, samples, errors))
 }

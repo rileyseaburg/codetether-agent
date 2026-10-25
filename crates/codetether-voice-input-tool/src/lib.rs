@@ -9,6 +9,8 @@
 
 mod actions;
 mod capture_errors;
+#[cfg(test)]
+mod capture_errors_tests;
 pub(crate) mod client;
 mod device;
 mod downmix;
@@ -19,9 +21,13 @@ mod input_stream;
 mod params;
 pub mod recorder;
 mod recording_wait;
+#[cfg(test)]
+mod recording_wait_tests;
 mod resampler;
 #[cfg(test)]
 mod resampler_tests;
+#[cfg(test)]
+mod sample_conversion_tests;
 mod schema;
 pub(crate) mod stderr_guard;
 #[cfg(target_os = "linux")]
