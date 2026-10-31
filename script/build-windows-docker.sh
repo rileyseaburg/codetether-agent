@@ -3,6 +3,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+binary_only=false
+case "${1:-}" in
+  --binary-only) binary_only=true; shift ;;
+  "") ;;
+  *) echo "Usage: $0 [--binary-only]" >&2; exit 2 ;;
+esac
+if [ "$#" -ne 0 ]; then
+  echo "Usage: $0 [--binary-only]" >&2; exit 2
+fi
+
 cache_args=()
 cache_next=.docker-cache/windows-new
 
@@ -50,5 +60,7 @@ docker buildx build \
   .
 
 copy_artifacts
-python3 script/package-windows-bundle.py
+if [ "$binary_only" = false ]; then
+  python3 script/package-windows-bundle.py
+fi
 publish_cache
