@@ -5,10 +5,14 @@
 //! [state] holds per-session checkpoints; native encoders and hydration adapters
 //! provide [Snapshot] data and header encoding; this crate owns delta selection,
 //! schema, writes, checkpoint acknowledgement and indexed reads.
+mod api;
+pub use api::*;
 pub mod batch;
 pub mod blobs;
 pub mod connection;
 pub mod constraints;
+/// Bounded, per-database serialization of session persistence writes.
+pub mod coordinator;
 pub mod events;
 pub mod id;
 pub mod identity;
@@ -22,10 +26,9 @@ pub mod state;
 pub mod tool_state;
 pub mod transaction;
 mod upgrade;
-pub use batch::{Batch, Records};
-pub use state::{Checkpoint, State};
 
 mod acknowledge;
+mod cursor_prepare;
 pub mod cursor_read;
 pub mod delete;
 mod delivery;
@@ -33,22 +36,15 @@ pub mod header_read;
 pub mod projection;
 pub mod summaries;
 mod ticket;
-pub use acknowledge::acknowledge;
-pub use delivery::Delivery;
-pub use ticket::Ticket;
 
 mod checkpoint;
 mod encode;
 mod prepare;
 mod save;
+mod save_checkpoint;
 mod snapshot;
-pub use checkpoint::clean;
-pub use prepare::prepare;
-pub use save::save;
-pub use snapshot::Snapshot;
 
 mod restoration;
-pub use restoration::{Restore, TailLoad, load, load_sync, restore_consumer};
 
 pub mod legacy;
 
@@ -57,11 +53,9 @@ pub mod metadata;
 pub mod user_source;
 pub mod window;
 
+/// Legacy-aware consumer snapshots from explicit or resolved session locations.
+pub mod consumer;
 mod fold_messages;
 /// Persistence lifecycle and native indexing notifications.
 pub mod lifecycle;
 mod messages;
-pub use fold_messages::fold_messages;
-pub use messages::read_messages;
-/// Legacy-aware consumer snapshots from explicit or resolved session locations.
-pub mod consumer;

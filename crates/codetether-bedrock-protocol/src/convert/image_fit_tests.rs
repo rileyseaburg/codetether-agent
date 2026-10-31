@@ -31,3 +31,19 @@ fn image_within_limit_is_unchanged() {
     assert_eq!(block["image"]["format"], "png");
     assert_eq!(edges(&block), (1254, 1254));
 }
+
+#[test]
+fn persisted_native_ppm_is_not_sent_to_bedrock_as_png() {
+    let ppm = b"P6\n1 1\n255\n\xff\x00\x00";
+    let url = format!("data:image/png;base64,{}", STANDARD.encode(ppm));
+    let block = super::image::block(&url, Some("image/png"));
+    assert_eq!(block["image"]["format"], "png");
+    assert_eq!(edges(&block), (1, 1));
+    let bytes = STANDARD
+        .decode(block["image"]["source"]["bytes"].as_str().unwrap())
+        .unwrap();
+    assert_eq!(
+        image::guess_format(&bytes).unwrap(),
+        image::ImageFormat::Png
+    );
+}

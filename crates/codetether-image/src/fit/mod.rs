@@ -4,13 +4,16 @@
 //! exceeds 2000 px when a request carries many images. Screenshots and
 //! generated graphics routinely exceed that, which faults the whole turn.
 //! [`fit`] shrinks such images (longest edge [`MAX_EDGE`]) and re-encodes them
-//! as JPEG; images that already fit, or cannot be decoded, pass through.
+//! as JPEG. Legacy native browser PPM captures (incorrectly labeled PNG) are
+//! also transcoded; other images that fit or cannot be decoded pass through.
 
-use image::{GenericImageView, ImageReader};
+use image::{GenericImageView, ImageFormat, ImageReader};
 use std::io::Cursor;
 
 mod data_url;
 pub use data_url::fit_data_url;
+#[cfg(test)]
+mod tests;
 
 /// Longest edge allowed after fitting, safely under the 2000 px API limit.
 pub const MAX_EDGE: u32 = 1920;
@@ -31,16 +34,16 @@ pub struct Fitted {
     pub mime: String,
 }
 
-/// Downscale `bytes` when its longest edge exceeds [`MAX_EDGE`].
+/// Downscale oversized images and repair legacy PPM screenshot encoding.
 ///
-/// Returns `None` when the image already fits or cannot be decoded, so the
-/// caller keeps the original bytes unchanged.
+/// PPM captures that already fit become lossless PNG. Other images that
+/// already fit or cannot be decoded return `None` and remain unchanged.
 ///
 /// # Arguments
 /// * `bytes` - Encoded image data to inspect and resize when needed.
 ///
 /// # Returns
-/// The resized JPEG, or `None` when unchanged or undecodable.
+/// A resized JPEG, a repaired PNG, or `None` when unchanged or undecodable.
 ///
 /// # Examples
 ///
@@ -65,9 +68,20 @@ pub fn fit(bytes: &[u8]) -> Option<Fitted> {
     let mut limits = image::Limits::default();
     limits.max_alloc = Some(256 * 1024 * 1024);
     reader.limits(limits);
+    let format = reader.format();
     let decoded = reader.decode().ok()?;
     let (width, height) = decoded.dimensions();
     if width.max(height) <= MAX_EDGE {
+        if format == Some(ImageFormat::Pnm) {
+            let mut bytes = Vec::new();
+            decoded
+                .write_to(&mut Cursor::new(&mut bytes), ImageFormat::Png)
+                .ok()?;
+            return Some(Fitted {
+                bytes,
+                mime: "image/png".into(),
+            });
+        }
         return None;
     }
     let shrunk = decoded.thumbnail(MAX_EDGE, MAX_EDGE).to_rgb8();

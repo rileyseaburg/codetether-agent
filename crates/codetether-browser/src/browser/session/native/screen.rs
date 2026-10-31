@@ -27,5 +27,8 @@ pub(super) async fn capture(
         None => page.screenshot_ppm(),
     }
     .map_err(BrowserError::OperationFailed)?;
-    Ok(BrowserOutput::Screenshot(ScreenshotData { bytes }))
+    let screenshot = ScreenshotData::from_ppm(&bytes).map_err(|error| {
+        BrowserError::OperationFailed(format!("PNG screenshot encoding: {error}"))
+    })?;
+    Ok(BrowserOutput::Screenshot(screenshot))
 }

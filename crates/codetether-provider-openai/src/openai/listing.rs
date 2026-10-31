@@ -3,6 +3,9 @@
 use super::*;
 impl OpenAIProvider {
     pub(super) async fn list_provider_models(&self) -> Result<Vec<ModelInfo>> {
+        if self.is_lmstudio() {
+            return self.lmstudio_models().await;
+        }
         // For non-OpenAI providers, return provider-specific model defaults.
         // Note: async-openai 0.32 does not expose a stable models list API across
         // all OpenAI-compatible endpoints.

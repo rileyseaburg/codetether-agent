@@ -5,9 +5,7 @@ final class AudioPlayback: NSObject, AVAudioPlayerDelegate {
     private var player: AVAudioPlayer?
     private var completion: CheckedContinuation<Void, Error>?
     func play(_ data: Data) async throws {
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playback, mode: .spokenAudio)
-        try session.setActive(true)
+        try Task.checkCancellation()
         let active = try AVAudioPlayer(data: data)
         player = active
         active.delegate = self
@@ -32,16 +30,19 @@ final class AudioPlayback: NSObject, AVAudioPlayerDelegate {
         else { completion?.resume() }
         completion = nil
         player = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         let duration = player.duration
         Task { @MainActor in
+            guard self.player === player else { return }
             if flag { PlaybackReceipt.write(phase: "finished", duration: duration) }
             finish(flag ? nil : ClientError.invalidResponse)
         }
     }
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        Task { @MainActor in finish(ClientError.invalidResponse) }
+        Task { @MainActor in
+            guard self.player === player else { return }
+            finish(ClientError.invalidResponse)
+        }
     }
 }

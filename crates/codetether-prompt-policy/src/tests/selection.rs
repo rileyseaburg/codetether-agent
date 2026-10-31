@@ -6,7 +6,7 @@ use crate::prefers_light_system_prompt;
 #[test]
 fn light_prompt_selection_honors_provider_and_opt_in_flag() {
     unsafe { std::env::remove_var("CODETETHER_LIGHT_SYSTEM_PROMPT") };
-    for provider in ["local-cuda", "local_cuda", "localcuda"] {
+    for provider in ["local-cuda", "local_cuda", "localcuda", "lmstudio"] {
         assert!(prefers_light_system_prompt(provider));
     }
     assert!(!prefers_light_system_prompt("openai"));

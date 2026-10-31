@@ -34,6 +34,7 @@ impl<T: Application, const MAX_STEPS: usize> EphemeralPolicy for Ephemeral<T, MA
             request.instructions,
             read_only,
             expects_changes,
+            false,
         )
     }
 }

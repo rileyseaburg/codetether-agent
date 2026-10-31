@@ -55,7 +55,13 @@ pub async fn derive_with_policy<H: Source, S>(
 ) -> Result<DerivedContext> {
     let mut headers = Vec::new();
     super::state_header::prepend_state_header(session, &mut headers);
-    let execution = select(policy, force_keep_last);
+    let fixed_tokens =
+        codetether_request_tokens::estimate_request_tokens(system_prompt, &headers, tools);
+    let execution =
+        match super::lmstudio::execution(provider.as_ref(), model, policy, fixed_tokens).await? {
+            Some(execution) => execution,
+            None => select(policy, force_keep_last),
+        };
     let reserved_prompt = match execution {
         codetether_context_policy::derivation::dispatch::Execution::Incremental { .. } => {
             system_prompt.to_owned()

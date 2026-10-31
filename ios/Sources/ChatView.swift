@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ChatView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @ObservedObject var connection: ConnectionModel
     @ObservedObject var chat: ChatModel
     // Internal (not private): ChatView+Toolbar binds these sheets.
@@ -38,7 +39,7 @@ struct ChatView: View {
             }
             .task { await connection.start(); await chat.restoreSession(); await chat.loadModels() }
             .onChange(of: chat.conversationID) { _, _ in voiceInput.stop(); voiceOutput.stop() }
-            .onDisappear { voiceInput.stop(); voiceOutput.stop() }
+            .onDisappear { voiceInput.stop(); if scenePhase == .active { voiceOutput.stop() } }
             .onChange(of: chat.voiceModeActive) { _, active in
                 if active { voiceInput.stop(); voiceOutput.stop() }
             }

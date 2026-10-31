@@ -11,6 +11,6 @@ pub trait Source {
     fn workspace(&self) -> Option<&Path>;
     /// Transcript from which the latest user text is selected.
     fn messages(&self) -> &[Message];
-    /// Current session ID, excluded from search results.
+    /// Current session ID, the only session eligible for automatic recall.
     fn id(&self) -> &str;
 }

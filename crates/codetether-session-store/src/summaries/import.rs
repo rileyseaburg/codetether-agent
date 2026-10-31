@@ -16,19 +16,24 @@ use std::path::Path;
 /// # Ok(()) }
 /// ```
 pub fn import(path: &Path, id: &str, index: &SummaryIndex) -> Result<()> {
-    let db = crate::connection::open(path)?;
-    let tx = db.unchecked_transaction()?;
+    let mut rows = Vec::new();
     for (range, node) in index.entries() {
-        tx.execute(
-            "INSERT OR IGNORE INTO projections VALUES (?1,'manual_summary',?2,?3,?4)",
-            rusqlite::params![
-                id,
-                range.start as i64,
-                range.end as i64,
-                serde_json::to_string(node)?
-            ],
-        )?;
+        rows.push((
+            range.start as i64,
+            range.end as i64,
+            serde_json::to_string(node)?,
+        ));
     }
-    tx.commit()?;
-    Ok(())
+    let id = id.to_owned();
+    crate::coordinator::write(path, move |db| {
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        for (start, end, body) in rows {
+            tx.execute(
+                "INSERT OR IGNORE INTO projections VALUES (?1,'manual_summary',?2,?3,?4)",
+                rusqlite::params![id, start, end, body],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    })
 }

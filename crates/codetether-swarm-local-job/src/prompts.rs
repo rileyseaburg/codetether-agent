@@ -15,6 +15,7 @@ pub(super) fn build<H: crate::Host>(job: &Job) -> (String, String) {
         line_limit: None,
         read_only: job.read_only,
         expects_changes: job.expects_changes,
+        shared_workspace: job.shared_workspace,
     });
     let user = if job.context.is_empty() {
         format!("Complete this task:\n\n{}", job.instruction)

@@ -32,11 +32,14 @@ pub fn start_at_tail(
     );
     let tail = i64::try_from(tail)?;
     let alignment = i64::try_from(alignment)?;
-    let db = crate::connection::open(path)?;
-    db.execute(
-        "INSERT OR IGNORE INTO consumers(session_id,name,seq,revision)
+    let id = id.to_owned();
+    let name = name.to_owned();
+    crate::coordinator::write(path, move |db| {
+        db.execute(
+            "INSERT OR IGNORE INTO consumers(session_id,name,seq,revision)
          SELECT id,?2,(MAX(message_count-?3,0)/?4)*?4,0 FROM sessions WHERE id=?1",
-        params![id, name, tail, alignment],
-    )?;
-    Ok(())
+            params![id, name, tail, alignment],
+        )?;
+        Ok(())
+    })
 }

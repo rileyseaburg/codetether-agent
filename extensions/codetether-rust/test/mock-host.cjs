@@ -13,11 +13,15 @@ function host(options = {}) {
   const disposable = { dispose() {} };
   const folder = { uri: { fsPath: '/repo/work tree', toString: () => 'file:///repo/work%20tree' }, name: 'app' };
   const vscode = {
+    extensions: { getExtension: () => undefined, onDidChange: () => disposable },
     commands: {
       executeCommand: async id => invoked.push(id),
       registerCommand: (id, callback) => { commands.set(id, callback); return disposable; }
     },
     workspace: {
+      textDocuments: [],
+      onDidOpenTextDocument: () => disposable,
+      onDidGrantWorkspaceTrust: () => disposable,
       isTrusted: options.trusted ?? true,
       workspaceFolders: options.multi ? [folder, folder] : [folder],
       getWorkspaceFolder: () => folder,

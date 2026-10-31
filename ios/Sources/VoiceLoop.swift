@@ -21,6 +21,7 @@ final class VoiceLoop: ObservableObject {
     var micTask: Task<Void, Never>?
     var turnID = UUID()
     var pendingFinal = false
+    var isBackgrounded = false
     var speakStartedAt = Date()
     let silence = VoiceSilenceTimer()
     @Published var pauseSeconds = UserDefaults.standard.integer(forKey: "voice.pauseSeconds") == 5 ? 5 : 3 {
@@ -40,12 +41,12 @@ final class VoiceLoop: ObservableObject {
 
     /// Enters the loop: permissions → mic on → listening.
     func start() async {
-        guard canStart, let mic else { return }
+        guard !isBackgrounded, canStart, let mic else { return }
         let startup = turnID
         guard await transcriber?.requestPermissions() ?? false else {
             phase = .failed("Enable Microphone and Speech Recognition in Settings."); return
         }
-        guard !Task.isCancelled, startup == turnID else { return }
+        guard !isBackgrounded, !Task.isCancelled, startup == turnID else { return }
         let vadReady = mic.prepare()
         do {
             try mic.start(onEvent: handle) { [weak self] buffer in

@@ -6,7 +6,7 @@ use codetether_provider_core::StreamChunk;
 
 pub(super) fn parse(data: &str, produced: &mut bool) -> Vec<StreamChunk> {
     let resp: SseResponse = serde_json::from_str(data).expect("frame parses");
-    frame_chunks(&resp, produced)
+    frame_chunks(&resp, produced, &mut std::collections::HashMap::new())
 }
 
 #[test]

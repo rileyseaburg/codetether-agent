@@ -18,6 +18,8 @@ struct CodeTetherApp: App {
                 TranscriptScrollFixture()
             } else if CommandLine.arguments.contains("--voice-model-picker-fixture") {
                 VoiceModelPickerFixture()
+            } else if CommandLine.arguments.contains("--readback-controls-fixture") {
+                ReadbackControlsFixture()
             } else if CommandLine.arguments.contains("--markdown-copy-fixture") {
                 MarkdownCopyFixture()
             } else { appContent }

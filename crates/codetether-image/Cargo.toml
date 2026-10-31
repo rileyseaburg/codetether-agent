@@ -8,5 +8,5 @@ license = "MIT"
 
 [dependencies]
 base64 = "0.23.1"
-image = { version = "0.25", default-features = false, features = ["png", "bmp", "jpeg"] }
+image = { version = "0.25", default-features = false, features = ["png", "bmp", "jpeg", "pnm"] }
 tracing = "0.1"

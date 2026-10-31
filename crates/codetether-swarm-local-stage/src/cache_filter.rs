@@ -11,7 +11,7 @@ pub(super) async fn pending(
 ) -> Vec<SubTask> {
     let mut pending = Vec::with_capacity(tasks.len());
     for task in tasks {
-        let cached = if task.is_read_only() {
+        let cached = if state.executor.config().worktree_enabled && task.is_read_only() {
             state.executor.cache_get(&task).await
         } else {
             None

@@ -1290,7 +1290,7 @@ dependencies = [
 
 [[package]]
 name = "codetether-agent"
-version = "4.7.6-dev.58"
+version = "4.7.6-dev.64"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2797,6 +2797,7 @@ version = "0.1.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
+ "image",
  "once_cell",
  "parking_lot",
  "reqwest 0.13.4",
@@ -4181,6 +4182,7 @@ dependencies = [
  "codetether-evidence-prompt",
  "codetether-provider-core",
  "codetether-util",
+ "tempfile",
  "tracing",
  "uuid",
 ]
@@ -7577,12 +7579,18 @@ dependencies = [
 name = "codetether-recall-context"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "codetether-context-policy",
  "codetether-provider-core",
  "codetether-recall-index",
  "codetether-recall-query",
+ "codetether-recall-store",
  "codetether-rlm",
  "codetether-session-recall",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -8722,6 +8730,7 @@ dependencies = [
  "codetether-provider-core",
  "codetether-session-location",
  "codetether-tracked-vec",
+ "fs2",
  "hex",
  "rusqlite",
  "serde",
@@ -9164,6 +9173,7 @@ dependencies = [
  "codetether-session-control",
  "codetether-swarm-core",
  "codetether-tool-core",
+ "codetether-workspace-tools",
  "codetether-worktree",
  "futures",
  "serde",

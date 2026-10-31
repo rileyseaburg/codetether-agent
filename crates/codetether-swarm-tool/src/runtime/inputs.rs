@@ -18,17 +18,19 @@ pub struct SelectedProvider {
     pub model: ModelSelection,
 }
 /// Owned setup shared by registry and prompt construction.
-/// Constructed by the runtime after successful worktree allocation.
+/// Constructed after selecting a shared workspace or allocating an isolated worktree.
 /// # Examples
 /// ```no_run
 /// # fn context(provider: std::sync::Arc<dyn codetether_provider_core::Provider>) {
 /// let _context = codetether_swarm_tool::runtime::WorkerContext {
-///     read_only: true, verification: true, expects_changes: false,
+///     read_only: true, verification: true, expects_changes: false, shared_workspace: false,
 ///     working_dir: ".".into(), task_id: "review".into(), provider, model: "model".into(),
 /// };
 /// # }
 /// ```
 pub struct WorkerContext {
+    /// All workers may edit this same workspace without branch integration.
+    pub shared_workspace: bool,
     /// Whether source edits are forbidden.
     pub read_only: bool,
     /// Whether the task verifies existing changes.

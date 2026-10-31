@@ -9,8 +9,10 @@ use std::sync::Arc;
 /// Each slot in `infos` corresponds to a swarm participant index; `None` means
 /// that participant did not need an isolated worktree. An error preserves failed allocation.
 ///
-/// Construction allocates worktrees; finishing commits and integrates successful
-/// tasks while retaining failed allocations and task worktrees for inspection.
+/// [`Self::create`] allocates isolated worktrees; finishing integrates successful
+/// tasks while retaining failed worktrees for inspection. [`Self::shared`] reuses
+/// the parent workspace for every worker; finishing leaves those edits in place
+/// without committing, merging, or cleaning the shared checkout.
 /// # Examples
 /// ```no_run
 /// # async fn example() {
@@ -19,6 +21,8 @@ use std::sync::Arc;
 /// # }
 /// ```
 pub struct SwarmWorktrees {
+    /// Parent workspace used directly by every worker in shared mode.
+    pub(super) shared_root: Option<std::path::PathBuf>,
     /// Manager responsible for creating and cleaning up swarm worktrees.
     pub(super) mgr: Arc<WorktreeManager>,
     /// Per-participant worktree metadata, indexed by swarm task position.
@@ -28,6 +32,10 @@ pub struct SwarmWorktrees {
 }
 
 impl SwarmWorktrees {
+    /// Whether all participants can edit the same parent workspace.
+    pub fn is_shared(&self) -> bool {
+        self.shared_root.is_some()
+    }
     /// Return metadata for a participant worktree.
     ///
     /// # Arguments

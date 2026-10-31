@@ -38,6 +38,7 @@ Dir.mktmpdir('codetether-ipa-verify-') do |directory|
     profile_expires: profile['ExpirationDate'], debug_entitlement: false,
     application_identifier: entitlements['application-identifier'],
     keychain_access_groups: entitlements.fetch('keychain-access-groups', []),
+    background_modes: info.fetch('UIBackgroundModes', []),
     camera_usage_description: info['NSCameraUsageDescription'])
   File.write(ARGV[4], evidence + "\n") if ARGV[4]
   puts evidence

@@ -20,8 +20,8 @@ use rusqlite::{TransactionBehavior, params};
 /// ```
 pub async fn put(state: crate::Checkpoint, range: SummaryRange, node: &SummaryNode) -> Result<()> {
     let body = serde_json::to_string(node)?;
-    tokio::task::spawn_blocking(move || {
-        let mut db = crate::connection::open(&state.path)?;
+    let path = state.path.clone();
+    crate::coordinator::write_async(&path, move |db| {
         // Check the source revision only after obtaining SQLite's writer reservation.
         let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let revision: i64 = tx.query_row("SELECT revision FROM sessions WHERE id=?1", [&state.id], |r| r.get(0))?;
@@ -31,5 +31,5 @@ pub async fn put(state: crate::Checkpoint, range: SummaryRange, node: &SummaryNo
             params![state.id,(state.message_start+range.start) as i64,(state.message_start+range.end) as i64,body])?;
         tx.commit()?;
         anyhow::Ok(())
-    }).await?
+    }).await
 }

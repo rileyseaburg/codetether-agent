@@ -1,8 +1,7 @@
 //! Compatibility save boundary; only dirty records cross to the writer thread.
 use super::state::Checkpoint;
 use crate::Snapshot;
-use crate::checkpoint::clean;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::Path;
 /// Commit dirty session data and then acknowledge its persisted checkpoint.
 /// # Arguments
@@ -47,34 +46,14 @@ pub async fn save<S: Snapshot + Sync>(session: &S, path: &Path) -> Result<bool> 
     let owned_path = path.to_path_buf();
     let header = batch.header.clone();
     let committed_edits = edits.clone();
-    let revision = tokio::task::spawn_blocking(move || {
+    let revision = crate::coordinator::write_async(path, move |db| {
         let ends = (batch.messages.end, batch.tools.end);
         super::marker::check(&owned_path, &batch.id)?;
-        let revision = super::transaction::commit_with_pins(&owned_path, &batch, &edits)?;
+        let revision = super::transaction::commit_on(db, &batch, &edits)?;
         super::marker::create(&owned_path, &batch.id)?;
         anyhow::Ok((revision, ends))
     })
-    .await
-    .context("session writer panicked")??;
-    checkpoint.revision = revision.0;
-    checkpoint.message_end = revision.1.0;
-    checkpoint.tool_end = revision.1.1;
-    checkpoint.header = header;
-    for edit in committed_edits {
-        checkpoint
-            .constraints
-            .retain(|source| source.source_turn != edit.index);
-        if let Some(source) =
-            crate::constraints::ConstraintRecord::from_message(edit.index, &edit.message, edit.page)
-        {
-            checkpoint.constraints.push(source);
-        }
-    }
-    checkpoint
-        .constraints
-        .sort_by_key(|source| source.source_turn);
-    checkpoint.pin_sources.clear();
-    *session.state().0.lock().unwrap() = checkpoint;
-    clean(session);
+    .await?;
+    super::save_checkpoint::apply(session, checkpoint, committed_edits, revision, header);
     Ok(true)
 }

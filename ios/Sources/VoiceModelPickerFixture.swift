@@ -8,7 +8,7 @@ struct VoiceModelPickerFixture: View {
     @StateObject private var mic = VoiceMicEngine()
     @State private var creating = false
     var body: some View {
-        VoiceSessionScreen(chat: chat, loop: loop, mic: mic, creating: $creating)
+        VoiceSessionScreen(chat: chat, loop: loop, mic: mic, creating: $creating, playback: ReadbackTransport())
             .onAppear {
                 chat.models = ["provider/first", "provider/second"]
                 chat.selectedModel = "provider/first"
@@ -16,6 +16,5 @@ struct VoiceModelPickerFixture: View {
     }
 }
 #endif
-
 
 

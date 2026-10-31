@@ -22,6 +22,7 @@ struct VoiceControls: View {
                 Spacer()
                 if output.speaking { Button("Stop audio") { output.stop() } }
             }
+            ReadbackControls(transport: output.playback)
             if !output.status.isEmpty {
                 Text(output.status).font(.caption).accessibilityIdentifier("voice-status")
             }

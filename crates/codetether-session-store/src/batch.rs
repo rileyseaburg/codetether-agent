@@ -9,6 +9,7 @@ use crate::state::Checkpoint;
 ///     tools: Records { start: 0, end: 0, rows: vec![] } };
 /// assert_eq!(batch.revision, 0);
 /// ```
+#[derive(Clone)]
 pub struct Batch {
     /// Session identity.
     pub id: String,
@@ -27,6 +28,7 @@ pub struct Batch {
 /// let rows = codetether_session_store::Records { start: 0, end: 0, rows: vec![] };
 /// assert!(rows.rows.is_empty());
 /// ```
+#[derive(Clone)]
 pub struct Records {
     /// First replaced absolute sequence.
     pub start: usize,

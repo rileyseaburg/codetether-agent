@@ -12,6 +12,7 @@ fn approximate_refactor_size_triggers_fresh_measurement() {
         line_limit: None,
         read_only: false,
         expects_changes: true,
+        shared_workspace: false,
     });
 
     assert!(prompt.contains("SOURCE METRIC CONTRACT"));

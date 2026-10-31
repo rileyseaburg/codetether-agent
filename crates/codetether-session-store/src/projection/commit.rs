@@ -20,8 +20,8 @@ use serde_json::Value;
 /// # Ok(()) }
 /// ```
 pub async fn commit(ticket: Ticket, mut view: Value) -> Result<bool> {
-    tokio::task::spawn_blocking(move || {
-        let mut db = crate::connection::open(&ticket.path)?;
+    let path = ticket.path.clone();
+    crate::coordinator::write_async(&path, move |db| {
         // Reserve the writer before reading; deferred upgrades can bypass the busy timeout.
         let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let (generation, position): (i64, usize) = tx.query_row("SELECT revision,seq FROM consumers WHERE session_id=?1 AND name=?2",
@@ -39,5 +39,5 @@ pub async fn commit(ticket: Ticket, mut view: Value) -> Result<bool> {
             params![ticket.id,ticket.name,ticket.to as i64])?;
         tx.commit()?;
         Ok(true)
-    }).await?
+    }).await
 }

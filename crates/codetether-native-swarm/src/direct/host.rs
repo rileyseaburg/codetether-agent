@@ -28,6 +28,7 @@ impl<T: Application> codetether_swarm_tool::runtime::Host for Host<T> {
             &task.instruction,
             context.read_only,
             context.expects_changes,
+            context.shared_workspace,
         )
     }
     async fn run(

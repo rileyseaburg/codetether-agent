@@ -28,7 +28,15 @@ pub fn system_prompt_for(
 ) -> String {
     let prompt = if prefers_light_system_prompt(selected_provider) {
         codetether_agent_core::builtin::append_project_instructions(
-            local_cuda_light_system_prompt(),
+            if selected_provider == "lmstudio" {
+                "You are CodeTether, a local coding assistant. Be concise. Use tools only when needed. \
+Discover additional tools with list_tools instead of guessing tool arguments. \
+Read applicable repository instructions before editing. Preserve unrelated changes. \
+Never invent tool results or claim tests ran without evidence."
+                    .to_string()
+            } else {
+                local_cuda_light_system_prompt()
+            },
             cwd,
         )
     } else {

@@ -22,9 +22,8 @@ pub(super) async fn build(
         .as_ref()
         .map(|item| item.path.clone())
         .unwrap_or_else(|| state.workspace.clone());
-    let read_only = task.is_read_only();
-    let verification = task.is_verification();
-    let expects_changes = task.expects_file_changes();
+    let shared_workspace = !state.executor.config().worktree_enabled;
+    let access = codetether_swarm_core::tool_policy::TaskAccess::for_task(&task, shared_workspace);
     Job {
         id: task.id,
         name: task.name,
@@ -33,9 +32,10 @@ pub(super) async fn build(
         context,
         provider,
         model,
-        read_only,
-        verification,
-        expects_changes,
+        shared_workspace,
+        read_only: access.read_only,
+        verification: access.verification,
+        expects_changes: access.expects_changes,
         workspace,
         result_store: Arc::clone(state.executor.result_store()),
         bus: state.executor.bus().clone(),

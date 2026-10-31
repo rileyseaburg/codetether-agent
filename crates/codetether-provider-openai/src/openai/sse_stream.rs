@@ -16,7 +16,7 @@ use super::sse_drive::drive;
 impl OpenAIProvider {
     /// True for providers whose models stream vendor `reasoning_content`.
     pub(super) fn uses_reasoning_stream(&self) -> bool {
-        self.provider_name == "cerebras"
+        self.provider_name == "cerebras" || self.is_lmstudio()
     }
 
     /// Stream a completion via raw SSE, capturing reasoning content.
@@ -27,6 +27,10 @@ impl OpenAIProvider {
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
         let url = format!("{}/chat/completions", self.api_base.trim_end_matches('/'));
         let mut req = self.http.post(url).json(&body);
+        if self.is_lmstudio() {
+            // Cold local prefill can exceed the default 45-second HTTP budget.
+            req = req.timeout(std::time::Duration::from_secs(600));
+        }
         if let Some(key) = self.api_key.as_deref().filter(|k| !k.is_empty()) {
             req = req.bearer_auth(key);
         }

@@ -9,16 +9,16 @@ async function listen(handler) {
   await once(server, 'listening');
   return { server, url: `http://127.0.0.1:${server.address().port}` };
 }
-export async function fixture(context) {
+export async function fixture(context, emit = () => {}, speechStatus = 200) {
   const auth = await listen((req, res) => { res.writeHead(req.headers.authorization === 'Bearer fixture' ? 200 : 401); res.end(); });
   let calls = 0;
   const speech = await listen((req, res) => {
     assert.equal(req.headers.authorization, undefined);
     calls++;
-    res.writeHead(200, { 'Content-Type': req.method === 'POST' ? 'audio/wav' : 'application/json' });
+    res.writeHead(speechStatus, { 'Content-Type': req.method === 'POST' ? 'audio/wav' : 'application/json' });
     res.end(req.method === 'POST' ? Buffer.from('RIFFfixture-wave') : '{"voices":["af_heart"]}');
   });
-  const bridge = await listen(createHandler(auth.url, speech.url));
+  const bridge = await listen(createHandler(auth.url, speech.url, emit));
   context.after(() => { for (const { server } of [auth, speech, bridge]) { server.closeAllConnections(); server.close(); } });
   return { url: bridge.url, calls: () => calls };
 }

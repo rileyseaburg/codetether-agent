@@ -19,6 +19,7 @@ struct VoiceModeView: View {
         .padding(24)
         .buildFrame()
         .background(Color(.systemBackground).ignoresSafeArea())
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("voice-mode")
     }
 }

@@ -15,6 +15,7 @@ mod discovery;
 mod embedding;
 mod implementation;
 mod listing;
+mod lmstudio;
 mod minimax_error;
 mod model_caps;
 mod model_entry;

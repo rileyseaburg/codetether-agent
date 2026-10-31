@@ -18,6 +18,13 @@ use crossterm::event::KeyModifiers;
 /// # }
 /// ```
 pub fn handle_left(app: &mut impl Host, modifiers: KeyModifiers) {
+    let context = app.context();
+    if context.view_mode == ViewMode::Swarm && !context.show_help && !context.symbols_active {
+        if context.swarm_detail {
+            app.apply(Action::SwarmExitDetail);
+        }
+        return;
+    }
     if app.context().view_mode == ViewMode::Chat {
         if modifiers.contains(KeyModifiers::CONTROL) {
             app.apply(Action::CursorWordLeft);
@@ -42,6 +49,13 @@ pub fn handle_left(app: &mut impl Host, modifiers: KeyModifiers) {
 /// # }
 /// ```
 pub fn handle_right(app: &mut impl Host, modifiers: KeyModifiers) {
+    let context = app.context();
+    if context.view_mode == ViewMode::Swarm && !context.show_help && !context.symbols_active {
+        if !context.swarm_detail {
+            app.apply(Action::SwarmEnterDetail);
+        }
+        return;
+    }
     if app.context().view_mode == ViewMode::Chat {
         if modifiers.contains(KeyModifiers::CONTROL) {
             app.apply(Action::CursorWordRight);

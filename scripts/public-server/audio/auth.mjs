@@ -1,5 +1,5 @@
 export class HTTPError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message) { super(message); this.name = 'HTTPError'; this.status = status; }
 }
 
 // Delegate authentication to the Rust server; do not duplicate or store its key.

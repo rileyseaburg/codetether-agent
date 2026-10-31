@@ -32,12 +32,16 @@ extension VoiceMicEngine {
     }
 
     func stop() {
+        suspendCapture()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    func suspendCapture() {
         routing.stop()
         guard engine.isRunning else { return }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         onAudio = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     /// Clears turn-detection state (after barge-in or a new turn).

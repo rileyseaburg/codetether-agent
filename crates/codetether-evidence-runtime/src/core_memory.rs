@@ -4,7 +4,12 @@ use std::path::Path;
 const EMPTY: &str = "Core memory: no high-confidence project beliefs loaded.";
 
 pub(crate) fn render(project_root: &Path) -> String {
-    let beliefs = codetether_cognition_core::palace::load_project_beliefs(project_root);
+    // Automatic final-answer writebacks are session outcomes, not shared
+    // project instructions. Keep explicitly stored project beliefs available.
+    let beliefs: Vec<_> = codetether_cognition_core::palace::load_project_beliefs(project_root)
+        .into_iter()
+        .filter(|belief| !belief.asserted_by.starts_with("session:"))
+        .collect();
     let recall = super::belief_recall::render(&beliefs);
     let context = codetether_cognition_core::palace::belief_context(&beliefs);
     if context.trim().is_empty() {

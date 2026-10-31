@@ -8,15 +8,16 @@ pub mod application;
 /// Compose direct-worker instructions with repository and session policy.
 /// # Arguments
 /// * `task_id`, `specialty` — Worker identity and optional role.
-/// * `working_dir` — Isolated or read-only parent workspace.
+/// * `working_dir` — Assigned shared or isolated workspace.
 /// * `model`, `instruction` — Selected model and delegated task.
 /// * `read_only`, `expects_changes` — Capability and delivery expectations.
+/// * `shared_workspace` — All workers may edit the same workspace.
 /// * `append_session_instructions` — Native session instruction callback.
 /// # Returns
 /// The composed prompt ending with the direct-worker delegation restriction.
 /// # Examples
 /// ```no_run
-/// let prompt = codetether_swarm_tool::prompt::build("review", None, std::path::Path::new("."), "model", "Review", true, false, |prompt| prompt);
+/// let prompt = codetether_swarm_tool::prompt::build("review", None, std::path::Path::new("."), "model", "Review", true, false, false, |prompt| prompt);
 /// assert!(prompt.ends_with("Recursive delegation is unavailable in this direct swarm worker."));
 /// ```
 pub fn build(
@@ -27,6 +28,7 @@ pub fn build(
     instruction: &str,
     read_only: bool,
     expects_changes: bool,
+    shared_workspace: bool,
     append_session_instructions: impl FnOnce(String) -> String,
 ) -> String {
     let directory = working_dir.to_string_lossy();
@@ -41,6 +43,7 @@ pub fn build(
             line_limit: None,
             read_only,
             expects_changes,
+            shared_workspace,
         },
         append_session_instructions,
     );

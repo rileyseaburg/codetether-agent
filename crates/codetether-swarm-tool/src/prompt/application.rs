@@ -8,12 +8,13 @@ use std::path::Path;
 /// `task_id` and `specialty` identify the worker; `working_dir` and `model`
 /// select its execution context. `instruction` describes the task, and the
 /// capability flags retain its access and change expectations.
+/// `shared_workspace` gives every worker editing access in the same directory.
 /// # Returns
 /// The worker prompt including goal maintenance and direct-worker restrictions.
 /// # Examples
 /// ```no_run
 /// let prompt = codetether_swarm_tool::prompt::application::build(
-///     "worker", None, std::path::Path::new("."), "model", "Review", true, false);
+///     "worker", None, std::path::Path::new("."), "model", "Review", true, false, false);
 /// assert!(prompt.ends_with("Recursive delegation is unavailable in this direct swarm worker."));
 /// ```
 pub fn build(
@@ -24,6 +25,7 @@ pub fn build(
     instruction: &str,
     read_only: bool,
     expects_changes: bool,
+    shared_workspace: bool,
 ) -> String {
     super::build(
         task_id,
@@ -33,6 +35,7 @@ pub fn build(
         instruction,
         read_only,
         expects_changes,
+        shared_workspace,
         codetether_goal_runtime::turn_instructions::append,
     )
 }

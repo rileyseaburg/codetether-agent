@@ -10,7 +10,7 @@ impl SwarmWorktrees {
         let slot = self.infos.get(index).ok_or_else(|| {
             anyhow::anyhow!("missing swarm worktree allocation state for task {index}")
         })?;
-        path(slot)
+        path(slot).map(|isolated| self.shared_root.clone().or(isolated))
     }
 }
 

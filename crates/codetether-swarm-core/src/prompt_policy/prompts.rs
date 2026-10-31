@@ -20,7 +20,9 @@ pub fn system_prompt(
     append_session_instructions: impl FnOnce(String) -> String,
 ) -> String {
     let project = super::project_quality::load(Path::new(input.working_dir));
-    let non_mutating = input.read_only || !input.expects_changes;
+    let read_only = input.read_only && !input.shared_workspace;
+    let writable = input.shared_workspace || input.expects_changes;
+    let non_mutating = read_only || !writable;
     let coordination = coordination_prompt(non_mutating, input.model);
     let prd_filename = format!("prd_{}.json", input.subtask_id.replace('-', "_"));
     let workflow = workflow_prompt(non_mutating, &prd_filename);
@@ -34,7 +36,7 @@ pub fn system_prompt(
         input.instruction,
         input.context,
         &project.policy,
-        super::constraint_ledger::Mode::from_flags(input.read_only, input.expects_changes),
+        super::constraint_ledger::Mode::from_flags(read_only, writable),
     );
     let prompt = format!(
         "You are a {} specialist sub-agent (ID: {}). You have access to tools to complete your task.\n\nWORKING DIRECTORY: {}\nAll file operations should be relative to this directory.{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}\n\n{}",
@@ -42,8 +44,8 @@ pub fn system_prompt(
         input.subtask_id,
         input.working_dir,
         codetether_agent_core::build_guidance::WORKTREE_GUIDANCE,
-        super::capability_prompt::mode(input.read_only, input.expects_changes),
-        super::capability_prompt::tools(input.read_only, input.expects_changes),
+        super::capability_prompt::workspace_mode(input.shared_workspace, read_only, writable),
+        super::capability_prompt::tools(read_only, writable),
         coordination,
         workflow,
         quality,

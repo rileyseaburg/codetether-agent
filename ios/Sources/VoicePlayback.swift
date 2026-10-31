@@ -9,6 +9,7 @@ final class VoicePlayback: NSObject, AVAudioPlayerDelegate {
     private var completion: CheckedContinuation<Void, Error>?
 
     func play(_ data: Data) async throws {
+        try Task.checkCancellation()
         let active = try AVAudioPlayer(data: data)
         active.volume = 1
         player = active
@@ -22,7 +23,7 @@ final class VoicePlayback: NSObject, AVAudioPlayerDelegate {
                 } else { finish(ClientError.invalidResponse) }
             }
         } onCancel: {
-            Task { @MainActor in self.stop() }
+            Task { @MainActor in if self.player === active { self.stop() } }
         }
     }
 
@@ -34,11 +35,15 @@ final class VoicePlayback: NSObject, AVAudioPlayerDelegate {
     }
 
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        Task { @MainActor in finish(ClientError.invalidResponse) }
+        Task { @MainActor in
+            guard self.player === player else { return }
+            finish(ClientError.invalidResponse)
+        }
     }
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         let duration = player.duration
         Task { @MainActor in
+            guard self.player === player else { return }
             if flag { PlaybackReceipt.write(phase: "finished", duration: duration) }
             finish(flag ? nil : ClientError.invalidResponse)
         }

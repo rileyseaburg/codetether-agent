@@ -10,6 +10,8 @@ use serde_json::Value;
 /// assert_eq!(config.concurrency, 5);
 /// ```
 pub struct ExecutionConfig {
+    /// Opt into isolated worktrees instead of one shared writable workspace.
+    pub isolate_worktrees: bool,
     /// Concurrent worker limit, clamped to 1 through 20.
     pub concurrency: usize,
     /// Requested failure aggregation strategy.
@@ -26,6 +28,10 @@ impl ExecutionConfig {
     /// Apply defaults and clamp concurrency while preserving requested budgets.
     pub fn from_params(params: &Value) -> Self {
         Self {
+            isolate_worktrees: params
+                .get("isolate_worktrees")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
             concurrency: usize_value(params, "concurrency_limit", 5).clamp(1, 20),
             aggregation_strategy: params
                 .get("aggregation_strategy")

@@ -12,6 +12,7 @@ fn contradictory_task_gets_static_confidence_prompt() {
         line_limit: None,
         read_only: false,
         expects_changes: true,
+        shared_workspace: false,
     });
 
     assert!(prompt.contains("VERIFICATION CONFLICT"));
@@ -32,6 +33,7 @@ fn focused_checks_do_not_demand_source_edits() {
         line_limit: None,
         read_only: false,
         expects_changes: false,
+        shared_workspace: false,
     });
     assert!(prompt.contains("VERIFICATION TASK"));
     assert!(!prompt.contains("MUST use tools to make changes"));

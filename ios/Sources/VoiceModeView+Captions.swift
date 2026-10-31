@@ -27,16 +27,18 @@ extension VoiceModeView {
     }
 
     var captions: some View {
-        VStack(spacing: 8) {
-            if !loop.transcript.isEmpty {
-                Text(loop.transcript).font(.body).multilineTextAlignment(.center)
-                    .accessibilityIdentifier("voice-user-caption")
+        ScrollView {
+            VStack(spacing: 8) {
+                if !loop.transcript.isEmpty {
+                    Text(loop.transcript).font(.body).multilineTextAlignment(.center)
+                        .accessibilityIdentifier("voice-user-caption")
+                }
+                if let reply = loop.reply {
+                    Text(reply).font(.body).multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("voice-reply-caption")
+                }
             }
-            if let reply = loop.reply {
-                Text(reply).font(.body).multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("voice-reply-caption")
-            }
-        }
+        }.frame(maxHeight: 220).accessibilityIdentifier("voice-caption-scroll")
     }
 }

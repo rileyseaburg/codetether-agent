@@ -16,7 +16,8 @@ impl<H: Host> Tool for SwarmExecuteTool<H> {
     }
 
     fn description(&self) -> &str {
-        "Run independent tasks in parallel. Pass tasks as instruction strings, for example \
+        "Run independent tasks in parallel with editing tools in the same shared workspace. \
+         Set isolate_worktrees=true to isolate workers. Pass tasks as instruction strings, for example \
          {\"tasks\":[\"Inspect the API\",\"Run focused tests\"]}. Use task objects only when \
          names, IDs, or specialties are needed; orchestration settings are optional."
     }

@@ -5,7 +5,7 @@
 /// # Examples
 /// ```no_run
 /// use codetether_swarm_core::prompt_policy::{SystemPromptInput, system_prompt};
-/// let input = SystemPromptInput { specialty: "review", subtask_id: "task", working_dir: ".", model: "model", instruction: "inspect", context: "", line_limit: None, read_only: true, expects_changes: false };
+/// let input = SystemPromptInput { specialty: "review", subtask_id: "task", working_dir: ".", model: "model", instruction: "inspect", context: "", line_limit: None, read_only: true, expects_changes: false, shared_workspace: false };
 /// let prompt = system_prompt(input, std::convert::identity);
 /// assert!(prompt.contains("READ-ONLY TASK"));
 /// ```
@@ -19,4 +19,6 @@ pub struct SystemPromptInput<'a> {
     pub line_limit: Option<usize>,
     pub read_only: bool,
     pub expects_changes: bool,
+    /// All workers can edit the same workspace, regardless of task classification.
+    pub shared_workspace: bool,
 }

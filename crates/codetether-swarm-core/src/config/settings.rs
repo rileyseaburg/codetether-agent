@@ -37,7 +37,8 @@ pub struct SwarmConfig {
     /// Delay between API calls in ms (rate limiting)
     pub request_delay_ms: u64,
 
-    /// Enable worktree isolation for sub-agents
+    /// Opt into per-task worktree isolation. By default, local workers all have
+    /// editing tools in the shared parent workspace, regardless of task wording.
     pub worktree_enabled: bool,
 
     /// Deliver successful worktree changes into the spawning checkout as

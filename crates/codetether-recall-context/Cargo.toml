@@ -13,3 +13,11 @@ codetether-recall-index = { path = "../codetether-recall-index", version = "0.1.
 codetether-recall-query = { path = "../codetether-recall-query", version = "0.1.0" }
 codetether-rlm = { path = "../codetether-rlm", version = "0.1.1" }
 codetether-session-recall = { path = "../codetether-session-recall", version = "0.1.0" }
+
+[dev-dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-recall-store = { path = "../codetether-recall-store", version = "0.1.0" }
+serde_json = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

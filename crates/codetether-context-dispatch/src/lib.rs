@@ -9,6 +9,7 @@ mod header_source;
 mod incremental;
 mod input;
 mod legacy;
+mod lmstudio;
 mod policy;
 mod reset;
 mod source;

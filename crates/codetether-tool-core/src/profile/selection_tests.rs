@@ -23,6 +23,14 @@ fn compact_provider_aliases_are_recognized() {
 
 #[test]
 fn automatic_mode_uses_discovery_for_web_routed_providers() {
+    assert!(provider_rules::resolve_discovery(
+        RequestedProfile::Automatic,
+        "lmstudio"
+    ));
+    assert!(!provider_rules::resolve_discovery(
+        RequestedProfile::Full,
+        "lmstudio"
+    ));
     assert!(resolve(RequestedProfile::Automatic, "openai-codex"));
     assert!(!resolve(RequestedProfile::Automatic, "openrouter"));
     assert!(provider_rules::resolve_discovery(

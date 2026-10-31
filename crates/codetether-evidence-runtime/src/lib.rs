@@ -15,7 +15,7 @@ mod prompt;
 mod sections;
 pub(crate) use codetether_evidence_core::{gate_mode, verification_gate};
 pub(crate) use codetether_evidence_ledger::{
-    final_note, ledger, ledger_persist, scope_item, writeback_persist, writeback_read,
+    final_note, ledger, ledger_persist, scope_item, writeback_persist,
 };
 pub(crate) use codetether_evidence_prompt::{
     assembly, capabilities, claim_note, failure_attribution, guardrails, memory_protocol, trapdoor,
@@ -25,5 +25,7 @@ pub use final_gate::gate as gate_final_answer;
 pub use prompt::append_guardrails_for_cwd;
 #[cfg(test)]
 mod failure_attribution_tests;
+#[cfg(test)]
+mod isolation_tests;
 #[cfg(test)]
 mod prompt_tests;

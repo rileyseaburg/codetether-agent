@@ -5,7 +5,9 @@ use codetether_provider_core::{ContentPart, Message, Role};
 const PREFETCH_LIMIT: usize = 3;
 const PREFETCH_MINIMUM_SCORE: f32 = 0.45;
 
-/// Prepare automatic evidence from other sessions when prior context is allowed.
+/// Prepare automatic evidence from this session when prior context is allowed.
+/// Shared workspace membership never authorizes automatic cross-session recall;
+/// callers can use the explicit session_recall tool for that purpose.
 /// # Arguments
 /// Receives the current session view and native recall query host.
 /// # Returns
@@ -30,8 +32,8 @@ pub async fn message<S: crate::Source, H: codetether_recall_query::Host>(
         workspace,
         &query,
         codetether_recall_query::SearchOptions {
-            session_id: None,
-            excluded_session: Some(session.id()),
+            session_id: Some(session.id()),
+            excluded_session: None,
             limit: PREFETCH_LIMIT,
             minimum_score: PREFETCH_MINIMUM_SCORE,
         },
@@ -47,7 +49,7 @@ pub async fn message<S: crate::Source, H: codetether_recall_query::Host>(
         content: vec![ContentPart::Text {
             text: codetether_session_recall::render::evidence(
                 &hits,
-                "Relevant prior-session evidence retrieved locally before this request. Use only when relevant and retain its provenance:",
+                "Earlier evidence from this session retrieved locally before this request. Use only when relevant and retain its provenance:",
             ),
         }],
     })

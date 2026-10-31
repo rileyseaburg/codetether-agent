@@ -1,6 +1,10 @@
 import AVFoundation
 import Foundation
 
+extension MicEngineContract {
+    func suspendCapture() { stop() }
+}
+
 /// Minimal contracts between `VoiceLoop` and its collaborators, so the
 /// loop is fully drivable by test fakes without audio hardware.
 @MainActor
@@ -11,6 +15,7 @@ protocol MicEngineContract {
                onAudio: ((AVAudioPCMBuffer) -> Void)?) throws
     func stop()
     func resetDetection()
+    func suspendCapture()
 }
 
 @MainActor

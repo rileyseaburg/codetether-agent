@@ -6,7 +6,7 @@
 
 /// Return whether the compact local prompt should replace the full one.
 ///
-/// The compact prompt is used for `local_cuda` providers, or for any
+/// The compact prompt is used for `local_cuda` and `lmstudio` providers, or for any
 /// provider when `CODETETHER_LIGHT_SYSTEM_PROMPT` is set to `1` or `true`.
 ///
 /// # Arguments
@@ -26,7 +26,9 @@
 /// assert!(!prefers_light_system_prompt("openai"));
 /// ```
 pub fn prefers_light_system_prompt(provider: &str) -> bool {
-    super::provider::is_local_cuda_provider(provider) || light_prompt_forced()
+    provider == "lmstudio"
+        || super::provider::is_local_cuda_provider(provider)
+        || light_prompt_forced()
 }
 
 fn light_prompt_forced() -> bool {

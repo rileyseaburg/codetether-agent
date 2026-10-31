@@ -15,7 +15,7 @@ impl Default for SwarmConfig {
             // accounts (e.g. 3 concurrent, 1000ms delay).
             max_concurrent_requests: 8,
             request_delay_ms: 250,
-            worktree_enabled: true,    // Enable worktree isolation by default
+            worktree_enabled: false, // Local workers share the writable parent workspace
             worktree_auto_merge: true, // Deliver as uncommitted edits on success
             collapse_enabled: false,
             working_dir: None,

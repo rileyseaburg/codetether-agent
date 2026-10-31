@@ -35,6 +35,7 @@ use responses::{chat, frame};
 mod completion;
 mod discovery;
 mod embedding;
+mod lmstudio;
 mod reasoning_stream;
 mod typed_stream;
 

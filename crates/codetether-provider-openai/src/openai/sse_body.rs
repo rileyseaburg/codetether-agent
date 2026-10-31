@@ -34,7 +34,12 @@ impl OpenAIProvider {
             body["top_p"] = json!(p);
         }
         if let Some(max) = request.max_tokens {
-            body["max_completion_tokens"] = json!(max);
+            let key = if self.is_lmstudio() {
+                "max_tokens"
+            } else {
+                "max_completion_tokens"
+            };
+            body[key] = json!(max);
         }
         body
     }

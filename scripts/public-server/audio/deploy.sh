@@ -8,7 +8,7 @@ root="$HOME/.local/lib/codetether-audio"
 install -d -m 700 "$root" "$HOME/.config/systemd/user"
 install -d -m 700 "$HOME/.local/share/codetether-mobile/uploads"
 for file in "$here"/*.mjs; do node --check "$file"; done
-install -m 600 "$here"/{auth,body,handler,server,media}.mjs "$root/"
+install -m 600 "$here"/{auth,body,handler,server,media,trace}.mjs "$root/"
 sed -e "s|@NODE@|$(command -v node)|g" -e "s|@ROOT@|$root|g" \
   "$here/codetether-audio.service" > "$HOME/.config/systemd/user/codetether-audio.service"
 systemctl --user daemon-reload

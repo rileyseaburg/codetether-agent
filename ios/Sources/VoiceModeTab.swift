@@ -15,7 +15,7 @@ struct VoiceModeTab: View {
     @State private var started = false
 
     var body: some View {
-        VoiceSessionScreen(chat: chat, loop: loop, mic: mic, creating: $creatingSession)
+        VoiceSessionScreen(chat: chat, loop: loop, mic: mic, creating: $creatingSession, playback: speaker.playback)
             .task {
                 guard !started else { return }
                 started = true
@@ -30,8 +30,12 @@ struct VoiceModeTab: View {
                 if let error { loop.stop(); loop.phase = .failed(error) }
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .background { loop.stop() }
+                if phase == .background { loop.enterBackground() }
+                else if phase == .active { loop.enterForeground() }
             }
-            .onDisappear { loop.stop(); chat.voiceModeActive = false; started = false }
+            .onDisappear {
+                if scenePhase == .active { loop.stop(); chat.voiceModeActive = false; started = false }
+                else { loop.enterBackground() }
+            }
     }
 }

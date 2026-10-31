@@ -6,6 +6,7 @@ struct VoiceSessionScreen: View {
     @ObservedObject var loop: VoiceLoop
     @ObservedObject var mic: VoiceMicEngine
     @Binding var creating: Bool
+    let playback: ReadbackTransport
     @State private var resumeAfterPicker = false
     var body: some View {
         VStack(spacing: 4) {
@@ -36,6 +37,7 @@ struct VoiceSessionScreen: View {
             .disabled(creating || chat.loading)
             .accessibilityHint("Backend model for the next voice turn")
             VoiceModeView(loop: loop, mic: mic).disabled(creating || chat.loading)
+            ReadbackControls(transport: playback)
         }
     }
 }

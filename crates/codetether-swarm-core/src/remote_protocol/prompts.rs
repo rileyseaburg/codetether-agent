@@ -40,6 +40,7 @@ pub fn build(
             line_limit: None,
             read_only: payload.read_only,
             expects_changes: !payload.read_only && !payload.verification,
+            shared_workspace: false,
         },
         append_session_instructions,
     );

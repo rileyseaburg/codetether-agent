@@ -4,6 +4,7 @@ use codetether_swarm_core::{ExecutionMode, SwarmConfig};
 pub(super) fn build(args: &SwarmArgs) -> SwarmConfig {
     SwarmConfig {
         max_subagents: args.max_subagents,
+        worktree_enabled: args.isolate_worktrees,
         max_steps_per_subagent: args.max_steps,
         subagent_timeout_secs: args.timeout,
         model: args.model.clone(),

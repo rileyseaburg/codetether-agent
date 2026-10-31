@@ -9,6 +9,7 @@ pub(crate) enum TaskKind {
 
 mod decision;
 mod directives;
+mod mutating;
 mod words;
 
 pub(crate) fn classify(name: &str, instruction: &str, specialty: Option<&str>) -> TaskKind {

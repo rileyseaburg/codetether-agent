@@ -1,4 +1,4 @@
-//! Summarize workspace and recent writeback facts.
+//! Summarize workspace facts without importing another session's task outcomes.
 use std::path::Path;
 
 pub(crate) fn render(cwd: &Path) -> String {
@@ -12,15 +12,11 @@ pub(crate) fn render(cwd: &Path) -> String {
     if cwd.join(".codetether/session-ledgers").exists() {
         facts.push("session scope ledgers present");
     }
-    let mut out = if facts.is_empty() {
+    // A cwd identifies a project, not a conversation. Several unrelated mux
+    // sessions can share it, so do not read session writebacks here.
+    if facts.is_empty() {
         "Runtime prefetch facts: none loaded.".to_string()
     } else {
         format!("Runtime prefetch facts: {}.", facts.join("; "))
-    };
-    let recent = super::writeback_read::render(cwd);
-    if !recent.is_empty() {
-        out.push('\n');
-        out.push_str(&recent);
     }
-    out
 }

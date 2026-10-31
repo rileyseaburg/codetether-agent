@@ -4,4 +4,6 @@ mod design_review_is_read_only;
 mod explicit_mutation_wins_over_review_language;
 mod introduced_edit;
 mod read_only_context_does_not_trigger_mutation_substrings;
+mod refactoring_directives;
+mod refactoring_read_only;
 mod schema_examples_have_non_mutating_intent;

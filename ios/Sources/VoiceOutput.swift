@@ -8,7 +8,7 @@ final class VoiceOutput: ObservableObject {
     @Published var status = ""
     @Published var speaking = false
     @Published private(set) var activeMessageID: UUID?
-    private let playback = AudioPlayback()
+    let playback = ReadbackTransport()
     private var task: Task<Void, Never>?
     private var generation = UUID()
     func speak(_ text: String, messageID: UUID? = nil) {
@@ -17,16 +17,13 @@ final class VoiceOutput: ObservableObject {
         speaking = true
         let current = generation
         task = Task {
-            defer { if current == generation { speaking = false; activeMessageID = nil; task = nil } }
+            defer { if current == generation { ReadbackAudioSession.end(); speaking = false; activeMessageID = nil; task = nil } }
             do {
-                for chunk in SpeechChunks.split(text) {
-                    try Task.checkCancellation()
-                    status = "Generating Kokoro audio…"
-                    let audio = try await SpeechClient().audio(text: chunk, voice: "af_heart")
-                    try Task.checkCancellation()
-                    status = "Playing Kokoro audio"
-                    try await playback.play(audio)
-                }
+                try Task.checkCancellation()
+                try ReadbackAudioSession.begin()
+                status = "Kokoro readback"
+                try await playback.read(text)
+                try Task.checkCancellation()
                 status = "Kokoro playback finished"
             } catch {
                 if current == generation {
@@ -38,5 +35,6 @@ final class VoiceOutput: ObservableObject {
     func stop() {
         let wasSpeaking = speaking
         generation = UUID(); task?.cancel(); task = nil; playback.stop(); speaking = false; activeMessageID = nil; status = wasSpeaking ? "Playback stopped" : ""
+        if wasSpeaking { ReadbackAudioSession.end() }
     }
 }

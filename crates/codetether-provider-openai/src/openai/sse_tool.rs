@@ -1,15 +1,20 @@
 //! Map a streamed tool-call fragment to [`StreamChunk`]s.
 
 use codetether_provider_core::StreamChunk;
+use std::collections::HashMap;
 
 use super::sse_types::SseToolCall;
 
 /// Emit chunks for a single tool-call fragment.
-pub(super) fn tool_chunks(tc: &SseToolCall) -> Vec<StreamChunk> {
+pub(super) fn tool_chunks(tc: &SseToolCall, ids: &mut HashMap<usize, String>) -> Vec<StreamChunk> {
+    if let Some(id) = &tc.id {
+        ids.insert(tc.index, id.clone());
+    }
     let mut out = Vec::new();
     let id = tc
         .id
         .clone()
+        .or_else(|| ids.get(&tc.index).cloned())
         .unwrap_or_else(|| format!("tool_{}", tc.index));
     let Some(func) = &tc.function else {
         return out;

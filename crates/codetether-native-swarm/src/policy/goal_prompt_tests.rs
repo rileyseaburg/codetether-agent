@@ -15,6 +15,7 @@ fn delegated_prompts_require_goal_progress_without_relaxing_tool_restrictions() 
             line_limit: None,
             read_only,
             expects_changes,
+            shared_workspace: false,
         });
         assert!(prompt.contains("Before ending every turn"));
         assert!(prompt.contains("`session_task` actions `task_add`, `task_status`, and `list`"));

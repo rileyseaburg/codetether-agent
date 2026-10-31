@@ -32,6 +32,7 @@ fn system_prompt_accepts_an_exact_limit() {
         line_limit: Some(50),
         read_only: false,
         expects_changes: true,
+        shared_workspace: false,
     });
     assert!(prompt.contains("at most 50 non-comment, nonblank lines"));
 }

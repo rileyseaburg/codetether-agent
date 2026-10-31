@@ -1,0 +1,11 @@
+[Unit]
+Description=CodeTether loopback SSH tunnel to LM Studio on mac
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/ssh -NT -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -L 127.0.0.1:18080:127.0.0.1:8080 mac
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -54,6 +54,27 @@ pub fn apply_for_provider(definitions: Vec<ToolDefinition>, provider: &str) -> V
         return catalog::sort(catalog::retain_mux_manager_tools(definitions));
     }
     if selection::use_discovery_profile(provider) {
+        if provider == "lmstudio" {
+            // Keep startup schemas small; list_tools can promote specialists
+            // without removing them from the executable registry.
+            let local = definitions
+                .into_iter()
+                .filter(|tool| {
+                    matches!(
+                        tool.name.as_str(),
+                        "read"
+                            | "list"
+                            | "exec_command"
+                            | "write_stdin"
+                            | "apply_patch"
+                            | "get_goal"
+                            | "session_task"
+                            | "question"
+                    )
+                })
+                .collect();
+            return catalog::sort(local);
+        }
         return catalog::sort(catalog::retain_discovery_tools(definitions));
     }
     if selection::use_coding_profile(provider) {

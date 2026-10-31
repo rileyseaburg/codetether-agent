@@ -4,7 +4,7 @@ use super::state::State;
 use codetether_swarm_core::SubTaskResult;
 
 pub(super) async fn put(state: &State<'_, impl crate::Host>, result: &SubTaskResult) {
-    if !result.success {
+    if !result.success || !state.executor.config().worktree_enabled {
         return;
     }
     let Some(task) = state.cache_tasks.get(&result.subtask_id) else {

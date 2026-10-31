@@ -11,7 +11,10 @@ async fn screenshot_result_preserves_bytes_and_path_without_base64_text() {
         "action": "screenshot", "path": path
     }))
     .unwrap();
-    let bytes = STANDARD.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=").unwrap();
+    let bytes = ScreenshotData::from_ppm(b"P6\n1 1\n255\n\xff\x00\x00")
+        .unwrap()
+        .bytes;
+    assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
     let result = crate::response::success_result(
         &input,
         codetether_browser::BrowserOutput::Screenshot(ScreenshotData {

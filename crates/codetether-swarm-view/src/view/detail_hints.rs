@@ -7,7 +7,7 @@ use ratatui::widgets::Paragraph;
 pub(super) fn render(f: &mut Frame, area: Rect) {
     // --- Key hints bar ---
     let hints = Paragraph::new(Line::from(vec![
-        Span::styled(" Esc", Style::default().fg(Color::Yellow)),
+        Span::styled(" Esc/←", Style::default().fg(Color::Yellow)),
         Span::raw(": Back  "),
         Span::styled("PgUp/PgDn", Style::default().fg(Color::Yellow)),
         Span::raw(": Scroll  "),

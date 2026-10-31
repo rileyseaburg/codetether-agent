@@ -7,6 +7,7 @@ impl SwarmViewState {
             return;
         }
         self.selected_index = (self.selected_index + self.subtasks.len() - 1) % self.subtasks.len();
+        self.detail_scroll = 0;
         self.list_state.select(Some(self.selected_index));
     }
 
@@ -16,6 +17,7 @@ impl SwarmViewState {
             return;
         }
         self.selected_index = (self.selected_index + 1) % self.subtasks.len();
+        self.detail_scroll = 0;
         self.list_state.select(Some(self.selected_index));
     }
 

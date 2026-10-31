@@ -26,6 +26,7 @@ impl SwarmWorktrees {
         .collect()
         .await;
         Self {
+            shared_root: None,
             mgr,
             infos,
             expects_changes,

@@ -8,10 +8,69 @@ Rust: Status and Actions**, for checks, builds, Problems, reviewed fixes, settin
 check-on-save controls, daemon actions, and cache statistics.
 
 The rust-analyzer VS Code extension may remain completely disabled. This UI,
-compiler problem matcher, and reviewed fixes do not depend on it. This is not a
-full Rust language-client replacement: completion, hover, rename, and navigation
-are not supplied here. Shared diagnostics require an existing native CodeTether
-LSP publisher; the UI does not launch another language server.
+compiler problem matcher, and reviewed fixes do not depend on it.
+
+## Go-to and symbols
+
+CodeTether starts a persistent **rust-analyzer binary** for navigation in each
+trusted Cargo workspace. The rust-analyzer VS Code extension is not required.
+Use **F12** for definition, **Ctrl+F12** for implementation, **Shift+F12** for
+references, **Ctrl+Shift+O** for document symbols/Outline, and **Ctrl+T** for
+workspace symbols (standard Linux/Windows bindings). Unsaved buffer changes are
+synchronized through the language client rather than read back from disk.
+
+Install `rust-analyzer` on the extension host, or set
+`codetether.rust.navigation.serverPath` to its executable. Navigation is enabled
+by default; disable `.navigation.enabled` to stop it. **CodeTether Rust: Restart
+Navigation Server** restarts only these clients. See the **CodeTether Rust
+Navigation** output channel for startup errors. An active rust-analyzer extension
+causes CodeTether to relinquish navigation to avoid duplicate providers.
+
+These are separate clients from native/TUI LSP sessions: they share the Rust
+language-server implementation, not process state. Automatic Cargo checks, build
+scripts and proc macros remain disabled in these clients. Indexing and Cargo
+metadata still use resources; generated/proc-macro symbols may therefore be
+incomplete. This is not a claim of full rust-analyzer extension parity.
+
+## Imports, editing assists and live issues
+
+The same persistent language client also exposes standard rust-analyzer editing
+features; no additional language-server process or AI request is needed:
+
+- **Auto-import completion:** type a symbol and use **Ctrl+Space**. Accepting an
+  out-of-scope suggestion inserts its `use` statement as well as the symbol.
+  This imports available symbols; it does not add dependencies to `Cargo.toml`.
+- **Quick fixes / refactor assists:** put the cursor on a name or expression and
+  press **Ctrl+.**. For example, choose an import for an unresolved name. Available
+  assists depend on the cursor, selected range and rust-analyzer version. Edits
+  use VS Code's normal editor undo; nothing is automatically fixed on save.
+- **Rename:** **F2** renames a symbol and its references via workspace edits.
+- **Hover and signature help:** hover for types/docs; **Ctrl+Shift+Space** shows
+  parameter information at a call.
+- **Inlay hints:** inferred types and parameter/chaining hints are available;
+  display also respects VS Code's `editor.inlayHints.enabled` setting.
+- **Live issues:** rust-analyzer syntax/semantic diagnostics update while typing,
+  including unsaved buffers, and disappear when corrected. They use the separate
+  `codetether-rust-navigation` collection, with source `rust-analyzer` in Problems.
+  They are not a substitute for rustc/Clippy or ordinary Cargo checking.
+
+These workspace-scoped settings default to `true` and apply without restarting
+the server:
+
+```json
+{
+  "codetether.rust.navigation.autoImport": true,
+  "codetether.rust.navigation.diagnostics": true,
+  "codetether.rust.navigation.inlayHints": true
+}
+```
+
+Cargo task diagnostics and shared **CodeTether LSP** diagnostics retain their own
+collections. Disable `.navigation.diagnostics` if the shared feed produces
+duplicate issues; doing so clears only the editor client's markers, not the other
+collections. The separate **Fix with CodeTether** action still requires source
+sharing consent, saved snapshots and reviewed application. Built-in import assists
+and other rust-analyzer edits do not invoke that AI repair workflow.
 
 ## sccache / MinIO
 
@@ -101,3 +160,6 @@ Dirty/stale snapshots, edits outside the captured scope, and ambiguous replaceme
 are rejected. This requires a backend with `rust-propose`; it never loads sessions.
 
 Tests: `npm test`; on Linux, `xvfb-run -a npm run test:vscode` runs the isolated editor fixture.
+Run `xvfb-run -a npm run test:vscode -- --editing` for the focused real-rust-analyzer
+editing suite (imports, live issues, rename, hover, signatures, hints and settings).
+Evidence and exit status are retained under `artifacts/rust-problems-vscode-*`.

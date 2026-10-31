@@ -17,9 +17,14 @@ use std::path::Path;
 /// # Ok(()) }
 /// ```
 pub fn open(locator: &Path) -> Result<Connection> {
+    crate::coordinator::initialize(locator)?;
     let parent = locator.parent().context("session locator needs a parent")?;
     std::fs::create_dir_all(parent)?;
     let file = parent.join("sessions.sqlite3");
+    configured(&file)
+}
+
+fn configured(file: &Path) -> Result<Connection> {
     let db = Connection::open(&file)?;
     db.busy_timeout(std::time::Duration::from_secs(5))?;
     #[cfg(unix)]
@@ -28,12 +33,17 @@ pub fn open(locator: &Path) -> Result<Connection> {
         std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600))?;
     }
     db.pragma_update(None, "foreign_keys", "ON")?;
-    db.pragma_update(None, "journal_mode", "WAL")?;
     db.pragma_update(None, "synchronous", "FULL")?;
+    Ok(db)
+}
+
+pub(crate) fn writer(file: &Path) -> Result<Connection> {
+    let mut db = configured(file)?;
+    db.pragma_update(None, "journal_mode", "WAL")?;
     let version: i64 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
     anyhow::ensure!(version <= 3, "session database requires a newer runtime");
     if version < 3 {
-        let tx = db.unchecked_transaction()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         super::upgrade::run(&tx, version)?;
         tx.pragma_update(None, "user_version", 3)?;
         tx.commit()?;

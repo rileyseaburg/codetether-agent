@@ -10,6 +10,7 @@ pub(super) fn drain_lines(
     buffer: &mut String,
     produced: &mut bool,
     usage: &mut Option<Usage>,
+    ids: &mut std::collections::HashMap<usize, String>,
     out: &mut Vec<StreamChunk>,
 ) {
     while let Some(end) = buffer.find('\n') {
@@ -35,6 +36,6 @@ pub(super) fn drain_lines(
         if let Some(u) = &parsed.usage {
             *usage = Some(to_usage(u));
         }
-        out.extend(frame_chunks(&parsed, produced));
+        out.extend(frame_chunks(&parsed, produced, ids));
     }
 }

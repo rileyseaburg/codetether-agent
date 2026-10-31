@@ -20,6 +20,8 @@ pub enum Action {
     DisableFilePicker,
     /// Apply swarm exit detail to the current view.
     SwarmExitDetail,
+    /// Open details for the selected swarm task.
+    SwarmEnterDetail,
     /// Apply ralph exit detail to the current view.
     RalphExitDetail,
     /// Apply bus exit filter to the current view.

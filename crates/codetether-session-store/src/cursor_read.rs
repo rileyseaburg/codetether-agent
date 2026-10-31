@@ -31,11 +31,8 @@ pub fn next<S>(
 ) -> Result<Option<Delivery<S>>> {
     anyhow::ensure!(limit > 0, "consumer batch must be nonzero");
     prepare(path)?;
+    super::cursor_prepare::ensure(path, id, name)?;
     let db = super::connection::open(path)?;
-    db.execute(
-        "INSERT OR IGNORE INTO consumers VALUES (?1,?2,0,0)",
-        params![id, name],
-    )?;
     let tx = db.unchecked_transaction()?;
     let (from, generation): (usize, i64) = tx.query_row(
         "SELECT seq,revision FROM consumers WHERE session_id=?1 AND name=?2",

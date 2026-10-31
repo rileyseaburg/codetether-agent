@@ -12,6 +12,8 @@ use tokio::sync::{Semaphore, mpsc};
 /// # Examples
 /// Obtain jobs from a stage builder; [crate::execute] consumes them.
 pub struct Job {
+    /// All workers may edit the same directory without separate worktrees.
+    pub shared_workspace: bool,
     /// Subtask identity.
     pub id: String,
     /// Display name.

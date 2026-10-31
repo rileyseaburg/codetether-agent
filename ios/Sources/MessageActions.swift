@@ -13,7 +13,7 @@ struct MessageActions: View {
                 if active { voice.stop() }
                 else { beforeSpeak(); voice.speak(message.content, messageID: message.id) }
             } label: {
-                Label(active ? "Stop reading" : "Read aloud", systemImage: active ? "stop.circle.fill" : "speaker.wave.2.fill")
+                Label(active ? "Stop reading" : "Read aloud", systemImage: active ? "stop.circle.fill" : "play.circle.fill")
             }
             .disabled(message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .accessibilityLabel(active ? "Stop reading this message" : "Read this message aloud with Kokoro")

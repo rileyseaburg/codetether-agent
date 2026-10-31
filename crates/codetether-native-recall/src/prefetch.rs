@@ -3,7 +3,7 @@
 /// # Arguments
 /// * `session` - Current transcript, workspace and authorization decision.
 /// # Returns
-/// Relevant prior-session evidence, or None when unavailable or forbidden.
+/// Earlier evidence from this session, or None when unavailable or forbidden.
 /// # Examples
 /// `message(&session).await` checks prior-context access before querying.
 pub async fn message<S: crate::Session>(session: &S) -> Option<codetether_provider_core::Message> {

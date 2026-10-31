@@ -14,6 +14,7 @@ pub fn parameters() -> Value {
     json!({
         "type": "object",
         "properties": {
+            "isolate_worktrees": {"type": "boolean", "default": false, "description": "Default: all workers can edit the same parent workspace. Set true for per-task isolated worktrees and task-based tool restrictions."},
             "tasks": {
                 "type": "array",
                 "minItems": 1,
@@ -28,7 +29,7 @@ pub fn parameters() -> Value {
                                 "name": {"type": "string", "description": "Optional display name"},
                                 "id": {"type": "string", "description": "Optional stable identifier"},
                                 "specialty": {"type": "string", "description": "Optional agent role"},
-                                "needs_worktree": {"type": "boolean", "description": "Set false for explicitly read-only analysis/review tasks"}
+                                "needs_worktree": {"type": "boolean", "description": "Advisory worktree preference when isolate_worktrees=true; ignored in shared workspace mode"}
                             },
                             "required": ["instruction"]
                         }

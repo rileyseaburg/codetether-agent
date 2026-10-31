@@ -18,7 +18,7 @@ async function main() {
     const exitCode = await runTests({
       version: '1.143.0',
       extensionDevelopmentPath: extension,
-      extensionTestsPath: path.join(__dirname, 'features-suite.cjs'),
+      extensionTestsPath: path.join(__dirname, process.argv.includes('--editing') ? 'editing-suite.cjs' : 'features-suite.cjs'),
       extensionTestsEnv: { CODETETHER_EDITOR_EVIDENCE: evidence, CARGO_TARGET_DIR: path.join(evidence, 'target') },
       launchArgs: [workspace, '--no-sandbox', '--disable-gpu', '--disable-workspace-trust',
         '--skip-welcome', '--skip-release-notes', '--telemetry-level=off',

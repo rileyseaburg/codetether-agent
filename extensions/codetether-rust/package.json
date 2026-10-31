@@ -1,9 +1,12 @@
 {
   "name": "codetether-rust",
   "displayName": "CodeTether Rust",
-  "description": "Rust status, checks, reviewed fixes and shared native diagnostics with optional sccache/MinIO support.",
-  "version": "0.4.1",
-  "activationEvents": ["onStartupFinished", "onLanguage:rust"],
+  "description": "Rust auto-imports, assists, live issues, navigation, checks and reviewed fixes.",
+  "version": "0.6.0",
+  "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:rust"
+  ],
   "publisher": "codetether",
   "license": "MIT",
   "engines": {
@@ -59,8 +62,12 @@
           "action"
         ],
         "properties": {
-          "workspace": { "type": "string" },
-          "automatic": { "type": "boolean" },
+          "workspace": {
+            "type": "string"
+          },
+          "automatic": {
+            "type": "boolean"
+          },
           "action": {
             "type": "string"
           }
@@ -68,10 +75,26 @@
       }
     ],
     "commands": [
-      { "command": "codetether.rust.menu", "title": "CodeTether Rust: Status and Actions" },
-      { "command": "codetether.rust.cache-build", "title": "CodeTether Rust: Build & Publish Shared Cache" },
-      { "command": "codetether.rust.cache-publish", "title": "CodeTether Rust: Publish Verified Cache" },
-      { "command": "codetether.rust.enableCheckOnSave", "title": "CodeTether Rust: Enable Check on Save" },
+      {
+        "command": "codetether.rust.restartNavigation",
+        "title": "CodeTether Rust: Restart Navigation Server"
+      },
+      {
+        "command": "codetether.rust.menu",
+        "title": "CodeTether Rust: Status and Actions"
+      },
+      {
+        "command": "codetether.rust.cache-build",
+        "title": "CodeTether Rust: Build & Publish Shared Cache"
+      },
+      {
+        "command": "codetether.rust.cache-publish",
+        "title": "CodeTether Rust: Publish Verified Cache"
+      },
+      {
+        "command": "codetether.rust.enableCheckOnSave",
+        "title": "CodeTether Rust: Enable Check on Save"
+      },
       {
         "command": "codetether.rust.build",
         "title": "CodeTether Rust: Build (ra-jit)"
@@ -102,15 +125,82 @@
       }
     ],
     "configuration": {
-      "title": "CodeTether Rust Builds",
+      "title": "CodeTether Rust",
       "properties": {
-        "codetether.rust.useSccache": { "type": "boolean", "default": false, "scope": "resource", "description": "Set RUSTC_WRAPPER to sccache and CARGO_INCREMENTAL=0 for Cargo subprocesses. Inherits host-side MinIO/S3 configuration and credentials. Does not restart daemons or cache ra-jit's in-memory compilation." },
-        "codetether.rust.sccacheExecutable": { "type": "string", "default": "sccache", "scope": "machine", "description": "sccache executable on the extension host, not a shell command. Credentials belong in host-side configuration, never here." },
-        "codetether.rust.checkOnSave": { "type": "boolean", "default": false, "scope": "resource", "description": "Run ordinary Cargo check after saving Rust/Cargo files. Can execute build scripts. Use Enable Check on Save to avoid duplicate rust-analyzer checks." },
-        "codetether.rust.checkOnSaveDelay": { "type": "number", "default": 750, "minimum": 100, "maximum": 10000, "scope": "resource", "description": "Debounce delay in milliseconds; concurrent saves coalesce." },
-        "codetether.rust.sharedDiagnostics": { "type": "boolean", "default": true, "scope": "resource", "description": "Display workspace-matched diagnostics published by running native CodeTether LSP clients, including the TUI." },
-        "codetether.rust.diagnosticsDirectory": { "type": "string", "default": "", "scope": "machine", "description": "Override native diagnostics cache location on this host. Empty uses the CodeTether user cache." },
-        "codetether.rust.fixModel": { "type": "string", "default": "", "scope": "machine", "description": "Optional provider/model for tool-free repair proposals. Empty uses CodeTether's configured model." },
+        "codetether.rust.navigation.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Enable buffer-aware navigation and symbols using a dedicated rust-analyzer binary (no Cargo checks, build scripts or proc macros). Independent of the TUI diagnostics server."
+        },
+        "codetether.rust.navigation.serverPath": {
+          "type": "string",
+          "default": "rust-analyzer",
+          "scope": "machine",
+          "description": "rust-analyzer executable on the extension host, not a shell command. No automatic installation."
+        },
+        "codetether.rust.navigation.autoImport": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Include out-of-scope symbols in completion; accepting a suggestion inserts its use import. Does not add Cargo dependencies."
+        },
+        "codetether.rust.navigation.diagnostics": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Show live rust-analyzer syntax/semantic issues without running Cargo check. Uses a separate Problems collection; disable if a shared TUI feed reports duplicate issues."
+        },
+        "codetether.rust.navigation.inlayHints": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Offer inferred type, parameter and chaining inlay hints. Visibility also follows VS Code's editor.inlayHints.enabled setting."
+        },
+        "codetether.rust.useSccache": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Set RUSTC_WRAPPER to sccache and CARGO_INCREMENTAL=0 for Cargo subprocesses. Inherits host-side MinIO/S3 configuration and credentials. Does not restart daemons or cache ra-jit's in-memory compilation."
+        },
+        "codetether.rust.sccacheExecutable": {
+          "type": "string",
+          "default": "sccache",
+          "scope": "machine",
+          "description": "sccache executable on the extension host, not a shell command. Credentials belong in host-side configuration, never here."
+        },
+        "codetether.rust.checkOnSave": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Run ordinary Cargo check after saving Rust/Cargo files. Can execute build scripts. Use Enable Check on Save to avoid duplicate rust-analyzer checks."
+        },
+        "codetether.rust.checkOnSaveDelay": {
+          "type": "number",
+          "default": 750,
+          "minimum": 100,
+          "maximum": 10000,
+          "scope": "resource",
+          "description": "Debounce delay in milliseconds; concurrent saves coalesce."
+        },
+        "codetether.rust.sharedDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Display workspace-matched diagnostics published by running native CodeTether LSP clients, including the TUI."
+        },
+        "codetether.rust.diagnosticsDirectory": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Override native diagnostics cache location on this host. Empty uses the CodeTether user cache."
+        },
+        "codetether.rust.fixModel": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Optional provider/model for tool-free repair proposals. Empty uses CodeTether's configured model."
+        },
         "codetether.rust.executable": {
           "type": "string",
           "default": "codetether",
@@ -149,5 +239,11 @@
   },
   "devDependencies": {
     "@vscode/test-electron": "2.5.2"
+  },
+  "dependencies": {
+    "vscode-languageclient": "9.0.1"
+  },
+  "overrides": {
+    "vscode-languageclient": { "minimatch": "11.0.1" }
   }
 }

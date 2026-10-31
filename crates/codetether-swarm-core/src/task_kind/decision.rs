@@ -1,8 +1,8 @@
 //! Select intent with mutation taking precedence.
-use super::{TaskKind, words};
+use super::{TaskKind, mutating, words};
 
 pub(super) fn classify(tokens: &[String], label: &[String]) -> TaskKind {
-    if has_directive(tokens, words::MUTATING) || has_label(label, words::MUTATING) {
+    if has_directive(tokens, mutating::WORDS) || has_label(label, mutating::WORDS) {
         TaskKind::Mutating
     } else if is_verification(tokens) || has_label(label, words::VERIFYING) {
         TaskKind::Verification

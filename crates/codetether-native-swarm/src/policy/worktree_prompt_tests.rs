@@ -12,6 +12,7 @@ fn subagent_prompt_requires_managed_worktree_location() {
         line_limit: None,
         read_only: false,
         expects_changes: true,
+        shared_workspace: false,
     });
     assert!(prompt.contains("<workspace-root>/.codetether-worktrees/"));
     assert!(prompt.contains("Do not run `git worktree add` directly"));

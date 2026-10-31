@@ -15,10 +15,26 @@ use std::path::Path;
 /// assert!(!prompt.is_empty());
 /// ```
 pub fn system_prompt(workspace: &Path, model: &str, claimed: GoalStatus) -> String {
-    crate::system_prompt(
+    crate::system_prompt(workspace, model, claimed, verifier_base)
+}
+
+fn verifier_base(
+    id: &str,
+    specialty: Option<&str>,
+    workspace: &Path,
+    model: &str,
+    instruction: &str,
+    read_only: bool,
+    expects_changes: bool,
+) -> String {
+    codetether_swarm_tool::prompt::application::build(
+        id,
+        specialty,
         workspace,
         model,
-        claimed,
-        codetether_swarm_tool::prompt::application::build,
+        instruction,
+        read_only,
+        expects_changes,
+        false,
     )
 }

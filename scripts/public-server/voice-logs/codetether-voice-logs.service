@@ -1,0 +1,21 @@
+[Unit]
+Description=CodeTether sanitized voice diagnostics to NAS
+After=network-online.target
+[Service]
+ExecStart=@NODE@ @ROOT@/server.mjs
+WorkingDirectory=@ROOT@
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+ReadWritePaths=%h/.local/state/codetether-voice-logs /mnt/nas/CodeTether/logs/voice
+MemoryMax=128M
+CPUQuota=20%
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=codetether-voice-logs
+[Install]
+WantedBy=default.target

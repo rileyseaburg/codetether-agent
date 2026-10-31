@@ -1,5 +1,8 @@
 //! CLI syntax for SwarmArgs.
 use clap::Parser;
+#[cfg(test)]
+#[path = "swarm_args_tests.rs"]
+mod tests;
 /// Parsed options for the swarm args command.
 /// # Examples
 /// ```
@@ -10,6 +13,9 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 pub struct SwarmArgs {
+    /// Use separate worker worktrees instead of one shared writable workspace.
+    #[arg(long)]
+    pub isolate_worktrees: bool,
     /// Task to execute with swarm
     pub task: String,
 

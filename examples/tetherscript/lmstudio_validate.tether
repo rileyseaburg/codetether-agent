@@ -1,0 +1,212 @@
+// Live protocol checks. Run each hook through CodeTether's tetherscript_plugin.
+// Only docs/lmstudio.md may be read in response to a model-generated tool call.
+fn raw_request(method, url, body) {
+    // Builtin HTTP has a fixed 15-second socket timeout; local cold inference can exceed it.
+    let response = process_run("curl",
+        ["--fail-with-body", "-sS", "--max-time", "50", "-X", method, "-H", "Content-Type: application/json", "--data-binary", "@-", url], body, 55000)?
+    if response["timed_out"] { return Err("LM Studio probe timed out") }
+    if !response["success"] { return Err("LM Studio HTTP failure: " + response["stderr"] + response["stdout"]) }
+    return Ok(response["stdout"])
+}
+fn context_at(base, model) {
+    let payload = json_parse(raw_request("GET", base + "/api/v0/models", "")?)
+    for entry in payload["data"] {
+        if entry["id"] == model && entry["state"] == "loaded" {
+            let n = entry["loaded_context_length"]
+            if n != nil && n > 2048 { return Ok(n) }
+        }
+    }
+    return Err("Model has no usable loaded context")
+}
+fn msg(role, content) {
+    let value = map()
+    value["role"] = role
+    value["content"] = content
+    return value
+}
+fn body_for(model, messages) {
+    let body = map()
+    body["model"] = model
+    body["messages"] = messages
+    body["temperature"] = 0
+    body["max_tokens"] = 256
+    return body
+}
+fn post(base, body) {
+    return Ok(json_parse(raw_request("POST", base + "/v1/chat/completions", json_encode(body))?))
+}
+fn check_usage(usage, capacity) {
+    if usage == nil { return Err("Missing usage counters") }
+    if usage["prompt_tokens"] <= 0 { return Err("No prompt tokens recorded") }
+    if usage["completion_tokens"] > 256 { return Err("Output cap was exceeded") }
+    if usage["total_tokens"] > capacity { return Err("Loaded context was exceeded") }
+    return Ok(true)
+}
+fn tool_roundtrip_at(base, model) {
+    let capacity = context_at(base, model)?
+    let user = msg("user", "Call read_file with path docs/lmstudio.md. After its result, report only the Markdown title. Do not invent file contents.")
+    let property = map()
+    property["type"] = "string"
+    let properties = map()
+    properties["path"] = property
+    let parameters = map()
+    parameters["type"] = "object"
+    parameters["properties"] = properties
+    parameters["required"] = ["path"]
+    let function = map()
+    function["name"] = "read_file"
+    function["description"] = "Read the first five lines of docs/lmstudio.md"
+    function["parameters"] = parameters
+    let tool = map()
+    tool["type"] = "function"
+    tool["function"] = function
+    let body = body_for(model, [user])
+    body["tools"] = [tool]
+    let first = post(base, body)?
+    check_usage(first["usage"], capacity)?
+    let assistant = first["choices"][0]["message"]
+    let calls = assistant["tool_calls"]
+    if calls == nil || calls.len() != 1 { return Err("Expected exactly one native tool call") }
+    let call = calls[0]
+    if call["function"]["name"] != "read_file" { return Err("Unexpected tool name") }
+    let args = json_parse(call["function"]["arguments"])
+    if args["path"] != "docs/lmstudio.md" { return Err("Tool attempted an unapproved path") }
+    let contents = fs_read("docs/lmstudio.md")?
+    let mut text = ""
+    let mut count = 0
+    for line in contents.split("\n") {
+        if count < 5 { text = text + line + "\n" }
+        count = count + 1
+    }
+    let reply = msg("tool", text)
+    reply["tool_call_id"] = call["id"]
+    body["messages"] = [user, assistant, reply]
+    let second = post(base, body)?
+    check_usage(second["usage"], capacity)?
+    let answer = second["choices"][0]["message"]["content"]
+    if answer == nil || !answer.contains("Local LM Studio on the Mac") { return Err("Model did not report the real file title") }
+    let report = map()
+    report["level"] = "live model API plus real local filesystem tool execution"
+    report["passed"] = true
+    report["model"] = model
+    report["loaded_context_length"] = capacity
+    report["first_id"] = first["id"]
+    report["second_id"] = second["id"]
+    report["tool_call_id"] = call["id"]
+    report["path"] = args["path"]
+    report["answer"] = answer
+    report["first_usage"] = first["usage"]
+    report["second_usage"] = second["usage"]
+    fs_write("artifacts/lmstudio-local/tether-tool-roundtrip.json", json_encode(report))?
+    return Ok(report)
+}
+fn stream_at(base, model) {
+    let capacity = context_at(base, model)?
+    let body = body_for(model, [msg("user", "Reply with exactly LM_STUDIO_STREAM_OK.")])
+    body["stream"] = true
+    let options = map()
+    options["include_usage"] = true
+    body["stream_options"] = options
+    let wire = raw_request("POST", base + "/v1/chat/completions", json_encode(body))?
+    let mut done = false
+    let mut content = ""
+    let mut reasoning = false
+    let mut usage = nil
+    let mut id = ""
+    for line in wire.split("\n") {
+        if line.trim() == "data: [DONE]" { done = true }
+        if line.starts_with("data: ") && line.trim() != "data: [DONE]" {
+            let frame = json_parse(line.replace("data: ", ""))
+            id = frame["id"]
+            if frame["usage"] != nil { usage = frame["usage"] }
+            if frame["choices"].len() > 0 {
+                let delta = frame["choices"][0]["delta"]
+                if delta["content"] != nil { content = content + delta["content"] }
+                if delta["reasoning_content"] != nil { reasoning = true }
+            }
+        }
+    }
+    if !done || content.trim() != "LM_STUDIO_STREAM_OK" { return Err("SSE content or DONE terminator missing") }
+    check_usage(usage, capacity)?
+    let report = map()
+    report["passed"] = true
+    report["id"] = id
+    report["model"] = model
+    report["content"] = content
+    report["saw_reasoning"] = reasoning
+    report["saw_done"] = done
+    report["usage"] = usage
+    report["loaded_context_length"] = capacity
+    fs_write("artifacts/lmstudio-local/tether-stream.json", json_encode(report))?
+    return Ok(report)
+}
+
+fn tool_stream_at(base, model) {
+    let capacity = context_at(base, model)?
+    let property = map()
+    property["type"] = "string"
+    let properties = map()
+    properties["path"] = property
+    let parameters = map()
+    parameters["type"] = "object"
+    parameters["properties"] = properties
+    parameters["required"] = ["path"]
+    let function = map()
+    function["name"] = "read_file"
+    function["description"] = "Read a local file"
+    function["parameters"] = parameters
+    let tool = map()
+    tool["type"] = "function"
+    tool["function"] = function
+    let body = body_for(model, [msg("user", "Call read_file for docs/lmstudio.md now.")])
+    body["tools"] = [tool]
+    body["stream"] = true
+    let options = map()
+    options["include_usage"] = true
+    body["stream_options"] = options
+    let wire = raw_request("POST", base + "/v1/chat/completions", json_encode(body))?
+    let mut done = false
+    let mut missing_ids = 0
+    let mut usage = nil
+    let ids = map()
+    let names = map()
+    let arguments = map()
+    for line in wire.split("\n") {
+        if line.trim() == "data: [DONE]" { done = true }
+        if line.starts_with("data: ") && line.trim() != "data: [DONE]" {
+            let frame = json_parse(line.replace("data: ", ""))
+            if frame["usage"] != nil { usage = frame["usage"] }
+            if frame["choices"].len() > 0 {
+                let calls = frame["choices"][0]["delta"]["tool_calls"]
+                if calls != nil {
+                    for call in calls {
+                        let index = str(call["index"])
+                        if call["id"] != nil { ids[index] = call["id"] }
+                        let f = call["function"]
+                        if f != nil {
+                            if f["name"] != nil { names[index] = f["name"] }
+                            if f["arguments"] != nil {
+                                if arguments[index] == nil { arguments[index] = "" }
+                                arguments[index] = arguments[index] + f["arguments"]
+                                if call["id"] == nil { missing_ids = missing_ids + 1 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if !done || ids.len() != 1 || names["0"] != "read_file" { return Err("Invalid streamed tool call") }
+    let args = json_parse(arguments["0"])
+    if args["path"] != "docs/lmstudio.md" { return Err("Invalid streamed tool arguments") }
+    check_usage(usage, capacity)?
+    let report = map()
+    report["passed"] = true
+    report["tool_call_id"] = ids["0"]
+    report["arguments"] = args
+    report["argument_fragments_without_id"] = missing_ids
+    report["saw_done"] = done
+    report["usage"] = usage
+    fs_write("artifacts/lmstudio-local/tether-tool-stream.json", json_encode(report))?
+    return Ok(report)
+}

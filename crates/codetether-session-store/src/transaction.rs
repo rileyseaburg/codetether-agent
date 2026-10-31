@@ -1,7 +1,8 @@
 //! Revision checks and records commit atomically under SQLite's writer lock.
 use super::batch::Batch;
 use anyhow::Result;
-use rusqlite::{TransactionBehavior, params};
+mod apply;
+pub(crate) use apply::run as commit_on;
 mod guard;
 mod header;
 mod pins;
@@ -29,32 +30,9 @@ pub(crate) fn commit_with_pins(
     batch: &Batch,
     edits: &[crate::pin_edits::PinSource],
 ) -> Result<i64> {
-    let mut db = super::connection::open(path)?;
-    let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let nonce = pins::nonce(batch, edits)?;
-    if let Some(revision) = guard::retry(&tx, &batch.id, &nonce)? {
-        return Ok(revision);
-    }
-    let old_count = guard::check(&tx, batch)?;
-    let revision = batch.revision + 1;
-    let start = edits
-        .iter()
-        .map(|edit| edit.index)
-        .min()
-        .unwrap_or(batch.messages.start)
-        .min(batch.messages.start);
-    header::write(&tx, batch, revision, old_count, start)?;
-    super::records::write(&tx, &batch.id, 0, &batch.messages)?;
-    super::records::write(&tx, &batch.id, 1, &batch.tools)?;
-    super::tool_state::apply(&tx, batch)?;
-    super::events::append(&tx, batch, revision)?;
-    pins::write(&tx, batch, revision, edits)?;
-    tx.execute(
-        "INSERT INTO commits VALUES (?1,?2,?3)",
-        params![batch.id, revision, nonce],
-    )?;
-    tx.commit()?;
-    Ok(revision)
+    let batch = batch.clone();
+    let edits = edits.to_vec();
+    crate::coordinator::write(path, move |db| commit_on(db, &batch, &edits))
 }
 
 /// Read the current persisted revision of a session.

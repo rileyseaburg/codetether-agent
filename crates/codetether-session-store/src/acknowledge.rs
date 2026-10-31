@@ -18,10 +18,10 @@ use anyhow::Result;
 /// # Ok(()) }
 /// ```
 pub async fn acknowledge(ticket: Ticket) -> Result<bool> {
-    tokio::task::spawn_blocking(move || {
-        let db = super::connection::open(&ticket.path)?;
+    let path = ticket.path.clone();
+    crate::coordinator::write_async(&path, move |db| {
         let rows = db.execute("UPDATE consumers SET seq=?3 WHERE session_id=?1 AND name=?2 AND revision=?4 AND seq<=?3",
             rusqlite::params![ticket.id, ticket.name, ticket.to as i64, ticket.generation])?;
         anyhow::Ok(rows == 1)
-    }).await?
+    }).await
 }

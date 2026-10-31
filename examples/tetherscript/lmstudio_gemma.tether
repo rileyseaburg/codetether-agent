@@ -1,0 +1,75 @@
+// LM Studio checks/chat without rebuilding CodeTether. This is a tool plugin,
+// not a replacement for the TUI Provider trait or its stream termination.
+// Hooks: models_at(base), budget_at(base, model), chat_at(base, model, prompt).
+// base is the server root, e.g. http://127.0.0.1:18080 (without /v1).
+
+fn request_json(method, url, body) {
+    let headers = map()
+    headers["Content-Type"] = "application/json"
+    let response = http_request(method, url, body, headers)?
+    if response["ok"] != true {
+        return Err("LM Studio HTTP " + str(response["status"]))
+    }
+    return Ok(json_parse(response["body"]))
+}
+
+fn models_at(base) {
+    return request_json("GET", base + "/api/v0/models", "")
+}
+
+fn budget_from(payload, model) {
+    for entry in payload["data"] {
+        if entry["id"] == model && entry["state"] == "loaded" {
+            if entry["type"] != "llm" && entry["type"] != "vlm" {
+                return Err("Selected model is not a chat model")
+            }
+            let context = entry["loaded_context_length"]
+            if context == nil || context <= 2048 {
+                return Err("Missing or insufficient loaded context; architecture maximum is not a safe substitute")
+            }
+            let result = map()
+            result["model"] = model
+            result["loaded_context_length"] = context
+            result["input_budget"] = context / 2
+            result["max_tokens"] = 1024
+            return Ok(result)
+        }
+    }
+    return Err("Model is not loaded: " + model)
+}
+
+fn budget_at(base, model) {
+    let payload = models_at(base)?
+    return budget_from(payload, model)
+}
+
+fn chat_at(base, model, prompt) {
+    let budget = budget_at(base, model)?
+    // Deliberately strict byte ceiling for this simple probe, not a tokenizer.
+    if prompt.len() + 1024 > budget["input_budget"] {
+        return Err("Probe prompt exceeds its loaded-context budget")
+    }
+    let message = map()
+    message["role"] = "user"
+    message["content"] = prompt
+    let body = map()
+    body["model"] = model
+    body["messages"] = [message]
+    body["max_tokens"] = 256
+    body["temperature"] = 0
+    let response = request_json("POST", base + "/v1/chat/completions", json_encode(body))?
+    let result = map()
+    result["id"] = response["id"]
+    result["model"] = response["model"]
+    result["content"] = response["choices"][0]["message"]["content"]
+    result["usage"] = response["usage"]
+    result["budget"] = budget
+    return Ok(result)
+}
+
+fn main() {
+    let args = env_args()
+    if args.len() == 0 { println("Usage: tetherscript run --access-mode full examples/tetherscript/lmstudio_gemma.tether -- server-root [prompt]"); return }
+    if args.len() == 1 { println(json_encode(budget_at(args[0], "google/gemma-4-12b-qat").unwrap())); return }
+    println(json_encode(chat_at(args[0], "google/gemma-4-12b-qat", args[1]).unwrap()))
+}

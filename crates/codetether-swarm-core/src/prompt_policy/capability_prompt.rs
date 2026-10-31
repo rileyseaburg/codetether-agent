@@ -1,5 +1,13 @@
 //! Runtime-mode and available-tool prompt sections.
 
+pub(super) fn workspace_mode(shared: bool, read_only: bool, writable: bool) -> &'static str {
+    if shared {
+        "SHARED WRITABLE WORKSPACE: Every worker can edit files in this same directory. Make the changes required by your assignment; an inspection-only assignment does not require unnecessary edits. Work on your assigned files, preserve other workers' changes, and coordinate overlapping edits through swarm_share. Do not create another worktree or commit, reset, or clean the shared checkout; the parent owns integration."
+    } else {
+        mode(read_only, writable)
+    }
+}
+
 pub(super) fn mode(read_only: bool, expects_changes: bool) -> &'static str {
     if read_only {
         "READ-ONLY TASK: inspect, analyze, and report. Do not modify files, run shell commands, or start autonomous implementation workflows."

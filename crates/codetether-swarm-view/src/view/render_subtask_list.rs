@@ -12,7 +12,7 @@ pub(super) fn render_subtask_list(f: &mut Frame, state: &mut SwarmViewState, are
     let title = if state.subtasks.is_empty() {
         " SubTasks (none yet) "
     } else {
-        " SubTasks (↑↓:select  Enter:detail) "
+        " SubTasks (↑↓:select  Enter/→:detail  Esc:back) "
     };
 
     let list = List::new(items)

@@ -20,7 +20,11 @@ pub(super) async fn execute<H: Host>(
     let parent_workspace = support::workspace(&params);
     let shared_results = ResultStore::new_arc();
     let specs = worktree_specs::from_tasks(&tasks);
-    let worktrees = SwarmWorktrees::create(&parent_workspace, &specs).await;
+    let worktrees = if config.isolate_worktrees {
+        SwarmWorktrees::create(&parent_workspace, &specs).await
+    } else {
+        SwarmWorktrees::shared(&parent_workspace, &specs)
+    };
     let semaphore = Arc::new(tokio::sync::Semaphore::new(config.concurrency));
     let handles = schedule::spawn::<H>(
         &tasks,

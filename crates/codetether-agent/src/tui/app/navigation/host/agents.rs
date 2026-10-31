@@ -3,6 +3,9 @@ use crate::tui::app::state::App;
 use codetether_tui_navigation::Action;
 pub(super) fn apply(app: &mut App, action: &Action) -> bool {
     match action {
+        Action::SwarmEnterDetail => {
+            app.state.swarm.enter_detail();
+        }
         Action::SwarmPrevious => {
             app.state.swarm.select_prev();
         }

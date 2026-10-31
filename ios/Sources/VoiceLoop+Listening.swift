@@ -5,6 +5,13 @@ extension VoiceLoop {
     func resumeListening() {
         reply = nil
         guard phase != .idle else { return }
+        guard !isBackgrounded else { stop(); return }
+        if mic?.isRunning == false {
+            phase = .idle
+            let current = turnID
+            micTask = Task { if current == turnID { await start() } }
+            return
+        }
         silence.cancel()
         transcript = ""
         mic?.resetDetection()

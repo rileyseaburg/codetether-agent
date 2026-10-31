@@ -3,7 +3,8 @@
 use super::RequestedProfile;
 
 pub(super) fn resolve_discovery(requested: RequestedProfile, provider: &str) -> bool {
-    requested == RequestedProfile::Automatic && matches!(provider, "gemini-web" | "openrouter")
+    requested == RequestedProfile::Automatic
+        && matches!(provider, "gemini-web" | "openrouter" | "lmstudio")
 }
 
 pub(super) fn prefers_coding(provider: &str) -> bool {

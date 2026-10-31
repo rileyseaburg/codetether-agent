@@ -104,5 +104,6 @@ async function run() {
     fixtureBacked: true, checkOnSave: true, diagnosticQuickFix: true,
     reviewedApplyAndCargoCheck: true, nativeSnapshotPublishedAndCleared: true
   }, null, 2));
+  await require('./navigation-suite.cjs').run();
 }
 module.exports = { run };

@@ -17,7 +17,11 @@ pub(super) fn to_usage(u: &SseUsage) -> Usage {
 }
 
 /// Map a full SSE frame to chunks, recording whether output was produced.
-pub(super) fn frame_chunks(parsed: &SseResponse, produced: &mut bool) -> Vec<StreamChunk> {
+pub(super) fn frame_chunks(
+    parsed: &SseResponse,
+    produced: &mut bool,
+    ids: &mut std::collections::HashMap<usize, String>,
+) -> Vec<StreamChunk> {
     let mut out = Vec::new();
     let Some(choice) = parsed.choices.first() else {
         return out;
@@ -36,7 +40,7 @@ pub(super) fn frame_chunks(parsed: &SseResponse, produced: &mut bool) -> Vec<Str
     }
     if let Some(tcs) = &choice.delta.tool_calls {
         for tc in tcs {
-            let chunks = tool_chunks(tc);
+            let chunks = tool_chunks(tc, ids);
             if !chunks.is_empty() {
                 *produced = true;
             }
