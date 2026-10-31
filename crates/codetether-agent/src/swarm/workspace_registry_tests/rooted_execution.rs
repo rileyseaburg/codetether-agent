@@ -3,7 +3,7 @@ use serde_json::json;
 
 #[tokio::test]
 async fn omitted_bash_and_git_cwd_use_assigned_workspace() {
-    let root = tempfile::tempdir().unwrap();
+    let root = super::workspace::tempdir().unwrap();
     std::process::Command::new("git")
         .args(["init", "-q"])
         .current_dir(root.path())
@@ -27,7 +27,7 @@ async fn omitted_bash_and_git_cwd_use_assigned_workspace() {
 
 #[tokio::test]
 async fn apply_patch_changes_only_the_assigned_workspace() {
-    let root = tempfile::tempdir().unwrap();
+    let root = super::workspace::tempdir().unwrap();
     std::fs::write(root.path().join("file.txt"), "old\n").unwrap();
     let registry = with_defaults(root.path(), Capability::Mutating);
     let patch = "--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-old\n+new";

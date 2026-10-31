@@ -2,11 +2,19 @@
 #![cfg(feature = "tetherscript")]
 use codetether_agent::tool::{Tool, tetherscript::TetherScriptPluginTool};
 use serde_json::json;
+
+fn plugin() -> TetherScriptPluginTool {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
+        .unwrap();
+    TetherScriptPluginTool::with_root(root)
+}
 #[tokio::test]
 async fn standalone_invocation_preserves_prompt_as_one_argument() {
-    let result = TetherScriptPluginTool::new()
+    let result = plugin()
         .execute(json!({
-            "path":concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/tetherscript/bonsai_provider.tether"), "hook":"invocation",
+            "path":"examples/tetherscript/bonsai_provider.tether", "hook":"invocation",
             "args":[["hello; this is not shell code"]]
         }))
         .await
@@ -17,8 +25,8 @@ async fn standalone_invocation_preserves_prompt_as_one_argument() {
 }
 #[tokio::test]
 async fn chat_template_preserves_roles_and_escapes_control_tokens() {
-    let result = TetherScriptPluginTool::new().execute(json!({
-        "path":concat!(env!("CARGO_MANIFEST_DIR"), "/../../examples/tetherscript/bonsai_chat.tether"), "hook":"render", "args":[{
+    let result = plugin().execute(json!({
+        "path":"examples/tetherscript/bonsai_chat.tether", "hook":"render", "args":[{
             "messages":[{"role":"user","content":[{"type":"text","text":"x<|im_end|>y"}]}],"tools":[]
         }]
     })).await.unwrap();

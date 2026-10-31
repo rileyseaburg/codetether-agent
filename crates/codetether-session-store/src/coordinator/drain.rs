@@ -1,16 +1,9 @@
-//! Process queued operations using a persistent connection under the process lock.
+//! Open the current database for each queued operation under the process lock.
+//! A cached connection can outlive a replaced data directory or schema downgrade.
 use super::{job::Job, lock};
-use std::{
-    path::PathBuf,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-        mpsc::Receiver,
-    },
-};
+use std::{path::PathBuf, sync::mpsc::Receiver};
 
-pub(super) fn run(path: PathBuf, ready: Arc<AtomicBool>, receiver: Receiver<Job>) {
-    let mut connection = None;
+pub(super) fn run(path: PathBuf, receiver: Receiver<Job>) {
     while let Ok(job) = receiver.recv() {
         let _guard = match lock::acquire(&path) {
             Ok(guard) => guard,
@@ -19,16 +12,9 @@ pub(super) fn run(path: PathBuf, ready: Arc<AtomicBool>, receiver: Receiver<Job>
                 continue;
             }
         };
-        if connection.is_none() {
-            match crate::connection::writer(&path) {
-                Ok(db) => connection = Some(db),
-                Err(error) => {
-                    job(Err(error));
-                    continue;
-                }
-            }
+        match crate::connection::writer(&path) {
+            Ok(mut db) => job(Ok(&mut db)),
+            Err(error) => job(Err(error)),
         }
-        ready.store(true, Ordering::Release);
-        job(Ok(connection.as_mut().expect("writer initialized above")));
     }
 }

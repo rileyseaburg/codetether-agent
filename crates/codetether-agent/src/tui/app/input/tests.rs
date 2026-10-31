@@ -76,11 +76,11 @@ mod tests {
 
         assert!(matches!(
             app.state.messages.first().map(|m| &m.message_type),
-            Some(MessageType::User)
+            Some(MessageType::Image { url }) if url == "data:image/png;base64,Zm9v"
         ));
         assert!(matches!(
             app.state.messages.get(1).map(|m| &m.message_type),
-            Some(MessageType::Image { .. })
+            Some(MessageType::Error)
         ));
         assert!(app.state.attachments.images.is_empty());
     }

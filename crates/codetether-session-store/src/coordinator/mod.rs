@@ -53,7 +53,8 @@ pub async fn write_async<T: Send + 'static>(
     receive.await.map_err(|_| CoordinationError::Stopped)?
 }
 
-/// Initialize schema through the writer once before opening a reader.
+/// Check the current database schema before opening a reader.
+/// Current WAL readers bypass the queue so active writes cannot block them.
 /// # Examples
 /// ```no_run
 /// # fn example(path: &std::path::Path) -> anyhow::Result<()> {
@@ -62,7 +63,12 @@ pub async fn write_async<T: Send + 'static>(
 /// ```
 pub(crate) fn initialize(path: &Path) -> Result<()> {
     let writer = registry::get(path)?;
-    if !writer.ready.load(std::sync::atomic::Ordering::Acquire) {
+    let version: i64 = {
+        let db = Connection::open(&writer.path)?;
+        db.pragma_query_value(None, "user_version", |row| row.get(0))?
+    };
+    anyhow::ensure!(version <= 3, "session database requires a newer runtime");
+    if version < 3 {
         write(path, |_db| Ok(()))?;
     }
     Ok(())

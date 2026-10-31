@@ -10,7 +10,9 @@ coordination boundary. Different databases have independent workers.
 
 ## Execution contract
 
-- One persistent connection runs accepted operations in FIFO order.
+- One dedicated worker runs accepted operations in FIFO order. Each operation
+  opens the current database under the advisory lock and checks its schema,
+  avoiding stale connections after a data directory is replaced or restored.
 - Each database admits up to 64 queued operations plus the running operation.
   Saturation returns `SESSION_WRITE_QUEUE_FULL`; it never silently drops writes.
 - Async callers await a reply without occupying a Tokio blocking worker.
@@ -21,7 +23,9 @@ coordination boundary. Different databases have independent workers.
   operation error or panic; returning success with an open transaction is rejected.
 - Cooperating processes use `sessions.sqlite3.writer.lock` to serialize their
   operations. A five-second lock timeout returns `SESSION_WRITER_BUSY`.
-- Reads use independent WAL connections. `synchronous=FULL` remains enabled.
+- Reads check the current database schema, queuing initialization only when an
+  upgrade is needed. Current-schema reads use independent WAL connections without
+  waiting for queued writes. `synchronous=FULL` remains enabled.
 - Session snapshots still batch their dirty message/tool suffixes into one
   atomic commit. Unrelated operations are not combined into one transaction.
 

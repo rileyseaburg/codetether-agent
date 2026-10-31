@@ -5,7 +5,7 @@ use serde_json::json;
 fn expected_changes_always_select_mutating_capability() {
     let capability = Capability::from_task_flags(true, true, true);
     assert_eq!(capability, Capability::Mutating);
-    let root = tempfile::tempdir().unwrap();
+    let root = super::workspace::tempdir().unwrap();
     let registry = with_defaults(root.path(), capability);
     for tool in ["write", "edit", "apply_patch"] {
         assert!(registry.contains(tool), "missing {tool}");
@@ -14,7 +14,7 @@ fn expected_changes_always_select_mutating_capability() {
 
 #[tokio::test]
 async fn verification_exposes_checks_but_rejects_mutation() {
-    let root = tempfile::tempdir().unwrap();
+    let root = super::workspace::tempdir().unwrap();
     let registry = with_defaults(root.path(), Capability::Verification);
     for allowed in ["read", "lsp", "bash", "git"] {
         assert!(registry.contains(allowed), "missing {allowed}");
@@ -32,7 +32,7 @@ async fn verification_exposes_checks_but_rejects_mutation() {
 
 #[test]
 fn mutating_registry_omits_unscoped_workflows() {
-    let root = tempfile::tempdir().unwrap();
+    let root = super::workspace::tempdir().unwrap();
     let registry = with_defaults(root.path(), Capability::Mutating);
     for denied in ["ralph", "prd", "go", "agent", "swarm_execute", "undo"] {
         assert!(!registry.contains(denied), "unexpected {denied}");
