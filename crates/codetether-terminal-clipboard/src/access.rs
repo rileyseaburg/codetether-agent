@@ -46,7 +46,7 @@ pub fn get_clipboard_image() -> Option<ImageAttachment> {
 #[cfg(windows)]
 /// Extract an image from the system clipboard (Windows via raw-dylib).
 ///
-/// Reads `CF_DIB`, wraps it in a BMP header, and re-encodes as PNG.
+/// Reads native PNG, `CF_DIBV5`, or `CF_DIB` clipboard pixels as a PNG attachment.
 /// # Arguments
 /// None; probes the current system clipboard.
 /// # Returns

@@ -4,8 +4,8 @@ use codetether_image::ImageAttachment;
 
 /// Read the current system clipboard image (Windows via raw-dylib).
 ///
-/// Fetches `CF_DIB` from the clipboard, wraps it in a BMP file header, and
-/// re-encodes it as a PNG data URL for pasting over SSH.
+/// Reads registered PNG, `CF_DIBV5`, or `CF_DIB` from the native Windows
+/// clipboard and normalizes its pixels as a PNG attachment.
 ///
 /// # Errors
 ///

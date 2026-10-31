@@ -1,18 +1,21 @@
-//! Convert BMP bytes into a PNG data URL attachment.
-use base64::Engine;
+//! Normalize native clipboard pixels into a PNG data URL attachment.
 use codetether_image::ImageAttachment;
 use std::io::Cursor;
 
-/// Decode a BMP buffer and re-encode it as a PNG data URL attachment.
-pub(super) fn encode_png_attachment(bmp: &[u8]) -> Option<ImageAttachment> {
-    let decoded = image::load_from_memory_with_format(bmp, image::ImageFormat::Bmp).ok()?;
+/// Decode an encoded native clipboard image and normalize it as PNG.
+pub(super) fn encode_png_attachment(
+    bytes: &[u8],
+    format: image::ImageFormat,
+) -> Option<ImageAttachment> {
+    let decoded = image::ImageReader::with_format(Cursor::new(bytes), format)
+        .decode()
+        .ok()?;
     let mut png = Vec::new();
     decoded
         .write_to(&mut Cursor::new(&mut png), image::ImageFormat::Png)
         .ok()?;
-    let data = base64::engine::general_purpose::STANDARD.encode(&png);
     Some(ImageAttachment {
-        data_url: format!("data:image/png;base64,{data}"),
+        data_url: codetether_image::encode_data_url("image/png", &png),
         mime_type: Some("image/png".to_string()),
     })
 }

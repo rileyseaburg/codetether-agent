@@ -9,8 +9,14 @@ mod dib_layout;
 mod guard;
 #[cfg(windows)]
 mod image;
-#[cfg(windows)]
+#[cfg(any(windows, test))]
 mod image_encode;
+#[cfg(test)]
+mod image_fixtures;
+#[cfg(test)]
+mod image_format_tests;
+#[cfg(any(windows, test))]
+mod image_formats;
 #[cfg(windows)]
 mod image_read;
 #[cfg(windows)]

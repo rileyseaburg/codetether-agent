@@ -1,5 +1,5 @@
-//! Read the clipboard DIB and convert it to a PNG attachment.
-use super::{dib::dib_to_bmp, image_encode::encode_png_attachment, image_read::read_cf_dib};
+//! Read native Windows PNG, DIBV5, or DIB clipboard pixels as an attachment.
+use super::{image_formats, image_read};
 use codetether_image::ImageAttachment;
 
 /// Read the clipboard image and return it as a PNG data URL attachment.
@@ -12,7 +12,5 @@ use codetether_image::ImageAttachment;
 /// let _image = codetether_clipboard::winapi::get_clipboard_image();
 /// ```
 pub fn get_clipboard_image() -> Option<ImageAttachment> {
-    let dib = read_cf_dib()?;
-    let bmp = dib_to_bmp(&dib)?;
-    encode_png_attachment(&bmp)
+    image_formats::capture(image_read::read)
 }

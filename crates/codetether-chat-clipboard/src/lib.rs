@@ -2,7 +2,7 @@
 //!
 //! [handle_copy_reply] selects the latest assistant response;
 //! [handle_copy_transcript] exports the conversation. [handle_clipboard_paste]
-//! prefers normalized text and falls back to image attachments. A [Host]
+//! prefers native images on Windows and normalized text elsewhere. A [Host]
 //! supplies frontend state and the application's existing text-paste path.
 mod clipboard;
 mod command_binding;
@@ -10,6 +10,9 @@ mod copy_reply;
 mod copy_transcript;
 mod frontend;
 mod host;
+mod selection;
+#[cfg(test)]
+mod selection_tests;
 pub use clipboard::handle_clipboard_paste;
 pub use copy_reply::handle_copy_reply;
 pub use copy_transcript::handle_copy_transcript;

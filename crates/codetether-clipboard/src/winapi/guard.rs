@@ -5,7 +5,15 @@ pub(super) struct ClipboardGuard;
 
 impl ClipboardGuard {
     pub(super) fn open() -> Option<Self> {
-        (0..5).find_map(|_| unsafe { OpenClipboard(None) }.ok().map(|_| Self))
+        for attempt in 0..5 {
+            if unsafe { OpenClipboard(None) }.is_ok() {
+                return Some(Self);
+            }
+            if attempt < 4 {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+        }
+        None
     }
 }
 

@@ -14,6 +14,9 @@ image = { version = "0.25", default-features = false, features = ["png", "bmp", 
 [target.'cfg(not(windows))'.dependencies]
 arboard = "3.4"
 
+[dev-dependencies]
+base64 = "0.23.1"
+
 [target.'cfg(windows)'.dependencies]
 base64 = "0.23.1"
 windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Memory"] }
