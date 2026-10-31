@@ -13,7 +13,8 @@ pub(super) async fn run(
     let workspace = tempfile::tempdir()?;
     let provider: Arc<dyn Provider> = provider;
     tokio::time::timeout(
-        std::time::Duration::from_secs(5),
+        // This includes durable SQLite writes on shared CI storage, not just cancellation.
+        std::time::Duration::from_secs(30),
         super::super::run_session_steps(
             provider,
             session,

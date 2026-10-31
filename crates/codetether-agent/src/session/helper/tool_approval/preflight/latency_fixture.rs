@@ -3,11 +3,14 @@
 use crate::{config::LspSettings, lsp::LspManager};
 use serde_json::json;
 use std::{path::Path, sync::Arc};
+#[path = "latency_warm.rs"]
+mod warm;
 
 pub(super) fn manager(root: &Path, mode: &str) -> Arc<LspManager> {
     let script = root.join("lsp.cjs");
     std::fs::write(&script, include_str!("fake_server.cjs")).unwrap();
     let node = which::which("node").expect("node is required for LSP process tests");
+    warm::script(&node, &script);
     let timeout_ms = if mode == "silent" { 2000 } else { 30000 };
     let settings: LspSettings = serde_json::from_value(json!({
         "servers": {"typescript": {
