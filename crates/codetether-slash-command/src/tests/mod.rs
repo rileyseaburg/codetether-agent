@@ -1,6 +1,7 @@
 //! Command parsing regressions.
 //! Tests cover aliases, argument boundaries and passthrough input.
 mod command_with_optional_args_avoids_prefix_collisions;
+mod goal_completion;
 mod normalize_easy_command_add_alias;
 mod normalize_easy_command_focus_alias;
 mod normalize_easy_command_home_alias;
