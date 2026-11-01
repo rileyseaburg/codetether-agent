@@ -41,3 +41,7 @@ late results from advancing the job; cancelled jobs do not resume silently.
 
 The runner prints committed-step progress, not token-level streaming; normal chat
 streaming remains available separately. Tests: `node --test scripts/lmstudio-jobs/*.test.mjs`.
+
+An `empty_answer` failure can occur when a tiny output cap is exhausted before the
+model emits visible answer text. Create a separate job with a larger allowance;
+the runner never silently raises the original job's declared budget.

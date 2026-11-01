@@ -18,7 +18,7 @@ export async function fixture(t, replies, spec = {}) {
     response.writeHead(reply ? 200 : 500, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({ id: `reply-${calls.length}`, model: body.model,
       choices: [{ message: { role: 'assistant', content: reply?.text }, finish_reason: reply?.finish || 'stop' }],
-      usage: reply?.noUsage ? undefined : { completion_tokens: 3, prompt_tokens: 80, total_tokens: 83 } }));
+      usage: reply?.noUsage ? undefined : { completion_tokens: reply?.used ?? 3, prompt_tokens: 80, total_tokens: 83 } }));
   });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   t.after(() => { server.closeAllConnections(); server.close(); });

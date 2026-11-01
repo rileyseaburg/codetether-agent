@@ -4,6 +4,7 @@ import { directory, readJSON, atomic } from './files.mjs';
 import { lock, cancelled } from './lock.mjs';
 import { endpoint, complete } from './http.mjs';
 import { prepare, commit } from './transition.mjs';
+import { failure } from './failure.mjs';
 /** @param {string} root @param {string} id @param {{origin:string,token:string,recover?:boolean,onStep?:(step:object)=>void}} options */
 export async function run(root, id, options) {
   const dir = await directory(root, id), release = await lock(dir, options.recover ?? false);
@@ -29,10 +30,11 @@ export async function run(root, id, options) {
         await atomic(dir, 'state.json', next);
         Object.assign(job, next);
         try { options.onStep?.({ id, calls: job.calls, status: job.status, completedSteps: job.index }); } catch { /* reporting is not a job mutation */ }
-      } catch {
+      } catch (error) {
         job.status = await cancelled(dir) ? 'cancelled' : 'uncertain';
+        job.failure = failure(error);
         await atomic(dir, 'state.json', job);
-        throw new Error(`Job ${job.status}; committed progress and reserved budget retained`);
+        throw new Error(`Job ${job.status} (${job.failure}); committed progress and reserved budget retained`);
       }
     }
     await atomic(dir, 'state.json', job);

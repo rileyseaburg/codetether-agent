@@ -16,7 +16,10 @@ export function prepare(job) {
 /** @param {ReturnType<import('./plan.mjs').plan>} job @param {object} response */
 export function commit(job, response) {
   const choice = response?.choices?.[0], text = choice?.message?.content;
-  if (response?.model !== job.model || typeof text !== 'string' || !text.trim() || Buffer.byteLength(text) > 128000 ||
+  if (response?.model !== job.model) throw new Error('Completion model mismatch');
+  if (typeof text !== 'string' || !text.trim()) throw new Error('Completion has no answer text');
+  job.failure = null;
+  if (Buffer.byteLength(text) > 128000 ||
       choice.message.tool_calls?.length || !['stop', 'length'].includes(choice.finish_reason)) throw new Error('Invalid text-only completion');
   const digest = createHash('sha256').update(text.trim()).digest('hex');
   if (job.receipts.some(item => item.step === job.index && item.phase === job.phase && item.digest === digest)) {
@@ -27,7 +30,7 @@ export function commit(job, response) {
     job.reserved += used - job.pending.tokens;
     job.status = 'exhausted'; job.pending = null; return;
   }
-  if (Number.isSafeInteger(used) && used >= 0 && used <= job.pending.tokens) job.reserved -= job.pending.tokens - used;
+  if (Number.isSafeInteger(used) && used > 0 && used <= job.pending.tokens) job.reserved -= job.pending.tokens - used;
   job.receipts.push({ ...job.pending, digest, response_id: response.id, finish_reason: choice.finish_reason, usage: response.usage });
   job.pending = null;
   if (job.phase === 'summary') {
