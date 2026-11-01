@@ -4,6 +4,7 @@ use super::*;
 use serde_json::Value;
 
 pub(super) fn models(payload: &Value, provider: &str) -> Result<Vec<ModelInfo>> {
+    let output_limit = config::Config::load()?.output;
     let entries = payload
         .get("data")
         .and_then(Value::as_array)
@@ -27,7 +28,7 @@ pub(super) fn models(payload: &Value, provider: &str) -> Result<Vec<ModelInfo>> 
             let mut model = OpenAIProvider::model_info_from_api_entry(entry, provider)?;
             model.context_window = capacity;
             // A safe client output ceiling, not an architectural output limit.
-            model.max_output_tokens = Some(budget::output_ceiling(capacity));
+            model.max_output_tokens = Some(budget::output_ceiling(capacity, output_limit));
             // Image token cost cannot be bounded from URL length; guard is text-only.
             model.supports_vision = false;
             Some(model)

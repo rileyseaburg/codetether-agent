@@ -16,6 +16,7 @@ reqwest = { version = "0.13.2", default-features = false, features = ["json", "s
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 tracing = "0.1"
+tokio = { version = "1.53.1", features = ["sync", "time", "rt", "macros"] }
 
 [dev-dependencies]
 codetether-context-policy = { path = "../codetether-context-policy", version = "0.1.0" }

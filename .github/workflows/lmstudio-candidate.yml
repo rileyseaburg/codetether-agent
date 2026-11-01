@@ -1,0 +1,50 @@
+name: LM Studio candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feat/lmstudio-budget-queue']
+permissions:
+  contents: read
+concurrency:
+  group: lmstudio-candidate-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: 2
+      RUSTFLAGS: -C link-arg=-fuse-ld=mold
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev libasound2-dev protobuf-compiler mold
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: Swatinem/rust-cache@v2
+      - name: Focused provider and checkpoint tests
+        run: |
+          cargo fmt -p codetether-provider-openai --check
+          cargo test --locked -p codetether-provider-openai
+          node --test scripts/lmstudio-jobs/*.test.mjs
+      - name: Build candidate without publishing a release
+        run: cargo build --locked --release -p codetether-agent --bin codetether
+      - name: Record candidate identity
+        run: |
+          mkdir -p dist
+          cp target/release/codetether dist/codetether
+          git rev-parse HEAD > dist/source-commit.txt
+          dist/codetether --version > dist/version.txt
+          (cd dist && sha256sum codetether > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lmstudio-linux-candidate
+          path: dist/
+          if-no-files-found: error

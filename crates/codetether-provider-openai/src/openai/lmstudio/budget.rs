@@ -9,11 +9,15 @@ use super::*;
 use anyhow::ensure;
 use serde_json::json;
 
-pub(super) fn output_ceiling(capacity: usize) -> usize {
-    (capacity / 4).clamp(1, 1024)
+pub(super) fn output_ceiling(capacity: usize, configured: usize) -> usize {
+    (capacity / 4).max(1).min(configured)
 }
 
-pub(super) fn cap_output(request: &mut CompletionRequest, capacity: usize) -> Result<()> {
+pub(super) fn cap_output(
+    request: &mut CompletionRequest,
+    capacity: usize,
+    configured: usize,
+) -> Result<()> {
     ensure!(
         !request
             .messages
@@ -41,8 +45,12 @@ pub(super) fn cap_output(request: &mut CompletionRequest, capacity: usize) -> Re
     );
     let requested = request
         .max_tokens
-        .unwrap_or_else(|| output_ceiling(capacity));
+        .unwrap_or_else(|| output_ceiling(capacity, configured));
     ensure!(requested > 0, "LM Studio max_tokens must be positive");
-    request.max_tokens = Some(requested.min(output_ceiling(capacity)).min(available));
+    request.max_tokens = Some(
+        requested
+            .min(output_ceiling(capacity, configured))
+            .min(available),
+    );
     Ok(())
 }

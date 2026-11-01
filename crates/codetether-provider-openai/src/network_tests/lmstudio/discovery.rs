@@ -8,7 +8,7 @@ async fn lmstudio_discovery_uses_loaded_capacity_without_cross_provider_leaks() 
     let models = provider(url.clone()).list_models().await.unwrap();
     assert_eq!(models[0].id, MODEL);
     assert_eq!(models[0].context_window, 4608);
-    assert_eq!(models[0].max_output_tokens, Some(1024));
+    assert_eq!(models[0].max_output_tokens, Some(1152));
     let other = OpenAIProvider::with_base_url_optional_key(None, url, "other").unwrap();
     assert_eq!(
         other.list_models().await.unwrap()[0].context_window,

@@ -36,7 +36,7 @@ codetether-lmstudio
 ```
 
 The launcher does not change normal CodeTether defaults. It selects Gemma,
-caps output to 1024 tokens and tool output to 4096 bytes, and uses the automatic
+defaults output to 4096 tokens and tool output to 4096 bytes, and uses the automatic
 small LM Studio schema profile. Other tools remain available via `list_tools`.
 
 ## Context safety
@@ -49,3 +49,5 @@ discarded to make a request fit. The final text-only guard estimates tokens,
 reserves a safety margin, caps output and rejects oversized requests locally.
 Estimation is not an exact Gemma tokenizer; media inputs are rejected.
 See [TetherScript validation](lmstudio-tetherscript.md) for repeatable live checks.
+See [runtime limits and queue](lmstudio-runtime.md) for configuration and deployment boundaries,
+and [resumable text jobs](lmstudio-jobs.md) for bounded multi-step generation.
