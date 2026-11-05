@@ -26,6 +26,9 @@ pub struct AuthArgs {
 /// ```
 #[derive(Subcommand, Debug)]
 pub enum AuthCommand {
+    /// Connect Monarch through its official OAuth consent flow.
+    Monarch(crate::MonarchAuthArgs),
+
     /// Authenticate with GitHub Copilot using device flow
     Copilot(CopilotAuthArgs),
 

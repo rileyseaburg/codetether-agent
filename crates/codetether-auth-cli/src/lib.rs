@@ -12,6 +12,8 @@ mod codex_request;
 mod codex_store;
 mod copilot;
 mod dispatch;
+mod monarch;
+pub use monarch::{MonarchAuthArgs, MonarchCommand};
 mod prompt;
 mod provider_args;
 pub use args::{AuthArgs, AuthCommand};

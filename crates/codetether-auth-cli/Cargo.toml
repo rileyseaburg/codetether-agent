@@ -8,6 +8,7 @@ description = "Authentication CLI routing and provider OAuth orchestration"
 
 [dependencies]
 anyhow = "1"
+codetether-monarch-auth = { path = "../codetether-monarch-auth", version = "0.1.0" }
 chrono = "0.4"
 clap = { version = "4.6.6", features = ["derive", "env"] }
 codetether-bedrock-auth-cli = { path = "../codetether-bedrock-auth-cli", version = "0.1.0" }

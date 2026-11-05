@@ -8,4 +8,5 @@ mod reads;
 mod response;
 mod retry;
 mod serialization;
+mod strict_reads;
 mod writes;

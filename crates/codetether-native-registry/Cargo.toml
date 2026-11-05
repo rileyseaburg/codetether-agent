@@ -7,6 +7,7 @@ license = "MIT"
 description = "Native tool registry services with application catalog construction"
 
 [dependencies]
+codetether-monarch = { path = "../codetether-monarch", version = "0.1.0" }
 codetether-application-registry = { path = "../codetether-application-registry", version = "0.1.0" }
 codetether-native-providers = { path = "../codetether-native-providers", version = "4.7.6-dev.38" }
 codetether-native-search = { path = "../codetether-native-search", version = "0.1.0" }

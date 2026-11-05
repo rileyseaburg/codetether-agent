@@ -5,6 +5,7 @@ mod discovery;
 pub(super) use discovery::DISCOVERY;
 
 pub(super) const CODING: &[&str] = &[
+    "monarch",
     "rust_build_plan",
     "agent",
     "apply_patch",

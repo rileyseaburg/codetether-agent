@@ -19,6 +19,7 @@ use anyhow::Result;
 /// ```
 pub async fn execute(args: AuthArgs, application_version: &str) -> Result<()> {
     match args.command {
+        AuthCommand::Monarch(args) => crate::monarch::execute(args).await,
         AuthCommand::Copilot(copilot_args) => {
             authenticate_copilot(copilot_args, application_version).await
         }
