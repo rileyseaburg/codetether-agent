@@ -22,8 +22,9 @@ the loop with an explicit warning rather than spinning or claiming success.
 - Non-expiring tokens need no renewal. Non-renewable or use-limited tokens are
   identified without repeatedly consuming API requests.
 - Renewal cannot revive an expired/revoked token or bypass maximum TTL limits.
-  Reauthenticate or supply a new renewable token in that case. Kubernetes clients
-  retain their existing reauthentication-on-rejection behavior.
+  Reauthenticate or supply a new renewable token in that case. Kubernetes and
+  explicitly configured [AppRole clients](vault_unattended.md) reauthenticate
+  noninteractively after a rejected secret operation, then retry it once.
 - Closing CodeTether stops renewal; this is not a Windows background service.
 - The native OCR readiness/desktop subprocesses do not initialize Vault or start
   competing credential-renewal loops.

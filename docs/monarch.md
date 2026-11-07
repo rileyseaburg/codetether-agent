@@ -48,6 +48,7 @@ The model-facing operations are:
 
 ```json
 {"action":"status"}
+{"action":"refresh"}
 {"action":"list_tools"}
 {"action":"call","tool":"NAME_FROM_CATALOG","arguments":{}}
 ```
@@ -56,6 +57,19 @@ Use tool names and schemas from the official live catalog, not a third-party
 bridge. The coding profile retains this connector, and compact discovery profiles
 can discover it normally. Native CLI, TUI, worker, and MCP-server registries use
 the same connector. The backend and account grant still govern access.
+
+### Noninteractive recovery
+
+`refresh` uses the existing stored OAuth refresh grant, even when the access
+token's recorded expiry is still in the future. It does not start browser login,
+ask for approval, accept credentials in tool arguments, or return secrets.
+This works in `--yolo`; no extra consent gate is added. Automatic refresh on
+recorded expiry remains available in all modes, as before.
+
+After one refresh, use `list_tools` to check access. Refresh success does not
+establish MCP authorization. A persistent HTTP 403 remains a service rejection;
+do not loop refreshes, broaden scopes, or treat it as proof of Vault expiry.
+Missing/revoked refresh grants require initial authorization outside this action.
 
 ## Credentials and account boundaries
 

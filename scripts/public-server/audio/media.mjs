@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { join, sep } from 'node:path';
 import { homedir } from 'node:os';
 import { HTTPError } from './auth.mjs';
+import { mediaRoots } from './media-roots.mjs';
 
-const uploads = join(homedir(), '.local/share/codetether-mobile/uploads');
-const generated = join(homedir(), 'spotlessbinco/.codetether-agent/generated_images');
+const [uploads, ...generated] = mediaRoots(homedir());
 export async function upload(request) {
   const chunks = [];
   let size = 0;
@@ -36,7 +36,7 @@ export async function image(path) {
   if (!path || path.length > 1024) throw new HTTPError(404, 'Image not found');
   let actual;
   try { actual = await realpath(path); } catch { throw new HTTPError(404, 'Image not found'); }
-  if (![uploads, generated].some(root => actual.startsWith(root + sep))) throw new HTTPError(404, 'Image not found');
+  if (![uploads, ...generated].some(root => actual.startsWith(root + sep))) throw new HTTPError(404, 'Image not found');
   if (!/\.(png|jpe?g)$/i.test(actual)) throw new HTTPError(404, 'Image not found');
   const info = await stat(actual);
   if (!info.isFile() || info.size > 16 * 1024 * 1024) throw new HTTPError(404, 'Image not found');

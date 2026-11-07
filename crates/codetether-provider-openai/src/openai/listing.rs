@@ -3,6 +3,9 @@
 use super::*;
 impl OpenAIProvider {
     pub(super) async fn list_provider_models(&self) -> Result<Vec<ModelInfo>> {
+        if self.provider_name == "groq" {
+            return Ok(self.groq_model_limits().await.unwrap_or_default().to_vec());
+        }
         if self.is_lmstudio() {
             return self.lmstudio_models().await;
         }

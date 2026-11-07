@@ -16,7 +16,7 @@ use super::sse_drive::drive;
 impl OpenAIProvider {
     /// True for providers whose models stream vendor `reasoning_content`.
     pub(super) fn uses_reasoning_stream(&self) -> bool {
-        self.provider_name == "cerebras" || self.is_lmstudio()
+        matches!(self.provider_name.as_str(), "cerebras" | "groq") || self.is_lmstudio()
     }
 
     /// Stream a completion via raw SSE, capturing reasoning content.

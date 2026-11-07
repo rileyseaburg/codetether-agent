@@ -18,13 +18,17 @@ use anyhow::{Result, bail};
 /// # Ok(()) }
 /// ```
 pub async fn access_token() -> Result<String> {
+    acquire(false).await
+}
+
+pub(super) async fn acquire(force_refresh: bool) -> Result<String> {
     let store = Store::open()?;
     let _lock = store.lock().await?;
     let Some(mut credentials) = store.load().await? else {
         bail!("Monarch is not connected; run codetether auth monarch");
     };
     scope::require_read_only(&credentials.scope)?;
-    if !credentials.fresh()? {
+    if force_refresh || !credentials.fresh()? {
         let client = discovery::client()?;
         discovery::discover(&client).await?;
         let rotated = oauth::refresh(&client, &credentials).await?;

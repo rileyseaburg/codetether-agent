@@ -1,4 +1,4 @@
-//! Reauthenticate Kubernetes clients after rejection and restart lease maintenance.
+//! Reauthenticate workload clients after rejection without interactive prompts.
 
 use crate::SecretsManager;
 use anyhow::Result;
@@ -6,16 +6,34 @@ use std::sync::Arc;
 use vaultrs::{client::VaultClient, error::ClientError};
 
 impl SecretsManager {
-    pub(super) async fn refresh_kubernetes_auth(&self) -> Result<Option<Arc<VaultClient>>> {
-        let Some(auth) = self.k8s_auth.as_deref() else {
+    pub(super) async fn refresh_auth(
+        &self,
+        rejected: &Arc<VaultClient>,
+    ) -> Result<Option<Arc<VaultClient>>> {
+        let _lock = self.auth_refresh_lock.lock().await;
+        if let Some(current) = self.client()
+            && !Arc::ptr_eq(&current, rejected)
+        {
+            return Ok(Some(current));
+        }
+        let client = if let Some(auth) = self.approle_auth.as_deref() {
+            auth.login().await?
+        } else if let Some(auth) = self.k8s_auth.as_deref() {
+            Self::login_with_kubernetes(auth).await?
+        } else {
             return Ok(self.client());
         };
-        tracing::warn!("Vault token was rejected; refreshing Kubernetes auth token");
-        let client = Self::login_with_kubernetes(auth).await?;
         *self.client.write() = Some(client.clone());
         self.renewal.start(Arc::downgrade(&self.client));
         self.clear_cache().await;
-        tracing::info!(role = %auth.role, mount = %auth.auth_mount, "Refreshed Vault Kubernetes auth token");
+        tracing::info!(
+            auth_method = if self.approle_auth.is_some() {
+                "approle"
+            } else {
+                "kubernetes"
+            },
+            "Refreshed Vault workload token"
+        );
         Ok(Some(client))
     }
 

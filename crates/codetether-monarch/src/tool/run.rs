@@ -32,6 +32,6 @@ pub(super) async fn run(client: &mut Client, input: Input) -> Result<ToolResult>
                 ToolResult::success(output)
             })
         }
-        Input::Status {} => unreachable!("status handled before network access"),
+        Input::Status {} | Input::Refresh {} => unreachable!("local action handled before MCP"),
     }
 }

@@ -19,22 +19,29 @@ pub fn build_provider_step_state<H: Host>(
     selected_provider: &str,
     model: &str,
 ) -> ProviderStepState<H::Registry> {
-    let (cwd, prior_context_allowed, autonomous) = host.context();
+    let general = host.general_chat();
+    let (cwd, prior_context_allowed, autonomous) = if general {
+        crate::general_chat::context()
+    } else {
+        host.context()
+    };
     let tool_registry = host.registry(&cwd, prior_context_allowed, autonomous);
     let tool_definitions = host.active(&tool_registry, selected_provider);
     let model_supports_tools = crate::model_supports_tools(selected_provider, model);
     let advertised_tool_definitions =
         host.advertised(model_supports_tools, &tool_definitions, selected_provider);
-    let system_prompt = crate::system_prompt_for(
-        selected_provider,
-        model_supports_tools,
-        // Textual-tool providers need the full definitions, not the
-        // advertised list, which is empty when native tools are off.
-        &tool_definitions,
-        &cwd,
-        prior_context_allowed,
-    );
-    let system_prompt = host.compose(&system_prompt);
+    let system_prompt = if general {
+        crate::general_chat::prompt(model_supports_tools, &tool_definitions)
+    } else {
+        let prompt = crate::system_prompt_for(
+            selected_provider,
+            model_supports_tools,
+            &tool_definitions,
+            &cwd,
+            prior_context_allowed,
+        );
+        host.compose(&prompt)
+    };
 
     ProviderStepState {
         tool_registry,

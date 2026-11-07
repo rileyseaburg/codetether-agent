@@ -34,6 +34,8 @@ pub enum SearchFailure {
     Malformed(String),
     /// A metasearch proxy answered but every upstream engine failed.
     Upstream(String),
+    /// Nonempty results share no meaningful query terms.
+    Unrelated(String),
 }
 
 impl SearchFailure {
@@ -48,6 +50,7 @@ impl SearchFailure {
             Self::HttpStatus { .. } => "WEBSEARCH_HTTP_ERROR",
             Self::Malformed(_) => "WEBSEARCH_MALFORMED_RESPONSE",
             Self::Upstream(_) => "WEBSEARCH_UPSTREAM_UNAVAILABLE",
+            Self::Unrelated(_) => "WEBSEARCH_UNRELATED_RESULTS",
         }
     }
 
@@ -57,6 +60,7 @@ impl SearchFailure {
             Self::Config(text)
             | Self::Transport(text)
             | Self::Malformed(text)
+            | Self::Unrelated(text)
             | Self::Upstream(text) => text.clone(),
             Self::Forbidden { status }
             | Self::RateLimited { status }

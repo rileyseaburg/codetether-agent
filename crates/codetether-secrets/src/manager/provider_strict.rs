@@ -29,7 +29,7 @@ impl SecretsManager {
         let mut result = retry::read_secret_with_retry(client.as_ref(), &self.mount, &path).await;
         if matches!(result.as_ref().err(), Some(error) if Self::should_refresh_vault_token(error)) {
             let refreshed = self
-                .refresh_kubernetes_auth()
+                .refresh_auth(&client)
                 .await
                 .map_err(|_| anyhow!("Vault authentication refresh failed"))?;
             if let Some(client) = refreshed {

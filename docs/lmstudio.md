@@ -37,7 +37,9 @@ codetether-lmstudio
 
 The launcher does not change normal CodeTether defaults. It selects Gemma,
 defaults output to 4096 tokens and tool output to 4096 bytes, and uses the automatic
-small LM Studio schema profile. Other tools remain available via `list_tools`.
+small LM Studio schema profile. `websearch` and `webfetch` are primary tools,
+advertised from the first request without a discovery call. Other tools remain
+available via `list_tools`. Updating the profile requires an updated agent binary.
 
 ## Context safety
 

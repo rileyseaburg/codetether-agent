@@ -12,4 +12,4 @@ mod oauth;
 mod operations;
 mod scope;
 mod storage;
-pub use operations::{access_token, login, logout, status};
+pub use operations::{access_token, login, logout, refresh, status};

@@ -21,7 +21,7 @@ pub fn list_tools_bootstrap_definition() -> ToolDefinition {
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "Optional substring filter over tool names/descriptions"
+                    "description": "Optional substring filter over tool names/descriptions; omit or use \"*\" to list all tools"
                 },
                 "tool": {
                     "type": "string",

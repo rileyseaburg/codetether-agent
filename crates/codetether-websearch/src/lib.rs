@@ -1,7 +1,7 @@
 //! Native web search as an executable tool.
 //!
 //! [WebSearchTool] queries a self-hosted SearXNG JSON API first when
-//! [`SEARXNG_URL_ENV`] is set, then Bing HTML, then DuckDuckGo HTML, stopping
+//! [`SEARXNG_URL_ENV`] is set, then DuckDuckGo HTML, then Bing HTML, stopping
 //! at the first success (override with [`BACKEND_ENV`]). Output keeps the
 //! historical `N. title` / `   URL: ...` / snippet lines and appends one
 //! [`EVIDENCE_PREFIX`] JSON line recorded from the actual HTTP exchange:
@@ -24,8 +24,10 @@ mod construct;
 mod duckduckgo;
 mod execute;
 mod failure;
+mod fallback;
 mod page;
 mod params;
+mod quality;
 mod report;
 mod result;
 mod schema;
@@ -40,6 +42,12 @@ pub use report::EVIDENCE_PREFIX;
 pub use searxng::SEARXNG_URL_ENV;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
+#[cfg(test)]
+mod fallback_tests;
+#[cfg(test)]
+mod quality_tests;
 
+#[cfg(test)]
+mod quality_partial_tests;
 #[cfg(test)]
 mod tests;

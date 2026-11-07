@@ -16,6 +16,16 @@ impl SecretsManager {
     /// # Ok(()) }
     /// ```
     pub async fn from_env() -> Result<Self> {
+        // Explicit workload identity overrides stale desktop tokens, without
+        // silently falling back to a different identity on login failure.
+        if let Some(auth) = super::approle::configured()? {
+            return Self::from_approle(
+                auth,
+                std::env::var("VAULT_MOUNT").ok(),
+                std::env::var("VAULT_SECRETS_PATH").ok(),
+            )
+            .await;
+        }
         if let Some(config) = super::login::configured()? {
             return Self::new(&config).await;
         }

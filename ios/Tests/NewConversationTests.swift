@@ -10,7 +10,11 @@ final class NewConversationTests: XCTestCase {
         let first = UUID().uuidString, second = UUID().uuidString
         var creations = 0
         StubProtocol.handler = { request in
-            if request.httpMethod == "POST" { creations += 1 }
+            if request.httpMethod == "POST" {
+                creations += 1
+                let body = try JSONSerialization.jsonObject(with: RequestBody.data(request)) as? [String: String]
+                XCTAssertEqual(body?["agent"], "chat")
+            }
             let id = creations == 1 ? first : second
             return (200, Data("{\"id\":\"\(id)\",\"messages\":[]}".utf8))
         }

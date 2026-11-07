@@ -1,5 +1,6 @@
 //! Provider storage and manager contracts using localhost-only Vault responses.
 use crate::*;
+mod approle;
 mod failures;
 mod fixture;
 mod global;

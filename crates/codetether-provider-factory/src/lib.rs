@@ -7,6 +7,7 @@ pub mod cerebras;
 pub mod codex;
 mod dispatch;
 pub mod fallback_policy;
+mod groq;
 mod host;
 mod models;
 mod special;
