@@ -4,8 +4,11 @@ use std::path::{Path, PathBuf};
 mod declared;
 mod install;
 #[cfg(test)]
+mod install_order_tests;
+#[cfg(test)]
 mod install_tests;
 mod installer;
+mod managed;
 mod runnable;
 use declared::required_hooks;
 pub use install::install_declared_hooks;
