@@ -53,6 +53,7 @@ impl SecretsManager {
             k8s_auth: Some(Arc::new(auth)),
             approle_auth: None,
             auth_refresh_lock: Arc::default(),
+            token_file: None,
             renewal: Arc::default(),
         }
         .with_renewal())

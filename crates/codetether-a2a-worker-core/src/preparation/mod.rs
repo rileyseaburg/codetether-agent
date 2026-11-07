@@ -3,7 +3,10 @@
 //! [normalize_agent] selects supported agent modes. [prepare_git] configures
 //! the selected checkout using task metadata and optional provenance.
 mod agent;
+mod provenance_hook;
 mod repository;
+#[cfg(test)]
+mod repository_tests;
 pub use agent::normalize_agent;
 pub use repository::prepare_git;
 
