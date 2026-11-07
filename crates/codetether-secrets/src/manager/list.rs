@@ -24,10 +24,10 @@ impl SecretsManager {
         };
 
         let mut result = kv2::list(client.as_ref(), &self.mount, &self.path).await;
-        if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err)) {
-            if let Some(client) = self.refresh_kubernetes_auth().await? {
-                result = kv2::list(client.as_ref(), &self.mount, &self.path).await;
-            }
+        if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err))
+            && let Some(client) = self.refresh_auth().await?
+        {
+            result = kv2::list(client.as_ref(), &self.mount, &self.path).await;
         }
 
         match result {

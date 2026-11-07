@@ -15,6 +15,12 @@ pub(super) async fn handle(
 ) -> (StatusCode, Json<Value>) {
     let method = request.method().to_string();
     let path = request.uri().path().to_string();
+    let token = request
+        .headers()
+        .get("x-vault-token")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default()
+        .to_string();
     if path.ends_with("/lookup-self") {
         return (StatusCode::OK, Json(crate::contract::response::lookup()));
     }
@@ -22,6 +28,7 @@ pub(super) async fn handle(
     let body = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
     let mut state = state.lock().unwrap();
     state.requests.push((method, path, body));
+    state.tokens.push(token);
     let (status, body) = state.replies.pop_front().expect("unexpected Vault request");
     (
         StatusCode::from_u16(status).unwrap(),
