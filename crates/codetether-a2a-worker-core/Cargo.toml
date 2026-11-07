@@ -37,4 +37,5 @@ codetether-session-control = { path = "../codetether-session-control", version =
 codetether-session-metadata = { path = "../codetether-session-metadata", version = "0.1.0" }
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt"] }
+tempfile = "3.25.0"
+tokio = { version = "1", features = ["macros", "rt", "fs", "process"] }

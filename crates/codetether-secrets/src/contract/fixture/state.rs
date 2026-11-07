@@ -6,4 +6,6 @@ use std::collections::VecDeque;
 pub struct Calls {
     pub replies: VecDeque<(u16, Value)>,
     pub requests: Vec<(String, String, Value)>,
+    /// `X-Vault-Token` header sent with each entry in `requests`.
+    pub tokens: Vec<String>,
 }

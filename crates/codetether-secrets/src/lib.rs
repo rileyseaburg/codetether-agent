@@ -14,6 +14,7 @@ mod manager;
 mod provider;
 mod renewal;
 mod retry;
+mod token_file;
 pub use config::VaultConfig;
 pub use global::{
     get_api_key, get_provider_secrets, has_api_key, init_from_manager, init_secrets_manager,

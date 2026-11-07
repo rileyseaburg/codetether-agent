@@ -22,5 +22,6 @@ pub struct SecretsManager {
     pub(crate) mount: String,
     pub(crate) path: String,
     pub(crate) k8s_auth: Option<Arc<KubernetesAuthConfig>>,
+    pub(crate) token_file: Option<Arc<crate::token_file::TokenFileAuth>>,
     pub(crate) renewal: Arc<renewal::Monitor>,
 }
