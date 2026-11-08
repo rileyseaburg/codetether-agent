@@ -5,7 +5,8 @@
 
 use serde_json::{Value, json};
 
-use codetether_provider_core::{CompletionRequest, ToolDefinition};
+use super::sse_tools::tools_json;
+use codetether_provider_core::CompletionRequest;
 
 use super::OpenAIProvider;
 use super::alias;
@@ -41,22 +42,9 @@ impl OpenAIProvider {
             };
             body[key] = json!(max);
         }
+        if self.provider_name == "groq" {
+            super::groq::streaming_options(&mut body, request);
+        }
         body
     }
-}
-
-fn tools_json(tools: &[ToolDefinition]) -> Vec<Value> {
-    tools
-        .iter()
-        .map(|t| {
-            json!({
-                "type": "function",
-                "function": {
-                    "name": t.name,
-                    "description": t.description,
-                    "parameters": t.parameters,
-                }
-            })
-        })
-        .collect()
 }

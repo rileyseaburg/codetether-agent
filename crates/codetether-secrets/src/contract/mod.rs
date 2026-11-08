@@ -1,4 +1,6 @@
 //! Provider storage and manager contracts using localhost-only Vault responses.
+use crate::*;
+mod approle;
 mod failures;
 mod fixture;
 mod global;
@@ -7,5 +9,6 @@ mod reads;
 mod response;
 mod retry;
 mod serialization;
+mod strict_reads;
 mod token_file;
 mod writes;

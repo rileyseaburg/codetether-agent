@@ -10,7 +10,7 @@ pub const BACKEND_ENV: &str = "CODETETHER_WEBSEARCH_BACKEND";
 /// # Examples
 /// ```rust
 /// use codetether_websearch::{Backend, backend_order};
-/// assert_eq!(backend_order(None, false).unwrap(), vec![Backend::Bing, Backend::DuckDuckGo]);
+/// assert_eq!(backend_order(None, false).unwrap(), vec![Backend::DuckDuckGo, Backend::Bing]);
 /// assert_eq!(backend_order(None, true).unwrap()[0], Backend::SearXng);
 /// assert_eq!(backend_order(Some("bing"), true).unwrap(), vec![Backend::Bing]);
 /// assert!(backend_order(Some("altavista"), false).is_err());
@@ -69,7 +69,7 @@ impl Backend {
 /// Resolve the ordered backend list from a [`BACKEND_ENV`] value.
 ///
 /// `auto` tries SearXNG first when `searxng_configured` (i.e.
-/// [`crate::SEARXNG_URL_ENV`] is set), then Bing, then DuckDuckGo, stopping
+/// [`crate::SEARXNG_URL_ENV`] is set), then DuckDuckGo, then Bing, stopping
 /// at the first success. Explicit values never fall back. Every attempt is
 /// recorded in the search evidence line.
 ///
@@ -80,8 +80,8 @@ pub fn backend_order(
     searxng_configured: bool,
 ) -> Result<Vec<Backend>, SearchFailure> {
     let auto = match searxng_configured {
-        true => vec![Backend::SearXng, Backend::Bing, Backend::DuckDuckGo],
-        false => vec![Backend::Bing, Backend::DuckDuckGo],
+        true => vec![Backend::SearXng, Backend::DuckDuckGo, Backend::Bing],
+        false => vec![Backend::DuckDuckGo, Backend::Bing],
     };
     match value.map(|v| v.trim().to_ascii_lowercase()).as_deref() {
         None | Some("" | "auto") => Ok(auto),

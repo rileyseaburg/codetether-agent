@@ -13,6 +13,10 @@ mod conversions;
 mod debug;
 mod discovery;
 mod embedding;
+mod groq;
+mod groq_limits;
+mod groq_models;
+mod groq_roles;
 mod implementation;
 mod listing;
 mod lmstudio;
@@ -36,7 +40,9 @@ mod sse_tests;
 mod sse_tool;
 #[cfg(test)]
 mod sse_tool_tests;
+mod sse_tools;
 mod sse_types;
+mod sse_usage;
 mod streaming;
 #[cfg(test)]
 mod tests;

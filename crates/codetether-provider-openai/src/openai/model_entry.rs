@@ -42,7 +42,8 @@ impl OpenAIProvider {
             max_output_tokens: value_to_usize(
                 entry
                     .pointer("/limits/max_output_tokens")
-                    .or_else(|| entry.get("max_output_tokens")),
+                    .or_else(|| entry.get("max_output_tokens"))
+                    .or_else(|| entry.get("max_completion_tokens")),
             ),
             supports_vision: detect_vision(entry),
             supports_tools: flag(entry, "supports_tools"),

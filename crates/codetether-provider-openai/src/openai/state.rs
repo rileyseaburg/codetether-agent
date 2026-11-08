@@ -10,6 +10,7 @@ use super::*;
 /// assert!(format!("{client:?}").contains("OpenAIProvider"));
 /// ```
 pub struct OpenAIProvider {
+    pub(super) groq_models: tokio::sync::OnceCell<Vec<ModelInfo>>,
     pub(super) client: Client<OpenAIConfig>,
     pub(super) provider_name: String,
     pub(super) api_key: Option<String>,

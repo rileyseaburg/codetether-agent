@@ -24,13 +24,18 @@ impl OpenAIProvider {
             req_builder.top_p(top_p);
         }
         if let Some(max) = request.max_tokens {
-            if self.provider_name == "openai" {
+            if matches!(self.provider_name.as_str(), "openai" | "groq") {
                 req_builder.max_completion_tokens(max as u32);
             } else {
                 req_builder.max_tokens(max as u32);
             }
         }
 
+        if self.provider_name == "groq" && !request.stop.is_empty() {
+            req_builder.stop(async_openai::types::chat::StopConfiguration::StringArray(
+                request.stop.clone(),
+            ));
+        }
         Ok(req_builder.build()?)
     }
 }

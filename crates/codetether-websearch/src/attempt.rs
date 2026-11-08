@@ -45,7 +45,9 @@ impl WebSearchTool {
             Ok(page) => Attempt {
                 backend,
                 status: Some(page.status),
-                outcome: backend.parse(page.status, &page.body, max),
+                outcome: backend
+                    .parse(page.status, &page.body, max)
+                    .and_then(|results| crate::quality::check(query, results)),
                 request_id: page.request_id,
             },
         }

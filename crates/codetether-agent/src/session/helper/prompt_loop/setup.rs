@@ -5,6 +5,7 @@ use crate::session::{Session, SessionEvent};
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::mpsc;
+mod general_chat;
 mod host;
 struct Native<'a> {
     session: &'a mut Session,
@@ -19,6 +20,7 @@ pub(crate) async fn initialize<'a>(
     events: Option<mpsc::Sender<SessionEvent>>,
     registry: Arc<ProviderRegistry>,
 ) -> Result<Runner<'a>> {
+    general_chat::prepare(session)?;
     let parts = codetether_prompt_loop::setup::initialize(&mut Native {
         session,
         events: events.as_ref(),

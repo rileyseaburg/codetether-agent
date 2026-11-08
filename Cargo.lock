@@ -1291,7 +1291,7 @@ dependencies = [
 
 [[package]]
 name = "codetether-agent"
-version = "4.7.6-dev.65"
+version = "4.7.6-dev.71"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2565,6 +2565,7 @@ dependencies = [
  "codetether-bedrock-auth-cli",
  "codetether-cookie-auth-cli",
  "codetether-device-auth",
+ "codetether-monarch-auth",
  "codetether-oauth-callback",
  "codetether-provider-codex",
  "codetether-provider-copilot",
@@ -5401,6 +5402,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "codetether-monarch"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "codetether-monarch-auth",
+ "codetether-tool-core",
+ "futures",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "codetether-monarch-auth"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.23.1",
+ "codetether-secrets",
+ "directories 6.0.0",
+ "fs2",
+ "rand 0.8.8",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "subtle",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "codetether-morph-backend"
 version = "0.1.0"
 dependencies = [
@@ -6145,6 +6180,7 @@ version = "0.1.0"
 dependencies = [
  "codetether-application-registry",
  "codetether-bus-core",
+ "codetether-monarch",
  "codetether-native-providers",
  "codetether-native-runtime-policy",
  "codetether-native-search",

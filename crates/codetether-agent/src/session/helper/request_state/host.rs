@@ -10,6 +10,9 @@ pub(super) struct NativeHost<'a> {
 }
 impl codetether_request_preparation::Host for NativeHost<'_> {
     type Registry = ToolRegistry;
+    fn general_chat(&self) -> bool {
+        codetether_request_preparation::general_chat::enabled(&self.session.agent)
+    }
     fn context(&self) -> (std::path::PathBuf, bool, bool) {
         super::session_context::resolve(self.session)
     }

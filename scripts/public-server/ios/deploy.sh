@@ -11,6 +11,14 @@ SHA="${5:?Trusted IPA checksum required}"
 RELEASE="$(node --input-type=module -e \
   'const {releaseConfig}=await import(process.argv[1]);const c=releaseConfig(...process.argv.slice(2));console.log(`${c.version}-${c.build}`)' \
   "$ROOT/ios/scripts/release-config.mjs" "$VERSION" "$BUILD" "$SHA")"
+# Preserve another app's homepage when publishing a versioned release.
+# Example: CODETETHER_IOS_HOMEPAGE_RELEASE=1.5.1-25 bash deploy.sh assets evidence 1.0.0 42 "$SHA"
+HOMEPAGE="${CODETETHER_IOS_HOMEPAGE_RELEASE:-$RELEASE}"
+if [[ ! "$HOMEPAGE" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[1-9][0-9]*$ ]] ||
+   [[ "$HOMEPAGE" != "$RELEASE" && ! -f "$HOME/.local/share/codetether-ios/releases/$HOMEPAGE/index.html" ]]; then
+  echo 'Invalid or unpublished installer homepage release' >&2
+  exit 1
+fi
 mkdir -p "$EVIDENCE"
 export VAULT_TOKEN="${VAULT_TOKEN:-$(cat "$HOME/.config/vault-agent/token")}"
 node "$ROOT/ios/scripts/scan-secrets.mjs" "$ASSETS" > "$EVIDENCE/secret-audit.txt"
@@ -24,7 +32,7 @@ for file in CodeTether.ipa manifest.plist index.html release.json SHA256SUMS; do
   install -m 644 "$ASSETS/$file" "$DEST/$file"
 done
 sed -e "s|@NODE@|$(command -v node)|g" -e "s|@ROOT@|$HERE|g" \
-  -e "s|@RELEASE@|$RELEASE|g" \
+  -e "s|@RELEASE@|$HOMEPAGE|g" \
   "$HERE/codetether-ios-download.service" > "$HOME/.config/systemd/user/codetether-ios-download.service"
 systemctl --user daemon-reload
 systemctl --user restart codetether-ios-download.service

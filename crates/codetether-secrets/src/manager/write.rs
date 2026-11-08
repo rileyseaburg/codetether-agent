@@ -31,7 +31,7 @@ impl SecretsManager {
         let secret_path = format!("{}/{}", self.path, provider_id);
         let mut result = kv2::set(client.as_ref(), &self.mount, &secret_path, secrets).await;
         if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err))
-            && let Some(client) = self.refresh_auth().await?
+            && let Some(client) = self.refresh_auth(&client).await?
         {
             result = kv2::set(client.as_ref(), &self.mount, &secret_path, secrets).await;
         }

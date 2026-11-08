@@ -6,6 +6,7 @@ impl<C: Catalog> codetether_application_registry::Application for Application<C>
     type Providers = ProviderRegistry;
     fn populate(registry: &mut ToolRegistry<Self>, provider: Option<(Arc<dyn Provider>, String)>) {
         C::populate(registry, provider);
+        registry.register(Arc::new(codetether_monarch::MonarchTool));
     }
     fn register_search(registry: &mut ToolRegistry<Self>, providers: Arc<ProviderRegistry>) {
         registry.register(Arc::new(SearchTool::new(providers)));

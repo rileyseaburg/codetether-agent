@@ -8,6 +8,7 @@ mod catalog;
 #[path = "selection.rs"]
 mod selection;
 
+mod lmstudio;
 use codetether_provider_core::ToolDefinition;
 
 /// Returns whether an explicitly requested compact profile is active.
@@ -57,22 +58,7 @@ pub fn apply_for_provider(definitions: Vec<ToolDefinition>, provider: &str) -> V
         if provider == "lmstudio" {
             // Keep startup schemas small; list_tools can promote specialists
             // without removing them from the executable registry.
-            let local = definitions
-                .into_iter()
-                .filter(|tool| {
-                    matches!(
-                        tool.name.as_str(),
-                        "read"
-                            | "list"
-                            | "exec_command"
-                            | "write_stdin"
-                            | "apply_patch"
-                            | "get_goal"
-                            | "session_task"
-                            | "question"
-                    )
-                })
-                .collect();
+            let local = lmstudio::retain_tools(definitions);
             return catalog::sort(local);
         }
         return catalog::sort(catalog::retain_discovery_tools(definitions));

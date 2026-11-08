@@ -33,7 +33,13 @@ pub(super) fn drain_lines(
         let Ok(parsed) = serde_json::from_str::<SseResponse>(data) else {
             continue;
         };
-        if let Some(u) = &parsed.usage {
+        let reported_usage = parsed.usage.as_ref().or_else(|| {
+            parsed
+                .x_groq
+                .as_ref()
+                .and_then(|metadata| metadata.usage.as_ref())
+        });
+        if let Some(u) = reported_usage {
             *usage = Some(to_usage(u));
         }
         out.extend(frame_chunks(&parsed, produced, ids));

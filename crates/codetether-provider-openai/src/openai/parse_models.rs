@@ -13,7 +13,16 @@ impl OpenAIProvider {
             .and_then(Value::as_array)
             .into_iter()
             .flatten()
-            .filter_map(|entry| Self::model_info_from_api_entry(entry, provider_name))
+            .filter_map(|entry| {
+                if provider_name == "groq" && !super::groq_models::is_chat(entry) {
+                    return None;
+                }
+                let mut model = Self::model_info_from_api_entry(entry, provider_name)?;
+                if provider_name == "groq" && model.id.starts_with("groq/compound") {
+                    model.supports_tools = false;
+                }
+                Some(model)
+            })
             .collect()
     }
 }

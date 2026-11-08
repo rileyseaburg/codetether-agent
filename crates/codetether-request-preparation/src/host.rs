@@ -10,6 +10,10 @@ use std::{
 pub trait Host {
     /// Application-owned executable registry type.
     type Registry;
+    /// Select project-neutral conversation instead of repository work.
+    fn general_chat(&self) -> bool {
+        false
+    }
     /// Workspace, prior-context permission and autonomous-session flag.
     fn context(&self) -> (PathBuf, bool, bool);
     /// Construct a workspace-scoped registry with the supplied permissions.

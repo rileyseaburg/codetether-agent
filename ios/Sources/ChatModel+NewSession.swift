@@ -2,7 +2,7 @@ import Foundation
 
 /// Create one server session per conversation; stale responses cannot replace its ID.
 extension ChatModel {
-    private struct CreateSession: Encodable { let title: String; let agent = "build" }
+    private struct CreateSession: Encodable { let title: String; let agent = "chat" }
 
     func ensureSession(token: String, title: String) async throws -> String {
         if let sessionID { return sessionID }

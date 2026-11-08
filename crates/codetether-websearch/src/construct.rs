@@ -1,6 +1,6 @@
 //! construct for web search.
 use super::*;
-/// Search the web through SearXNG (when configured), Bing HTML, then DuckDuckGo HTML.
+/// Search through SearXNG (when configured), DuckDuckGo HTML, then Bing HTML.
 ///
 /// # Examples
 /// ```rust

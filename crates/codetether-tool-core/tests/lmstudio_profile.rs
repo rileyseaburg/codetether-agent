@@ -9,6 +9,8 @@ fn automatic_lmstudio_profile_keeps_basics_and_full_is_explicit() {
         "read",
         "get_goal",
         "session_task",
+        "websearch",
+        "webfetch",
         "browserctl",
         "image_gen",
         "exec_command",
@@ -22,7 +24,17 @@ fn automatic_lmstudio_profile_keeps_basics_and_full_is_explicit() {
     .collect();
     let selected = codetether_tool_core::profile::apply_for_provider(tools.clone(), "lmstudio");
     let names: Vec<_> = selected.iter().map(|tool| tool.name.as_str()).collect();
-    assert_eq!(names, ["exec_command", "get_goal", "read", "session_task"]);
+    assert_eq!(
+        names,
+        [
+            "exec_command",
+            "get_goal",
+            "read",
+            "session_task",
+            "webfetch",
+            "websearch"
+        ]
+    );
     unsafe { std::env::set_var("CODETETHER_TOOL_PROFILE", "full") };
     assert_eq!(
         codetether_tool_core::profile::apply_for_provider(tools.clone(), "lmstudio").len(),

@@ -15,6 +15,7 @@ fn definition(name: &str) -> ToolDefinition {
 #[test]
 fn compact_catalog_keeps_core_and_mcp_tools_without_edit_aliases() {
     let names = [
+        "monarch",
         "write",
         "mcp:issues",
         "apply_patch",
@@ -33,6 +34,7 @@ fn compact_catalog_keeps_core_and_mcp_tools_without_edit_aliases() {
     assert_eq!(
         retained,
         [
+            "monarch",
             "mcp:issues",
             "apply_patch",
             "exec_command",

@@ -14,15 +14,9 @@ impl WebSearchTool {
             Err(failure) => return Ok(report::config_error(&p.query, &failure)),
         };
         let max = p.max_results.clamp(1, 20);
-        let mut attempts = Vec::with_capacity(order.len());
-        for backend in order {
-            let attempt = self.attempt(backend, &p.query, max).await;
-            let done = attempt.outcome.is_ok();
-            attempts.push(attempt);
-            if done {
-                break;
-            }
-        }
-        Ok(report::render(&p.query, &attempts))
+        Ok(crate::fallback::search(&p.query, order, |backend| {
+            self.attempt(backend, &p.query, max)
+        })
+        .await)
     }
 }

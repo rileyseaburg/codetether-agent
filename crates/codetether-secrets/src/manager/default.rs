@@ -13,6 +13,8 @@ impl Default for SecretsManager {
             mount: "secret".to_string(),
             path: "codetether/providers".to_string(),
             k8s_auth: None,
+            approle_auth: None,
+            auth_refresh_lock: Arc::default(),
             token_file: None,
             renewal: Arc::default(),
         }

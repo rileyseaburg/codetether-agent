@@ -31,9 +31,9 @@ async fn lmstudio_caps_output_for_completion_and_streaming() {
     assert!(matches!(chunks.last(), Some(StreamChunk::Done { .. })));
     let calls = server.join().unwrap();
     assert_eq!(calls[0].path, "/api/v0/models");
-    assert_eq!(calls[1].body["max_tokens"], 1024);
+    assert_eq!(calls[1].body["max_tokens"], 1152);
     assert_eq!(calls[2].path, "/api/v0/models");
-    assert_eq!(calls[3].body["max_tokens"], 1024);
+    assert_eq!(calls[3].body["max_tokens"], 1152);
 }
 
 #[tokio::test]

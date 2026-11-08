@@ -6,7 +6,7 @@ pub(super) fn list(tools: &[ToolDefinition], tool_input: &Value) -> String {
         .get("query")
         .and_then(Value::as_str)
         .map(str::trim)
-        .filter(|s| !s.is_empty())
+        .filter(|s| !s.is_empty() && *s != "*")
         .map(|s| s.to_ascii_lowercase());
 
     let mut listed: Vec<Value> = tools
@@ -36,8 +36,11 @@ pub(super) fn list(tools: &[ToolDefinition], tool_input: &Value) -> String {
     serde_json::to_string_pretty(&json!({
         "mode": "list",
         "count": listed.len(),
+        "total_count": tools.len(),
+        "filtered": query.is_some(),
+        "query": query,
         "tools": listed,
-        "hint": "Call list_tools with {\"tool\":\"<name>\"} to fetch full parameter schema for one tool."
+        "hint": "Omit query or use \"*\" to list all tools. Call list_tools with {\"tool\":\"<name>\"} to fetch full parameter schema for one tool."
     }))
     .unwrap_or_else(|_| "{\"mode\":\"list\",\"error\":\"serialization_failed\"}".to_string())
 }

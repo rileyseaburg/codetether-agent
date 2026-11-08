@@ -51,6 +51,8 @@ impl SecretsManager {
             mount: kv_mount.unwrap_or("secret").to_string(),
             path: kv_path.unwrap_or("codetether/providers").to_string(),
             k8s_auth: Some(Arc::new(auth)),
+            approle_auth: None,
+            auth_refresh_lock: Arc::default(),
             token_file: None,
             renewal: Arc::default(),
         }

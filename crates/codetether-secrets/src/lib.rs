@@ -4,6 +4,7 @@
 //! selects an explicit connection; [`login`] resolves saved login profiles.
 //! Register a manager with [`init_from_manager`] to use the global helpers.
 
+mod approle;
 mod auth_refresh;
 mod config;
 mod environment;

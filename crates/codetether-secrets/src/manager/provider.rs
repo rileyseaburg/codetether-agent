@@ -28,7 +28,7 @@ impl SecretsManager {
         let mut result =
             retry::read_secret_with_retry(client.as_ref(), &self.mount, &secret_path).await;
         if matches!(result.as_ref().err(), Some(err) if Self::should_refresh_vault_token(err))
-            && let Some(client) = self.refresh_auth().await?
+            && let Some(client) = self.refresh_auth(&client).await?
         {
             result =
                 retry::read_secret_with_retry(client.as_ref(), &self.mount, &secret_path).await;

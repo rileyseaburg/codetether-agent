@@ -9,6 +9,15 @@ pub(crate) fn dispatch_openai_compat(
     pid: &str,
 ) -> Option<Arc<dyn Provider>> {
     use crate::openai;
+    if pid == "groq" {
+        return match crate::groq::provider(key, secrets.base_url.as_deref()) {
+            Ok(provider) => Some(provider),
+            Err(error) => {
+                tracing::warn!(provider = pid, %error, "Could not initialize provider");
+                None
+            }
+        };
+    }
     if let Some(url) = &secrets.base_url {
         match openai::OpenAIProvider::with_base_url(key.into(), url.clone(), pid) {
             Ok(p) => return Some(Arc::new(p)),

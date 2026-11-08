@@ -15,6 +15,7 @@ impl OpenAIProvider {
         let config = OpenAIConfig::new().with_api_key(api_key.clone());
         let api_base = "https://api.openai.com/v1".to_string();
         Ok(Self {
+            groq_models: tokio::sync::OnceCell::new(),
             client: Client::with_config(config),
             provider_name: "openai".to_string(),
             api_key: Some(api_key),
@@ -55,6 +56,7 @@ impl OpenAIProvider {
             .with_api_base(base_url.clone());
         let api_base = base_url.trim_end_matches('/').to_string();
         Ok(Self {
+            groq_models: tokio::sync::OnceCell::new(),
             client: Client::with_config(config),
             provider_name: provider_name.to_string(),
             api_key,

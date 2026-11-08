@@ -1,0 +1,48 @@
+name: LM Studio candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feat/lmstudio-budget-queue']
+concurrency:
+  group: lmstudio-candidate
+  cancel-in-progress: false
+jobs:
+  linux:
+    runs-on: codetether-release-proxmox
+    timeout-minutes: 120
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_TARGET_DIR: target
+      RUSTFLAGS: -C link-arg=-fuse-ld=mold
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          github-server-url: https://forgejo.quantum-forge.io
+      - name: Prepare Rust and native dependencies
+        run: bash script/forgejo/release-setup.sh x86_64-unknown-linux-gnu
+      - uses: ./.forgejo/actions/setup-ci-cache
+      - name: Restore existing Linux cache
+        run: |
+          bash scripts/ci/cargo-cache.sh restore cargo-home "cargo-home-v1-${{ hashFiles('Cargo.lock') }}"
+          bash scripts/ci/cargo-cache.sh restore target "cargo-target-x86_64-unknown-linux-gnu-v1-${{ hashFiles('Cargo.lock') }}"
+      - uses: https://github.com/actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Focused checks and candidate build
+        run: |
+          cargo +1.95.0 fmt -p codetether-provider-openai --check
+          cargo +1.95.0 test --locked -p codetether-provider-openai
+          node --test scripts/lmstudio-jobs/*.test.mjs
+          cargo +1.95.0 build --locked --release --target x86_64-unknown-linux-gnu -p codetether-agent --bin codetether
+      - name: Record candidate identity without publishing a release
+        run: |
+          mkdir -p dist
+          cp target/x86_64-unknown-linux-gnu/release/codetether dist/codetether
+          git rev-parse HEAD > dist/source-commit.txt
+          dist/codetether --version > dist/version.txt
+          (cd dist && sha256sum codetether > SHA256SUMS)
+      - uses: https://code.forgejo.org/actions/upload-artifact@v3
+        with:
+          name: lmstudio-linux-candidate
+          path: dist/
+          if-no-files-found: error

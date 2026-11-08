@@ -6,6 +6,8 @@
 mod apply_to;
 mod build;
 mod capabilities;
+/// Project-neutral context and prompts for the chat application.
+pub mod general_chat;
 mod host;
 mod prompt;
 mod state;

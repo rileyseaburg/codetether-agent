@@ -10,6 +10,7 @@ mod kubernetes;
 mod kubernetes_login;
 mod list;
 mod provider;
+mod provider_strict;
 mod reachable;
 mod state;
 mod write;

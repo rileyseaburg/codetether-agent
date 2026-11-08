@@ -21,6 +21,7 @@ fn provider(url: String) -> OpenAIProvider {
 }
 
 mod discovery;
+mod live;
 mod overflow;
 mod requests;
 mod tool_stream;

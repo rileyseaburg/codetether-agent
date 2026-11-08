@@ -78,7 +78,7 @@ fn backend_order_prefers_searxng_only_when_configured() {
     use crate::backend_order;
     assert_eq!(
         backend_order(Some("auto"), true).unwrap(),
-        vec![Backend::SearXng, Backend::Bing, Backend::DuckDuckGo]
+        vec![Backend::SearXng, Backend::DuckDuckGo, Backend::Bing]
     );
     assert_eq!(
         backend_order(Some("searxng"), false).unwrap(),

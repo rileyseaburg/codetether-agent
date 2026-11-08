@@ -1,0 +1,21 @@
+[package]
+name = "codetether-monarch"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Official Monarch read-only OAuth MCP connector"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+codetether-monarch-auth = { path = "../codetether-monarch-auth", version = "0.1.0" }
+codetether-tool-core = { path = "../codetether-tool-core", version = "0.1.0" }
+reqwest = { version = "0.13.2", default-features = false, features = ["rustls", "json", "stream"] }
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["time"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util"] }
