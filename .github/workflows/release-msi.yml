@@ -31,7 +31,7 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           cp "incoming/codetether-v$RELEASE_VERSION-x86_64-pc-windows-msvc.exe" dist/codetether.exe
-          python3 script/build-windows-msi.py
+          python3 scripts/build-windows-msi.py
           cp dist/codetether-windows.msi "dist/codetether-v$RELEASE_VERSION-x86_64-pc-windows-msvc.msi"
       - uses: actions/upload-artifact@v4
         with:

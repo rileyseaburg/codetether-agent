@@ -22,7 +22,11 @@ coordination boundary. Different databases have independent workers.
 - Replies follow transaction commit. Open transactions are rolled back on an
   operation error or panic; returning success with an open transaction is rejected.
 - Cooperating processes use `sessions.sqlite3.writer.lock` to serialize their
-  operations. A five-second lock timeout returns `SESSION_WRITER_BUSY`.
+  operations. A thirty-second lock timeout returns `SESSION_WRITER_BUSY`; waits
+  beyond five seconds are logged as contention. Durable commits on a slow disk
+  can hold the lock for seconds each and run back to back across processes.
+- Cursor polling (`consumer::next`, `consumer::start_at_tail`) checks for an
+  existing cursor row with a reader and submits a write only when it is missing.
 - Reads check the current database schema, queuing initialization only when an
   upgrade is needed. Current-schema reads use independent WAL connections without
   waiting for queued writes. `synchronous=FULL` remains enabled.

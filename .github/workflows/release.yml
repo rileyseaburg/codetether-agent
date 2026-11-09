@@ -72,7 +72,7 @@ jobs:
           token: ${{ secrets.RELEASE_PAT || github.token }}
 
       - name: Verify version calculator
-        run: ./script/tests/release-version.sh
+        run: ./scripts/tests/release-version.sh
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -100,7 +100,7 @@ jobs:
             # Force current==next so all bump/commit/tag steps are skipped.
             current="${next}"
           else
-            next="$(./script/release-version.sh \
+            next="$(./scripts/release-version.sh \
               "${current}" "${INPUT_BUMP}" "${INPUT_VERSION_OVERRIDE}")"
           fi
           tag="v${next}"
@@ -260,7 +260,7 @@ jobs:
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           $asset = "codetether-v${{ needs.prepare.outputs.version }}-${{ matrix.target }}"
           Copy-Item "target\\${{ matrix.target }}\\release\\${{ matrix.binary }}" "dist\\$asset.exe"
-          python script/package-windows-bundle.py --binary "dist/$asset.exe" --archive "dist/$asset.zip" --staging build/windows-bundle
+          python scripts/package-windows-bundle.py --binary "dist/$asset.exe" --archive "dist/$asset.zip" --staging build/windows-bundle
           if ($LASTEXITCODE -ne 0) { throw 'Windows setup bundle creation failed' }
 
       - name: Upload platform artifacts

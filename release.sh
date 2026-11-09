@@ -20,7 +20,7 @@ cd "$SCRIPT_DIR"
 MANIFEST="crates/codetether-agent/Cargo.toml"
 [[ -f "$MANIFEST" ]] || MANIFEST="Cargo.toml"
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-CARGO_CMD="${CODETETHER_CARGO_CMD:-$SCRIPT_DIR/script/cargo-sccache.sh}"
+CARGO_CMD="${CODETETHER_CARGO_CMD:-$SCRIPT_DIR/scripts/cargo-sccache.sh}"
 # Tests share process-wide environment, approval stores, and session registries.
 # Keep every test in the release gate, but do not race those global resources.
 VERIFY_CMD="${CODETETHER_RELEASE_VERIFY_CMD:-$CARGO_CMD test --quiet --lib --tests -- --test-threads=1}"
@@ -154,7 +154,7 @@ if ! bash -lc "$VERIFY_CMD"; then
     exit 1
 fi
 
-"$SCRIPT_DIR/script/install-release-binary.sh" "$CARGO_CMD"
+"$SCRIPT_DIR/scripts/install-release-binary.sh" "$CARGO_CMD"
 git add -- "$MANIFEST" Cargo.lock
 git commit -m "chore: bump version to $new_version"
 git push origin "$CURRENT_BRANCH"

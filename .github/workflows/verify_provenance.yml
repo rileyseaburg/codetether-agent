@@ -11,5 +11,5 @@ jobs:
           fetch-depth: 0
       - name: Verify provenance trailers
         run: |
-          chmod +x script/verify_pr.sh
-          ./script/verify_pr.sh origin/${{ github.base_ref }}..HEAD
+          chmod +x scripts/verify_pr.sh
+          ./scripts/verify_pr.sh origin/${{ github.base_ref }}..HEAD

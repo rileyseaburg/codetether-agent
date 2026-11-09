@@ -32,6 +32,10 @@ pub fn start_at_tail(
     );
     let tail = i64::try_from(tail)?;
     let alignment = i64::try_from(alignment)?;
+    // An existing cursor needs no write; skip the cross-process writer lock.
+    if crate::cursor_prepare::exists(path, id, name)? {
+        return Ok(());
+    }
     let id = id.to_owned();
     let name = name.to_owned();
     crate::coordinator::write(path, move |db| {

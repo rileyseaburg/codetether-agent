@@ -31,7 +31,7 @@ composition crate; domain implementations retain their existing owning crates.
    should remain valid when tests move alongside the application source.
 5. Update Docker's `COPY src ./src`, release-version readers, development
    version scripts, install paths, and source-audit roots. Relevant readers
-   include `release.sh`, `script/{bump,set}-dev-version.sh`, and the release
+   include `release.sh`, `scripts/{bump,set}-dev-version.sh`, and the release
    metadata/macOS workflows. Preserve their existing version-update semantics.
 6. Verify every moved source against its prior content; inspect workspace
    membership, dependency targets, target discovery, include paths, and all
@@ -40,7 +40,7 @@ composition crate; domain implementations retain their existing owning crates.
 
 ## Static-check prerequisites implemented
 
-`script/architecture/application_layout.mjs` identifies exactly one application
+`scripts/architecture/application_layout.mjs` identifies exactly one application
 package at either supported location and rejects ambiguous or missing layouts.
 The declaration audit uses its source root. The file-size ratchet checks both
 locations and carries a moved file's original baseline forward only when the

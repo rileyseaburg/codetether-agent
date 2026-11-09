@@ -15,7 +15,7 @@ pub enum CoordinationError {
     Stopped,
     /// Registry synchronization was poisoned.
     RegistryPoisoned,
-    /// Another process retained the writer lock beyond five seconds.
+    /// Other processes retained the writer lock beyond thirty seconds.
     Busy,
     /// An operation panicked; its transaction was unwound, not acknowledged.
     Panicked,

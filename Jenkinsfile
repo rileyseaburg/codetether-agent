@@ -141,7 +141,7 @@ pipeline {
                         set +x
                         printf '%s\n' "${MAC_PASS}" | sshpass -e ssh ${MAC_SSH_OPTS} \
                             "${MAC_HOST_ADDR}" \
-                            'IFS= read -r MAC_KEYCHAIN_PASS; export MAC_KEYCHAIN_PASS; cd /tmp/codetether-build; exec ./script/macos-release-build.sh'
+                            'IFS= read -r MAC_KEYCHAIN_PASS; export MAC_KEYCHAIN_PASS; cd /tmp/codetether-build; exec ./scripts/macos-release-build.sh'
                         set -x
 
                         # Fetch artifacts back
@@ -274,7 +274,7 @@ pipeline {
                             # ('ld' not found), so the local verify recompile of
                             # the packaged tarball fails. crates.io verifies the
                             # tarball server-side on upload, so this is safe.
-                            if ! bash -o pipefail -c './script/cargo-sccache.sh publish --no-verify 2>&1 | tee /tmp/cargo-publish.log'; then
+                            if ! bash -o pipefail -c './scripts/cargo-sccache.sh publish --no-verify 2>&1 | tee /tmp/cargo-publish.log'; then
                                 package_version="${VERSION#v}"
                                 if cargo info "codetether-agent@${package_version}" >/dev/null 2>&1; then
                                     echo "Crate codetether-agent ${package_version} already exists; continuing."

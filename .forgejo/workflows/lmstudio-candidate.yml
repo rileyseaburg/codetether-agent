@@ -19,7 +19,7 @@ jobs:
         with:
           github-server-url: https://forgejo.quantum-forge.io
       - name: Prepare Rust and native dependencies
-        run: bash script/forgejo/release-setup.sh x86_64-unknown-linux-gnu
+        run: bash scripts/forgejo/release-setup.sh x86_64-unknown-linux-gnu
       - uses: ./.forgejo/actions/setup-ci-cache
       - name: Restore existing Linux cache
         run: |

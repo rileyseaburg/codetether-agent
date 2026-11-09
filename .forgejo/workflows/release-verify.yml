@@ -22,7 +22,7 @@ jobs:
         with:
           github-server-url: https://forgejo.quantum-forge.io
       - name: Prepare Rust and native dependencies
-        run: bash script/forgejo/release-setup.sh x86_64-unknown-linux-gnu
+        run: bash scripts/forgejo/release-setup.sh x86_64-unknown-linux-gnu
       - name: Set up CI cache
         uses: ./.forgejo/actions/setup-ci-cache
       - name: Restore cargo caches
@@ -40,12 +40,12 @@ jobs:
           mkdir -p artifacts/forgejo-verification
           export CODETETHER_MDNS_PROOF_DIR="$PWD/artifacts/forgejo-verification/mdns"
           cargo +1.95.0 fmt --check
-          bash script/tests/release-version.sh
-          bash script/tests/release-verification.sh
-          bash script/tests/windows-docker-cache.sh
-          bash script/tests/windows-release-config.sh
-          bash script/tests/release-runner-routing.sh
-          bash script/tests/unix_installer/native.sh "$PWD/artifacts/forgejo-verification/unix-installer"
+          bash scripts/tests/release-version.sh
+          bash scripts/tests/release-verification.sh
+          bash scripts/tests/windows-docker-cache.sh
+          bash scripts/tests/windows-release-config.sh
+          bash scripts/tests/release-runner-routing.sh
+          bash scripts/tests/unix_installer/native.sh "$PWD/artifacts/forgejo-verification/unix-installer"
           cargo +1.95.0 clippy --locked --lib --no-deps
           cargo +1.95.0 test --locked --lib --tests --no-fail-fast -- --test-threads=1 2>&1 | tee artifacts/forgejo-verification/tests.log
       - name: Save cargo caches

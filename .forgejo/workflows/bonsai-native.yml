@@ -27,11 +27,11 @@ jobs:
         with:
           github-server-url: https://forgejo.quantum-forge.io
       - name: Prepare pinned Forgejo artifact action
-        run: bash script/forgejo/bonsai-artifact-action.sh
+        run: bash scripts/forgejo/bonsai-artifact-action.sh
       - name: Prepare remote CUDA build environment
-        run: bash script/forgejo/bonsai-setup.sh
+        run: bash scripts/forgejo/bonsai-setup.sh
       - name: Compile and exercise native CPU reference tests
-        run: bash script/forgejo/bonsai-build.sh
+        run: bash scripts/forgejo/bonsai-build.sh
       - name: Preserve compiler and test evidence
         if: always()
         uses: ./.ci-actions/upload-artifact

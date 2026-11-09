@@ -52,7 +52,7 @@ used the older adapter; it does not validate the new dedicated provider.
 ## Use only after the native build and parity gates succeed
 
 ```sh
-. script/bonsai-candle-env.sh
+. scripts/bonsai-candle-env.sh
 codetether models --provider bonsai
 codetether bonsai --prompt "Reply with exactly BONSAI_NATIVE_OK" --repeat 2
 # Runnable TetherScript entrypoint (not a hooks-only file):

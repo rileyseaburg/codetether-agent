@@ -12,7 +12,7 @@ if ($env:OS -ne 'Windows_NT') { throw 'WINDOWS_REQUIRED: Run this installer on W
 $repo = 'rileyseaburg/codetether-agent'
 $api = "https://api.github.com/repos/$repo"
 $headers = @{ 'User-Agent' = 'codetether-installer' }
-$helperRoot = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'script\windows-install' } else { '' }
+$helperRoot = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'scripts\windows-install' } else { '' }
 if ($PSScriptRoot -and -not (Test-Path (Join-Path $helperRoot 'entry.ps1'))) { $helperRoot = Join-Path $PSScriptRoot 'windows-install' }
 if (-not $helperRoot -or -not (Test-Path (Join-Path $helperRoot 'entry.ps1'))) {
     # Reviewed helper revision, independent of binary tags. Never execute floating main helpers.
