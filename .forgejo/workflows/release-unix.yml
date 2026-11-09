@@ -32,7 +32,7 @@ jobs:
         with:
           github-server-url: https://forgejo.quantum-forge.io
       - name: Prepare native dependencies
-        run: bash script/forgejo/release-setup.sh "$RELEASE_TARGET"
+        run: bash scripts/forgejo/release-setup.sh "$RELEASE_TARGET"
       - name: Set up CI cache
         uses: ./.forgejo/actions/setup-ci-cache
         with:

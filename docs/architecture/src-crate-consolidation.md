@@ -25057,7 +25057,7 @@ compiler expansion, storage I/O or tests ran. Full consolidation remains active.
 
 ### Reusable static audit for the new session declarations
 
-Added script/architecture/check_session_declarations.mjs and its Rust token
+Added scripts/architecture/check_session_declarations.mjs and its Rust token
 scanner. Run it from the repository root with Node. It resolves the supported
 single-arm declaration macros, checks ident/type/path/visibility arguments and
 optional matcher groups, expands nested declaration helpers as tokens, checks
@@ -26711,7 +26711,7 @@ compilation or runtime tests ran. Full consolidation remains active.
 
 ### Production dependency-scope audit
 
-Added script/architecture/check_native_dependencies.mjs after the goal-tool
+Added scripts/architecture/check_native_dependencies.mjs after the goal-tool
 extraction exposed a production import covered only by a dev dependency. The
 new allowed Node check follows literal native-crate modules/includes, excludes
 explicit test gates and checks direct workspace references against normal

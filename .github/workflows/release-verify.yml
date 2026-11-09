@@ -32,9 +32,9 @@ jobs:
       - name: Formatting and release-script regressions
         run: |
           cargo fmt --check
-          bash script/tests/release-version.sh
-          bash script/tests/release-verification.sh
-          python3 -m unittest discover -s script/tests/unix_installer -p 'test_*.py' -v
+          bash scripts/tests/release-version.sh
+          bash scripts/tests/release-verification.sh
+          python3 -m unittest discover -s scripts/tests/unix_installer -p 'test_*.py' -v
       - name: Lint library
         run: cargo clippy --locked --lib --no-deps
       - name: Full serial release test gate

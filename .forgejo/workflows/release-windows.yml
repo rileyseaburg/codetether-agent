@@ -17,7 +17,7 @@ jobs:
         with:
           github-server-url: https://forgejo.quantum-forge.io
       - name: Prepare writable Docker and Buildx directories
-        run: bash script/forgejo/prepare-windows-buildx.sh
+        run: bash scripts/forgejo/prepare-windows-buildx.sh
       - uses: https://github.com/docker/setup-buildx-action@v3
         with:
           driver: docker
@@ -34,7 +34,7 @@ jobs:
             --file docker/release/windows.Dockerfile --target artifact \
             --output type=local,dest=build/windows .
       - name: Package Windows executable and ZIP
-        run: bash script/forgejo/package-windows-release.sh
+        run: bash scripts/forgejo/package-windows-release.sh
       - uses: https://code.forgejo.org/actions/upload-artifact@v3
         with:
           name: release-x86_64-pc-windows-gnu

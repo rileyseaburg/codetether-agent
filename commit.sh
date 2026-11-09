@@ -94,7 +94,7 @@ commit_group "deps" \
 commit_group "ci" \
     'Dockerfile' 'Jenkinsfile' '*.yml' '*.yaml' \
     'check_file_limits.sh' 'commit.sh' 'release.sh' \
-    'script/*.sh' '.github/**' 2>/dev/null || true
+    'scripts/*.sh' '.github/**' 2>/dev/null || true
 
 # 3. Documentation
 commit_group "docs" \

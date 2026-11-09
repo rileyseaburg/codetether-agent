@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/../.." && pwd)
+source_helper="$root/scripts/bump-dev-version.sh"
+fixture=$(mktemp -d)
+trap 'rm -rf "$fixture"' EXIT
+mkdir -p "$fixture/scripts"
+cp "$source_helper" "$fixture/scripts/bump-dev-version.sh"
+cp "$root/scripts/set-dev-version.sh" "$fixture/scripts/set-dev-version.sh"
+chmod +x "$fixture/scripts/bump-dev-version.sh"
+chmod +x "$fixture/scripts/set-dev-version.sh"
+
+cat >"$fixture/Cargo.toml" <<'EOF'
+[workspace.package]
+version = "99.0.0"
+
+[package]
+name = "codetether-agent"
+version = "4.7.5-dev.9"
+
+[package.metadata.test]
+version = "unchanged"
+EOF
+cat >"$fixture/Cargo.lock" <<'EOF'
+[[package]]
+name = "another-package"
+version = "1.0.0"
+
+[[package]]
+name = "codetether-agent"
+version = "4.7.5-dev.9"
+EOF
+
+actual=$(cd "$fixture" && ./scripts/bump-dev-version.sh)
+[[ $actual == 4.7.5-dev.10 ]]
+grep -q '^version = "4.7.5-dev.10"$' "$fixture/Cargo.toml"
+grep -q '^version = "4.7.5-dev.10"$' "$fixture/Cargo.lock"
+grep -q '^version = "99.0.0"$' "$fixture/Cargo.toml"
+grep -q '^version = "unchanged"$' "$fixture/Cargo.toml"
+grep -q '^version = "1.0.0"$' "$fixture/Cargo.lock"
+
+sed -i 's/4\.7\.5-dev\.10/4.7.5/' "$fixture/Cargo.toml"
+if (cd "$fixture" && ./scripts/bump-dev-version.sh >/dev/null 2>&1); then
+  echo 'stable versions must be rejected' >&2
+  exit 1
+fi
+grep -q '^version = "4.7.5-dev.10"$' "$fixture/Cargo.lock"
+
+# A virtual workspace keeps its own metadata unchanged while bumping the member.
+mkdir -p "$fixture/crates/codetether-agent"
+sed -i 's/^version = "4\.7\.5"$/version = "4.7.5-dev.10"/' "$fixture/Cargo.toml"
+mv "$fixture/Cargo.toml" "$fixture/crates/codetether-agent/Cargo.toml"
+cat >"$fixture/Cargo.toml" <<'EOF'
+[workspace]
+members = ["crates/codetether-agent"]
+
+[workspace.metadata.fixture]
+version = "do-not-change"
+EOF
+cp "$fixture/Cargo.toml" "$fixture/workspace-before.toml"
+actual=$(cd "$fixture" && ./scripts/bump-dev-version.sh)
+[[ $actual == 4.7.5-dev.11 ]]
+grep -q '^version = "4.7.5-dev.11"$' "$fixture/crates/codetether-agent/Cargo.toml"
+grep -q '^version = "4.7.5-dev.11"$' "$fixture/Cargo.lock"
+cmp "$fixture/Cargo.toml" "$fixture/workspace-before.toml"

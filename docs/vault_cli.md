@@ -76,7 +76,7 @@ client `codetether-cli`, Vault JWT mount `jwt`, role `codetether-device`. Overri
 with `--issuer/--client-id/--mount/--role` or `CODETETHER_VAULT_DEVICE_ISSUER`,
 `CODETETHER_VAULT_DEVICE_CLIENT_ID`, `CODETETHER_VAULT_DEVICE_MOUNT`,
 `CODETETHER_VAULT_DEVICE_ROLE`. The Keycloak client, audience mapper and Vault role
-definitions live in `script/keycloak/`. Rejections now include Vault's reason
+definitions live in `scripts/keycloak/`. Rejections now include Vault's reason
 (e.g. an audience or group mismatch) when it contains no credential.
 
 ## Start work or remove the local login

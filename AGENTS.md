@@ -870,7 +870,7 @@ the LAN, so internal networking is necessary but not proven sufficient.
   `artifacts/fj11516/`.
 - **Resolution (commit `e21cbed0`)**: `release-publish.yml` no longer uses
   `forgejo-release`/tea at all — publishing goes through
-  `script/forgejo/publish-release-assets.sh` (curl + Forgejo API, idempotent
+  `scripts/forgejo/publish-release-assets.sh` (curl + Forgejo API, idempotent
   tag/release recreate, draft→false flip), the same path that published
   release 219 manually. Run 11518 is the live validation of that script; if it
   wedges again with zero upload output, escalate — server-side

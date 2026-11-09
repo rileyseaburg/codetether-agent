@@ -34,8 +34,8 @@ jobs:
       - name: Prepare native dependencies
         shell: bash
         run: |
-          bash script/forgejo/release-setup.sh aarch64-apple-darwin
-          bash script/forgejo/release-setup.sh x86_64-apple-darwin
+          bash scripts/forgejo/release-setup.sh aarch64-apple-darwin
+          bash scripts/forgejo/release-setup.sh x86_64-apple-darwin
       - name: Set up CI cache
         uses: ./.forgejo/actions/setup-ci-cache
         with:

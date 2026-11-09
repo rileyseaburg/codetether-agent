@@ -30,7 +30,7 @@ jobs:
           set -euo pipefail
           {
             echo 'body<<CODETETHER_NOTES_EOF'
-            bash source/script/forgejo/release-notes.sh "$RELEASE_VERSION"
+            bash source/scripts/forgejo/release-notes.sh "$RELEASE_VERSION"
             echo 'CODETETHER_NOTES_EOF'
           } >> "$GITHUB_OUTPUT"
       - uses: https://code.forgejo.org/actions/download-artifact@v3
@@ -71,4 +71,4 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s' "$NOTES_BODY" > release-notes.md
-          bash source/script/forgejo/publish-release-assets.sh
+          bash source/scripts/forgejo/publish-release-assets.sh
