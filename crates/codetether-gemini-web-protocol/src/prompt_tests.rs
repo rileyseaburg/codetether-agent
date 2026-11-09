@@ -31,7 +31,9 @@ fn renders_history_as_parseable_tool_protocol() {
     ];
 
     let rendered = prompt::render(&messages, &[]).unwrap();
-    let (_, calls) = GeminiWebProtocol::extract_tool_calls(&rendered);
+    // Instructional examples are not assistant history or executable calls.
+    let history = prompt::render_bounded(&messages, 256 * 1024);
+    let (_, calls) = GeminiWebProtocol::extract_tool_calls(&history);
 
     assert!(!rendered.contains("[Called tool:"));
     assert!(!rendered.contains("[Tool result]"));
