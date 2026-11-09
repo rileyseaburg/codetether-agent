@@ -9,7 +9,7 @@
 /// # Examples
 ///
 /// ```
-/// use codetether_gemini_web_protocol::response_text::reasoning::sentence_end;
+/// use codetether_gemini_web_protocol::response_text::reasoning::sentence::sentence_end;
 ///
 /// assert_eq!(sentence_end("One. Two."), Some(4));
 /// assert_eq!(sentence_end("version 3.5 ships"), None);

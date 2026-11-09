@@ -13,7 +13,7 @@ use codetether_provider_core::ContentPart;
 ///
 /// ```
 /// use codetether_gemini_web_protocol::response_text::content_parts;
-/// use codetether_agent::provider::ContentPart;
+/// use codetether_provider_core::ContentPart;
 ///
 /// let parts = content_parts(
 ///     "I will inspect the files.Here is the answer.\n<FollowUp label=\"x\"/>",

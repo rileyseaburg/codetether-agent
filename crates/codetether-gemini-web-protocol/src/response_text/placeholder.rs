@@ -23,7 +23,7 @@ const CARD_HOST: &str = "googleusercontent.com/card_content";
 /// # Examples
 ///
 /// ```
-/// use codetether_gemini_web_protocol::response_text::is_placeholder;
+/// use codetether_gemini_web_protocol::response_text::placeholder::is_placeholder;
 ///
 /// assert!(is_placeholder("http://googleusercontent.com/card_content/0"));
 /// assert!(!is_placeholder("Here is the answer."));
