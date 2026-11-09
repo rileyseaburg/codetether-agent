@@ -6,6 +6,7 @@ mod tool_request_envelope;
 use tool_request_envelope::tool_request_envelope;
 mod tool_response_envelope;
 use tool_response_envelope::tool_response_envelope;
+mod interleaved_groups;
 mod test_heartbeat_skipped_role;
 mod test_tool_grouping_keeps_different_correlation_ids_separate;
 mod test_tool_grouping_keeps_legacy_none_correlation_compatible;

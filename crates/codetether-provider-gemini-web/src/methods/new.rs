@@ -6,11 +6,14 @@ impl GeminiWebProvider {
     /// # Arguments
     /// * `cookies` - Netscape cookies.txt or supported simple cookie lines.
     /// # Returns
-    /// A provider with an empty token cache and the existing HTTP defaults.
+    /// A provider with an empty token cache and HTTP/1.1-only Gemini transport.
     /// # Errors
     /// Returns HTTP client construction failures.
     pub fn new(cookies: String) -> Result<Self> {
         let client = codetether_provider_core::socket_opts::apply_socket_opts(Client::builder())
+            // Native HTTP/2 bootstrap rejects with PROTOCOL_ERROR while curl works.
+            // Match image transport: select HTTP/1.1 up front, not a POST replay.
+            .http1_only()
             .user_agent(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
                  AppleWebKit/537.36 (KHTML, like Gecko) \
