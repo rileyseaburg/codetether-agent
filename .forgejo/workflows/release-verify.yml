@@ -44,8 +44,12 @@ jobs:
           bash scripts/tests/release-verification.sh
           bash scripts/tests/windows-docker-cache.sh
           bash scripts/tests/windows-release-config.sh
+          bash scripts/tests/windows-artifact-export.sh
+          bash scripts/tests/release-tag-target.sh
           bash scripts/tests/release-runner-routing.sh
           bash scripts/tests/unix_installer/native.sh "$PWD/artifacts/forgejo-verification/unix-installer"
+          bash scripts/tests/forgejo-installer.sh "$PWD/artifacts/forgejo-verification/unix-metadata"
+          bash scripts/tests/unix_installer/macos-docs.sh "$PWD/artifacts/forgejo-verification/macos-docs"
           cargo +1.95.0 clippy --locked --lib --no-deps
           cargo +1.95.0 test --locked --lib --tests --no-fail-fast -- --test-threads=1 2>&1 | tee artifacts/forgejo-verification/tests.log
       - name: Save cargo caches

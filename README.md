@@ -1,6 +1,6 @@
 # CodeTether Agent
 
-[![GitHub Releases](https://img.shields.io/badge/releases-GitHub-blue)](https://github.com/rileyseaburg/codetether-agent/releases)
+[![Forgejo Releases](https://img.shields.io/badge/releases-Forgejo-orange)](https://forgejo.quantum-forge.io/riley/codetether-agent/releases)
 [![Crates.io](https://img.shields.io/crates/v/codetether-agent.svg)](https://crates.io/crates/codetether-agent)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -30,12 +30,19 @@ repository and keep working across longer tasks:
 
 ## Install
 
-The GitHub release installers are the preferred way to get the current binary.
-Registry packages can lag behind release assets.
+Get current binaries from [Forgejo releases](https://forgejo.quantum-forge.io/riley/codetether-agent/releases).
+Linux x86_64, Apple Silicon macOS, Intel macOS, and Windows x86_64 packages are
+published with SHA-256 checksums. The Unix installer below downloads from Forgejo
+and includes development prereleases. Registry packages and the GitHub mirror
+can lag behind Forgejo.
 
 ### Windows
 
-Open PowerShell normally, not as Administrator:
+For the Forgejo build, download the Windows MSI or setup ZIP from the
+[release assets](https://forgejo.quantum-forge.io/riley/codetether-agent/releases).
+
+The existing PowerShell installer remains **GitHub-backed**. To use that separate
+installation path, open PowerShell normally, not as Administrator:
 
 ```powershell
 irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1 | iex
@@ -46,16 +53,43 @@ If the command is not found or resolves to an old binary, use
 [Windows installation and PATH checks](docs/install_windows.md). To update only
 an existing Vault token, see [update Vault on Windows](docs/update_vault_windows.md).
 
-### Linux and macOS
+### Linux (x86_64)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
+curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
 command -v codetether
 codetether --version
 ```
 
 If the command is not found or resolves to an old binary, use
 [Unix installation and PATH checks](docs/install_unix.md).
+
+### macOS (Apple Silicon and Intel)
+
+Open Terminal and run as your normal user; no Rust toolchain or Xcode is required:
+
+```sh
+uname -m
+curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
+command -v codetether
+codetether --version
+```
+
+The installer selects the correct Forgejo archive and verifies its SHA-256:
+
+| Mac | Release target |
+| --- | --- |
+| Apple Silicon (M-series, `arm64`) | `aarch64-apple-darwin` |
+| Intel (`x86_64`) | `x86_64-apple-darwin` |
+
+On Apple Silicon, prefer a native Terminal rather than “Open using Rosetta.” The
+installer also detects Rosetta and selects the native ARM64 binary. Installation
+normally uses `/usr/local/bin` and may request sudo. For a **no-sudo install to
+`~/.local/bin`**, pinned-version downloads, zsh PATH setup, and troubleshooting,
+see [macOS-specific installation](docs/install_unix.md#macos-specific-installation).
+
+macOS packages are **unsigned and not notarized**. Do not disable Gatekeeper or
+remove quarantine blindly; see the guide before approving a downloaded binary.
 
 ### Cargo
 
@@ -66,7 +100,7 @@ cargo install codetether-agent
 From a checkout:
 
 ```sh
-git clone https://github.com/rileyseaburg/codetether-agent.git
+git clone https://forgejo.quantum-forge.io/riley/codetether-agent.git
 cd codetether-agent
 cargo install --path crates/codetether-agent
 ```

@@ -28,18 +28,18 @@ api() {
 api DELETE "releases/tags/$TAG" >/dev/null 2>&1 || true
 api DELETE "tags/$TAG" >/dev/null 2>&1 || true
 
-api POST tags -d "{\"tag_name\":\"$TAG\",\"target_commitish\":\"$SHA\"}" >/dev/null
-
-echo "Creating release $TAG (target $SHA)..."
-api POST releases -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"target_commitish\":\"$SHA\",\"draft\":true,\"prerelease\":true,\"body\":$(jq -Rs . < "$NOTES_FILE")}" >release.json
-REL_ID=$(jq -e '.id' release.json)
-echo "Release id $REL_ID created."
-
+# CreateTagOption uses target; target_commitish belongs to CreateReleaseOption.
+api POST tags -d "{\"tag_name\":\"$TAG\",\"target\":\"$SHA\"}" >/dev/null
 shasum=$(api GET "tags/$TAG" | jq -r '.commit.sha // empty')
 [ "$shasum" = "$SHA" ] || {
     echo "tag $TAG sha mismatch: got '${shasum:-none}', want $SHA" >&2
     exit 1
 }
+
+echo "Creating release $TAG (target $SHA)..."
+api POST releases -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\",\"target_commitish\":\"$SHA\",\"draft\":true,\"prerelease\":true,\"body\":$(jq -Rs . < "$NOTES_FILE")}" >release.json
+REL_ID=$(jq -e '.id' release.json)
+echo "Release id $REL_ID created."
 
 n=0
 for f in "$DIST_DIR"/*; do

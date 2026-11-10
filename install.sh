@@ -1,6 +1,6 @@
 #!/bin/sh
 # CodeTether Agent Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.sh | sh
+# Usage: curl -fsSL https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main/install.sh | sh
 #
 # Installs the latest release of codetether to /usr/local/bin (or ~/.local/bin if no sudo).
 # No Rust toolchain required.
@@ -12,7 +12,7 @@
 
 set -e
 
-REPO="github.com/rileyseaburg/codetether-agent"
+REPO="forgejo.quantum-forge.io/riley/codetether-agent"
 BINARY_NAME="codetether"
 INSTALL_DIR="/usr/local/bin"
 USE_SUDO="true"
@@ -59,7 +59,14 @@ detect_platform() {
 
     case "$os" in
         Linux)  os="unknown-linux-gnu" ;;
-        Darwin) os="apple-darwin" ;;
+        Darwin)
+            os="apple-darwin"
+            # A Rosetta shell reports x86_64 even on Apple Silicon. Install the
+            # native ARM64 binary rather than requiring Rosetta permanently.
+            if [ "$arch" = x86_64 ] && [ "$(sysctl -in sysctl.proc_translated 2>/dev/null || true)" = 1 ]; then
+                arch=arm64
+            fi
+            ;;
         MINGW*|MSYS*|CYGWIN*) error "use the PowerShell install.ps1 installer on Windows"; return 1 ;;
         *)
             error "unsupported OS: $os"
@@ -149,8 +156,8 @@ version_is_newer() {
 }
 
 get_latest_version() {
-    # Include prereleases: GitHub /latest excludes our development releases.
-    local api="https://api.github.com/repos/rileyseaburg/codetether-agent/releases?per_page=1"
+    # Include development prereleases, but never select an unpublished draft.
+    local api="https://forgejo.quantum-forge.io/api/v1/repos/riley/codetether-agent/releases?limit=1&draft=false"
     if command -v curl > /dev/null 2>&1; then
         curl -fsSL "$api"
     elif command -v wget > /dev/null 2>&1; then
@@ -184,7 +191,7 @@ configure_core_env() {
     local ct_target="$1" ct_hash ct_name ct_actual
     CT_HELPERS=$(mktemp -d "${TMPDIR:-/tmp}/codetether-vault.XXXXXX") || return 1
     while read -r ct_hash ct_name; do
-        download "https://raw.githubusercontent.com/${REPO#*/}/53bf14390e5e206808687c27542f9c64bd263cac/script/unix-install/$ct_name" "$CT_HELPERS/$ct_name" || return 1
+        download "https://${REPO}/raw/commit/53bf14390e5e206808687c27542f9c64bd263cac/script/unix-install/$ct_name" "$CT_HELPERS/$ct_name" || return 1
         if command -v sha256sum >/dev/null 2>&1; then ct_actual=$(sha256sum "$CT_HELPERS/$ct_name")
         else ct_actual=$(shasum -a 256 "$CT_HELPERS/$ct_name"); fi
         if [ "$ct_hash" != "${ct_actual%% *}" ]; then
