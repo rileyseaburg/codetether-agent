@@ -24,15 +24,7 @@ jobs:
           endpoint: unix:///var/run/docker.sock
       - name: Cross-build Windows GNU artifact
         shell: bash
-        run: |
-          set -euo pipefail
-          unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH
-          export DOCKER_HOST=unix:///var/run/docker.sock
-          docker info
-          grep -Eq 'cargo build .*--locked' docker/release/windows.Dockerfile
-          docker buildx build --platform linux/amd64 \
-            --file docker/release/windows.Dockerfile --target artifact \
-            --output type=local,dest=build/windows .
+        run: bash scripts/forgejo/build-windows-artifact.sh
       - name: Package Windows executable and ZIP
         run: bash scripts/forgejo/package-windows-release.sh
       - uses: https://code.forgejo.org/actions/upload-artifact@v3
