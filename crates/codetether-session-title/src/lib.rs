@@ -2,7 +2,8 @@
 //!
 //! [normalize_title] and [label] sanitize stored and displayed names.
 //! [TitleSession] supplies native field writes and timestamp updates for the
-//! shared lifecycle. [generate_with] uses a caller-selected provider/model.
+//! shared lifecycle. [generate_with] uses local titles for Bedrock and the
+//! caller-selected provider/model elsewhere; [title_from_model] always uses AI.
 mod ai;
 mod ai_model;
 mod ai_request;

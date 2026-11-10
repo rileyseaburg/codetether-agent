@@ -1,9 +1,14 @@
-//! Apply model-backed titles with the original heuristic fallback.
+//! Automatic title policy: local Bedrock titles and model-backed titles elsewhere.
 use crate::{TitleSession, ai_model::title_from_model};
 use anyhow::Result;
 use codetether_provider_core::Provider;
 
 /// Generate a title with the provider and model selected for this turn.
+///
+/// Existing titles are preserved. Bedrock uses the local heuristic so optional
+/// naming never adds inference latency before the answer. Other providers keep
+/// model-backed naming with heuristic fallback. Call [`crate::title_from_model`]
+/// explicitly when a Bedrock AI-generated title is needed.
 ///
 /// # Errors
 ///
@@ -27,6 +32,9 @@ pub async fn generate_with<S: TitleSession>(
     if session.title().is_some() {
         return Ok(());
     }
+    if provider.name() == "bedrock" {
+        return crate::lifecycle::generate(session).await;
+    }
     let Some(seed) = crate::seed::first_user_text(session.messages()) else {
         return Ok(());
     };
@@ -36,3 +44,7 @@ pub async fn generate_with<S: TitleSession>(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "ai_tests/mod.rs"]
+mod tests;

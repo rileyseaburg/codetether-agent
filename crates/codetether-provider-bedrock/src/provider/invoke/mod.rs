@@ -1,9 +1,9 @@
 //! Bedrock InvokeModel adapter for native Anthropic Messages models
 //! (e.g. `claude-fable-5`).
 //!
-//! Unlike the Converse API path, these models require a *native* Anthropic
-//! Messages request/response schema. This module and its children translate
-//! between the crate-internal types and that native shape.
+//! This module translates the native Anthropic Messages request/response
+//! shape. Fable 5.2 supports Converse streaming and bypasses the buffered
+//! adapter for streaming calls; older variants retain their existing route.
 
 pub mod body;
 pub mod complete;
@@ -12,6 +12,7 @@ pub mod invoke_convert;
 pub mod invoke_msgconvert;
 pub mod response;
 pub(in crate::provider) mod retention;
+mod routing;
 pub mod stream;
 
 #[cfg(test)]

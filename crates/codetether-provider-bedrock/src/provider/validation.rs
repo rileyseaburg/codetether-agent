@@ -5,18 +5,20 @@
 use super::{BedrockAuth, BedrockProvider};
 use anyhow::Result;
 impl BedrockProvider {
-    /// Adopt an externally refreshed Vault key without minting or saving.
-    /// A slow or unavailable Vault leaves existing credentials in place.
+    /// Periodically adopt an externally refreshed Vault key without re-minting.
+    /// Clones share a 30-second freshness window and one in-flight preflight.
+    /// The first/expired check waits at most two seconds; slow or unavailable
+    /// Vault retains existing credentials. Auth-error recovery bypasses this
+    /// gate, and SigV4 never checks Vault.
     ///
     /// # Errors
     /// Returns an error if the resulting credentials are empty or incomplete.
     pub(crate) async fn prepare_auth(&self) -> Result<()> {
-        if tokio::time::timeout(
-            std::time::Duration::from_secs(2),
-            super::auth_recover::adopt_vault_key(self),
-        )
-        .await
-        .is_err()
+        if matches!(&self.auth, BedrockAuth::BearerToken(_))
+            && self
+                .auth_freshness
+                .check(super::auth_recover::adopt_vault_key(self))
+                .await
         {
             tracing::warn!(
                 provider = "bedrock",
