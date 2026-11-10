@@ -9,6 +9,7 @@ pub(super) async fn prepare(call: &Call<'_>) -> (Command, Option<GitHubCommandAu
     cmd.kill_on_drop(true);
     cmd.args(&shell.prefix_args).arg(&call.wrapped_command);
     codetether_command_shell::configure(&mut cmd);
+    codetether_command_shell::apply_vault_token(&mut cmd);
     if let Some((codetether_bin, path)) = codetether_runtime_env() {
         cmd.env("CODETETHER_BIN", codetether_bin).env("PATH", path);
     }

@@ -36,6 +36,7 @@ pub async fn spawn_direct(
     let mut command = tokio::process::Command::new(program);
     command.args(args).current_dir(cwd);
     codetether_command_shell::configure(&mut command);
+    codetether_command_shell::apply_vault_token(&mut command);
     command.envs(environment.iter().cloned());
     let terminal = keep_stdin
         .then(|| codetether_command_pty::attach(&mut command))
