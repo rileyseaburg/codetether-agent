@@ -5,8 +5,8 @@
 set -euo pipefail
 version="${1:?usage: release-notes.sh <version-without-v>}"
 tag="v$version"
-raw="https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main"
-dl="https://github.com/rileyseaburg/codetether-agent/releases/download/$tag"
+raw="https://forgejo.quantum-forge.io/riley/codetether-agent/raw/branch/main"
+dl="https://forgejo.quantum-forge.io/riley/codetether-agent/releases/download/$tag"
 cat <<EOF
 CI-built Linux, Windows, and unsigned macOS binaries with SHA-256 checksums.
 
@@ -22,8 +22,10 @@ codetether --version
 \`\`\`
 
 The installer picks \`aarch64-apple-darwin\` or \`x86_64-apple-darwin\` for your Mac
-and verifies it against \`SHA256SUMS-$tag.txt\`. The binary is unsigned; if macOS
-blocks it, run \`xattr -d com.apple.quarantine "\$(command -v codetether)"\`.
+and verifies it against \`SHA256SUMS-$tag.txt\`. macOS binaries are unsigned and
+not notarized. Verify the source and checksum before reviewing a per-app macOS
+security exception; do not disable Gatekeeper or remove quarantine blindly.
+See [Mac architecture, no-sudo installation, and zsh PATH guidance](https://forgejo.quantum-forge.io/riley/codetether-agent/src/branch/main/docs/install_unix.md#macos-specific-installation).
 
 ### Linux (x86_64)
 
@@ -36,10 +38,11 @@ codetether --version
 
 ### Windows (x86_64)
 
-Open PowerShell normally (not as Administrator), copy and paste:
+Download the Windows MSI or setup ZIP below for this Forgejo release. The existing
+PowerShell installer is a separate GitHub-backed path (run without Administrator):
 
 \`\`\`powershell
-& ([scriptblock]::Create((irm $raw/install.ps1))) -Version $tag
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/rileyseaburg/codetether-agent/main/install.ps1))) -Version $tag
 codetether --version
 \`\`\`
 
