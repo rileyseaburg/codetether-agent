@@ -3,19 +3,20 @@
 echo "Installed binary updated; running workers keep their old executable until restarted."
 echo "No services were restarted automatically. Restart when active work can be interrupted."
 if command -v systemctl >/dev/null 2>&1; then
+  restart_targets=()
   chat=codetether-spotlessbinco-thinker.service
   if [ "$(systemctl --user show "$chat" -p LoadState --value 2>/dev/null)" = loaded ]; then
-    echo "CodeTether Chat backend (check ExecStart for a pinned older binary first):"
-    echo "  systemctl --user show $chat -p ExecStart"
-    echo "  systemctl --user restart $chat"
-    echo "  systemctl --user status $chat --no-pager"
+    restart_targets+=("CodeTether Chat backend ($chat)")
   fi
   worker_service=codetether-ubuntu-dev.service
   if [ "$(systemctl show "$worker_service" -p LoadState --value 2>/dev/null)" = loaded ]; then
-    echo "System worker: update its installed copy before restarting:"
-    printf '  sudo install -m755 %q /opt/codetether-worker/bin/codetether\n' "$HOME/.cargo/bin/codetether"
-    echo "  sudo systemctl restart $worker_service"
-    echo "  sudo systemctl status $worker_service --no-pager"
+    restart_targets+=("System worker ($worker_service; needs sudo)")
+  fi
+  if [ ${#restart_targets[@]} -gt 0 ]; then
+    restart_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/install-dev-restart-services.sh"
+    echo "Hey! Installed. Now run this script to restart them on the new binary:"
+    printf '  %q\n' "$restart_script"
+    printf '    - %s\n' "${restart_targets[@]}"
   fi
 fi
 echo "For other workers, restart their service or relaunch the process using the newly installed binary."

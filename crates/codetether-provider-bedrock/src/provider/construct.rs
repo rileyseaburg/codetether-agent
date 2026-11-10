@@ -58,6 +58,7 @@ impl BedrockProvider {
             client: codetether_provider_core::shared_http::shared_client().clone(),
             auth: BedrockAuth::bearer(api_key),
             region,
+            auth_freshness: Default::default(),
         })
     }
 
@@ -92,6 +93,7 @@ impl BedrockProvider {
             client: codetether_provider_core::shared_http::shared_client().clone(),
             auth: BedrockAuth::SigV4(credentials),
             region,
+            auth_freshness: Default::default(),
         })
     }
 }

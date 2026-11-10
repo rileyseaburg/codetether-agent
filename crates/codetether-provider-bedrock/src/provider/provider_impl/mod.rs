@@ -1,11 +1,14 @@
 //! `Provider` trait implementation for [`BedrockProvider`].
 //!
 //! The trait methods stay thin: they resolve the model id, validate auth,
-//! route `claude-fable-*` models to the InvokeModel adapter, and otherwise
-//! delegate to the Converse helpers in [`converse`].
+//! and dispatch to native InvokeModel or Converse. Fable 5.2 streaming
+//! uses Converse so callers receive deltas without buffering the full answer;
+//! non-streaming and older Fable requests retain their native adapter.
 
 mod converse;
 mod runtime_url;
+#[cfg(test)]
+mod tests;
 
 use crate::provider::BedrockProvider;
 use anyhow::Result;
@@ -40,7 +43,7 @@ impl Provider for BedrockProvider {
     ) -> Result<futures::stream::BoxStream<'static, StreamChunk>> {
         let model_id = Self::resolve_model_id(&request.model);
         self.prepare_auth().await?;
-        if Self::should_use_invoke_model(model_id) {
+        if Self::should_use_invoke_model_stream(model_id) {
             return self.invoke_model_stream_adapter(&request, model_id).await;
         }
         let body = self.build_converse_body(&request, model_id);

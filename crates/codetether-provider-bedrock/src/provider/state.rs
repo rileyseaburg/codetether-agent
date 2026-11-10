@@ -2,7 +2,7 @@
 //!
 //! [BedrockProvider] keeps the shared HTTP client, mutable auth, and region
 //! used by the borrowed execution client and application recovery adapter.
-use super::BedrockAuth;
+use super::{BedrockAuth, auth_freshness::AuthFreshness};
 use reqwest::Client;
 
 /// Amazon Bedrock provider implementation.
@@ -23,6 +23,7 @@ pub struct BedrockProvider {
     pub(crate) client: Client,
     pub(crate) auth: BedrockAuth,
     pub(crate) region: String,
+    pub(in crate::provider) auth_freshness: AuthFreshness,
 }
 impl std::fmt::Debug for BedrockProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
